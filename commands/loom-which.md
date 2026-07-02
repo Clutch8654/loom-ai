@@ -1,10 +1,10 @@
 ---
-description: "Smart routing — natural language to the right Loom command"
+description: "Guided router — walk an interactive decision tree (one question per turn, grilling discipline) to the right Loom command. For one-shot keyword routing, use /loom-do."
 ---
 
 # /loom-which
 
-You route the user to the correct Loom command by walking a decision tree one question at a time. You ask **exactly one question per turn** (GR-01), recommend the most common branch as the default for each node (GR-02), enumerate all branches before recommending (GR-03), infer answers from existing codebase artifacts before asking (GR-04), and cap the session at 12 questions maximum (GR-05; hard cap lands in Phase 5a — the cap exists from day one).
+/loom-do --guided reaches the same tree; /loom-which remains the direct entry point. You route the user to the correct Loom command by walking a decision tree one question at a time. You ask **exactly one question per turn** (GR-01), recommend the most common branch as the default for each node (GR-02), enumerate all branches before recommending (GR-03), infer answers from existing codebase artifacts before asking (GR-04), and cap the session at 12 questions maximum (GR-05; hard cap lands in Phase 5a — the cap exists from day one).
 
 ## Requirements
 
@@ -21,14 +21,17 @@ Parse the optional argument after `which`:
 The canonical decision tree. Internal nodes carry a question and branches; leaf nodes carry a command recommendation. Each session starts at **N-01**.
 
 ```toon
-nodes[14]{id,question,branches,leafRecommendation}:
-  N-01,"What kind of task are you on?","[bug, feature, design, planning, audit, runtime, unclear]",null
+nodes[41]{id,question,branches,leafRecommendation}:
+  N-01,"What kind of task are you on?","[bug, feature, design, planning, quality, ship, retro, audit, runtime, unclear]",null
   N-02,"Bug — do you have a tight, reliably-red reproduction command?","[yes, partial, no]",null
   N-03,"Feature — is there an approved ROADMAP.md entry for it yet?","[yes-approved, drafted-not-approved, no-roadmap]",null
-  N-04,"Design — are you exploring shape (codebase health, deepening) or capturing a decision (ADR)?","[shape, decision, throwaway-prototype]",null
+  N-04,"Design — exploring shape (codebase health), capturing a decision (ADR), throwaway spike, or building UI/brand?","[shape, decision, throwaway-prototype, ui-or-brand]",null
   N-05,"Planning — do you need to convert a roadmap to a plan, review an existing plan, or execute one?","[convert, review, execute]",null
   N-06,"Audit — what surface are you auditing?","[coverage, attribution, skill-autoload, sediment]",null
   N-07,"Runtime — what state is the Loom installation in?","[upgrade, library-refresh, project-migrate]",null
+  N-08,"No roadmap yet — how crisp is the idea?","[crisp-one-liner, fuzzy, ready-to-structure]",null
+  N-09,"Ship — what do you need?","[pr-pipeline, deploy, dashboard, bare-pr]",null
+  N-10,"Quality — which surface?","[live-site, health-score, security, perf]",null
   L-runtime-upgrade,null,null,"/loom-update (channel-aware Loom-runtime upgrade — atomic staging, rollback snapshots)"
   L-runtime-library,null,null,"/loom-library sync (refresh user-installed kits and agents — refuses to touch system files)"
   L-runtime-upgrade-project,null,null,"/loom-upgrade (migrate THIS project's PLAN.md / ROADMAP.md / state files to current schemas)"
@@ -36,24 +39,39 @@ nodes[14]{id,question,branches,leafRecommendation}:
   L-bugfix-construct,null,null,"/loom-bugfix (default path; Phase-1 gate will help you construct loop.toon — start at rung 1 of the 10-rung ladder)"
   L-feature-roadmap,null,null,"/loom-plan create (roadmap exists; ready for plan)"
   L-feature-draft-roadmap,null,null,"/loom-roadmap converge (drive the roadmap to ready first)"
-  L-feature-new,null,null,"/loom-roadmap init (no roadmap yet)"
+  L-feature-new,null,null,"/loom-roadmap init (idea is structured; go straight to the roadmap)"
+  L-feature-spec,null,null,"/loom-spec \"<idea>\" (sharpen the one-liner into a ROADMAP block or GH issue)"
+  L-feature-think,null,null,"/loom-think (fuzzy problem — 5-phase deep-think interview first; its doc feeds /loom-roadmap init --from)"
   L-design-shape,null,null,"/loom-deepen --target <subtree>"
   L-design-decision,null,null,"Write an ADR at docs/adr/{NNNN}-{title}.md per docs/adr/README.md"
   L-design-throwaway,null,null,"/loom-prototype <name> --branch <logic|ui>"
+  L-design-build,null,null,"/loom-design (consultation = brand kickoff, html = mockup to code, shotgun = N parallel variants)"
   L-plan-convert,null,null,"/loom-plan create"
   L-plan-review,null,null,"/loom-plan review"
   L-plan-execute,null,null,"/loom-plan execute"
+  L-ship-pipeline,null,null,"/loom-ship (rebase + version slot + drift check + plan audit + PR)"
+  L-ship-deploy,null,null,"/loom-canary (progressive 10/50/100 deploy; run /loom-setup deploy first if CLAUDE.md has no Deploy Configuration block)"
+  L-ship-dashboard,null,null,"/loom-landing-report (cross-workspace dashboard: branches, version slots, PR state, staleness)"
+  L-ship-bare-pr,null,null,"/loom-git pr (bare PR without ship ceremony)"
+  L-qa-live,null,null,"/loom-qa --tier standard <url> (requires /loom-browser start first)"
+  L-qa-health,null,null,"/loom-health (composite 0-10 quality score with trend)"
+  L-qa-security,null,null,"/loom-cso daily (fast 8/10 gate; monthly for the exhaustive scan)"
+  L-qa-perf,null,null,"/loom-benchmark perf (Core Web Vitals baseline vs PR head)"
+  L-retro,null,null,"/loom-retro (retrospective ceremony → learnings + regressions; use /loom-learn search \"<query>\" to consult past learnings)"
   L-audit-coverage,null,null,"scripts/coverage-audit/f18-audit.ts --validate <PATH>"
   L-audit-attribution,null,null,"bunx vitest run tests/regressions/no-per-file-attribution.test.ts"
   L-audit-autoload,null,null,"scripts/skill-autoload-audit/classify.ts"
   L-audit-sediment,null,null,"scripts/sediment-sweep/no-op-test.ts"
   L-unclear-fallback,null,null,"/loom-reference (no clear match; consult the flat reference table)"
 
-edges[26]{fromNode,branch,toNode}:
+edges[41]{fromNode,branch,toNode}:
   N-01,bug,N-02
   N-01,feature,N-03
   N-01,design,N-04
   N-01,planning,N-05
+  N-01,quality,N-10
+  N-01,ship,N-09
+  N-01,retro,L-retro
   N-01,audit,N-06
   N-01,runtime,N-07
   N-01,unclear,L-unclear-fallback
@@ -65,13 +83,25 @@ edges[26]{fromNode,branch,toNode}:
   N-02,no,L-bugfix-construct
   N-03,yes-approved,L-feature-roadmap
   N-03,drafted-not-approved,L-feature-draft-roadmap
-  N-03,no-roadmap,L-feature-new
+  N-03,no-roadmap,N-08
+  N-08,crisp-one-liner,L-feature-spec
+  N-08,fuzzy,L-feature-think
+  N-08,ready-to-structure,L-feature-new
   N-04,shape,L-design-shape
   N-04,decision,L-design-decision
   N-04,throwaway-prototype,L-design-throwaway
+  N-04,ui-or-brand,L-design-build
   N-05,convert,L-plan-convert
   N-05,review,L-plan-review
   N-05,execute,L-plan-execute
+  N-09,pr-pipeline,L-ship-pipeline
+  N-09,deploy,L-ship-deploy
+  N-09,dashboard,L-ship-dashboard
+  N-09,bare-pr,L-ship-bare-pr
+  N-10,live-site,L-qa-live
+  N-10,health-score,L-qa-health
+  N-10,security,L-qa-security
+  N-10,perf,L-qa-perf
   N-06,coverage,L-audit-coverage
   N-06,attribution,L-audit-attribution
   N-06,skill-autoload,L-audit-autoload
@@ -93,9 +123,12 @@ Keyword inference table (first match wins; all comparisons are case-insensitive)
 | Keywords | Inferred node path |
 |----------|--------------------|
 | bug, fix, broken, regression, error | N-01 → bug |
-| feature, add, ship, build | N-01 → feature |
-| design, shape, ADR, architecture | N-01 → design |
+| feature, add, build, idea, spec | N-01 → feature |
+| design, shape, ADR, architecture, mockup, brand, variants | N-01 → design |
 | plan, roadmap, convert, review | N-01 → planning |
+| qa, health, security, perf, benchmark, test the site | N-01 → quality |
+| ship, release, pr, deploy, canary, dashboard | N-01 → ship |
+| retro, retrospective, lessons, learnings | N-01 → retro |
 | audit, coverage, attribution, sediment | N-01 → audit |
 
 If the description is ambiguous or unrecognized: proceed to the interactive tree starting at N-01.

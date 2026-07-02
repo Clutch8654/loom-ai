@@ -26,6 +26,18 @@ A multi-agent pipeline for planning, executing, and verifying software projects.
 | `/loom-init --audit-only` | Analyze only, don't write files |
 | `/loom-init --format all` | Generate CLAUDE.md + AGENTS.md + .cursorrules |
 
+#### Ideation & Spec
+
+| Command | Description |
+|---------|-------------|
+| `/loom-think` | 5-phase deep-think interview for fuzzy problems → design doc at `.loom/thinks/{slug}-{date}.md` (feeds `/loom-roadmap init --from <path>`) |
+| `/loom-spec` | 5-phase interview: vague idea → precise ROADMAP feature block or GH issue (issue auto-closes on PR merge) |
+| `/loom-spec --from <path>` | Seed the interview from a /loom-think design doc |
+| `/loom-spec --auto-mutate` | Chain the drafted feature block into roadmap mutation |
+| `/loom-spec --worktree` | Spawn a worktree branch for the drafted work (`--name <slug>` targets ROADMAP-<slug>.md, `--yes` skips confirmation) |
+| `/loom-prototype <name> --branch logic/ui` | Scaffold a throwaway prototype (logic = terminal app, ui = parallel UI variants on one route); slots between roadmap and plan |
+| `/loom-prototype <name> --adr ADR-NNNN` | Link prototype to an ADR; completion ceremony appends a `prototypeAnswer:` line to it |
+
 #### Roadmapping & Planning
 
 | Command | Description |
@@ -141,6 +153,55 @@ A multi-agent pipeline for planning, executing, and verifying software projects.
 | `/loom-code fix --auto` | Skip approval gate after fixes |
 | `/loom-code fix --finding N` | Fix a single finding by number |
 
+#### Quality & Health
+
+| Command | Description |
+|---------|-------------|
+| `/loom-qa --tier quick/standard/exhaustive <url>` | Live-site QA loop via the /loom-browser daemon: find bugs, fix iteratively with atomic commits, re-verify (default tier: standard) |
+| `/loom-health` | Composite 0-10 quality score (typecheck, tests, lint, dead-code, shell) + trend from `.loom/health-history.toon` |
+| `/loom-health --quick` | In-loop mode: skips the slow components (tests, dead-code), does not append to history (used by /loom-qa between fix iterations) |
+| `/loom-cso daily` | Fast pre-PR security gate: findings at confidence >= 8, blocks on score regression or below 8/10 |
+| `/loom-cso monthly` | Exhaustive security deep-scan (findings down to confidence >= 2); appends to `.loom/security-history.toon`, never blocks |
+| `/loom-benchmark models` | Cross-vendor LLM comparison (Claude/GPT/Gemini) with LLM judge (`--suite <path>`, `--judge <claude/gpt/gemini>`) |
+| `/loom-benchmark perf` | Core Web Vitals regression gate via /loom-browser daemon (`--url <url>`, `--baseline-ref <git-ref>`) |
+| `/loom-devex review` | Live DX audit: measure actual time-to-hello-world in a fresh temp dir vs plan-time `predictedTTHW` |
+| `/loom-deepen` | Codebase deepening report: Explore fan-out surfaces shallow modules, applies the deletion test, emits TOON candidates (`--html`, `--target <path>`, `--limit <N>`) |
+
+#### Ship & Deploy
+
+| Command | Description |
+|---------|-------------|
+| `/loom-ship` | One-shot pre-PR pipeline: rebase onto base, VERSION-slot reservation, drift detection, plan-completion audit in PR body, `gh pr create` |
+| `/loom-canary` | Phased deploy (10% → 50% → 100%) with health-check gates + automatic rollback; wraps the target-native deploy CLI (fly/vercel/wrangler/netlify/railway/render) |
+| `/loom-landing-report` | Read-only multi-workspace dashboard: active branches, VERSION slots claimed, open PRs, staleness (no commits in 24h and no open PR) |
+| `/loom-setup deploy` | Detect deploy target from repo signals (Fly/Vercel/Cloudflare/Netlify/Railway/Render/Docker), write the Deploy Configuration block to CLAUDE.md so /loom-ship and /loom-canary auto-work |
+| `/loom-worktree scan` | Refresh the cross-worktree lease registry, print overlap findings (advisory, exit 0) |
+| `/loom-worktree preflight` | Same as scan but exits non-zero on overlap (also runs as a PreToolUse hook on `/loom-git pr`) |
+| `/loom-worktree leases` | Print the current lease file for this repo |
+| `/loom-worktree release <id>` | Mark a lease released |
+
+#### Design & Docs
+
+| Command | Description |
+|---------|-------------|
+| `/loom-design consultation` | Ground-up brand kickoff: 5-phase interview → design premise under `.loom/design/` (consults prior design learnings) |
+| `/loom-design html` | Ship production HTML/CSS from a prose or image mockup (Pretext-native: text reflows, heights computed, layouts not pixel-frozen) |
+| `/loom-design shotgun` | Fire N parallel UI variants (default 4) rendered side-by-side; captures preference with time-based decay |
+| `/loom-docs generate` | Cold-start Diataxis docs tree: tutorial, how-to, reference, explanation (`--force`, `--only <quadrant>`) |
+| `/loom-docs release` | Post-ship doc sync: diff-driven README/CHANGELOG/architecture updates + diagram drift detection + doc-debt gate (`--base`, `--head`, `--pr`, `--plan`) |
+| `/loom-docs release --dry-run` | Report-only: run all phases, write nothing, emit DocSyncReport to stdout, always exit 0 (the mode /loom-ship invokes) |
+| `/loom-diagram` | English or mermaid → triplet: source `.md` + editable `.excalidraw` + rendered `.svg` (`--prose`/`--mermaid`/`--mermaid-inline`, `--out <path>`, `--no-svg`, `--no-excalidraw`) |
+
+#### Browser Automation
+
+| Command | Description |
+|---------|-------------|
+| `/loom-browser start` | Boot the persistent Chromium daemon, write `.loom/browser/state.toon`, load cookies (shared by /loom-qa, /loom-devex review, /loom-cso, /loom-design, /loom-benchmark) |
+| `/loom-browser stop` | Terminate the daemon and mark state stopped |
+| `/loom-browser status` | Print current daemon phase: stopped, running, or crashed |
+| `/loom-browser exec "<command>"` | Run one command against the running daemon (tiered READ/WRITE/META semantics, a11y-tree element refs) |
+| `/loom-setup browser-cookies` | Import real Chrome/Chromium/Brave/Edge cookies into `.loom/browser/cookies/{domain}.toon` for authenticated live-site QA |
+
 #### Knowledge & Maintenance
 
 | Command | Description |
@@ -152,6 +213,15 @@ A multi-agent pipeline for planning, executing, and verifying software projects.
 | `/loom-note --assimilate` | Review notes AND apply them to roadmap/plan/context docs |
 | `/loom-note --list` | Show all notes (pending + assimilated + dismissed) |
 | `/loom-note --dismiss <id>` | Dismiss a note by ID |
+| `/loom-note --backlog` | Show backlog-tagged notes, sorted by priority |
+| `/loom-note --promote <id>` | Move a backlog item to the ROADMAP.md feature list |
+| `/loom-note add <text> [--category bug/enhancement]` | Create an inbox triage entry at `inbox/{NOTE-NNN}.md` (state machine, append-only transitions) |
+| `/loom-note reopen <id> --reason "..."` | Reopen a `wontfix` triage entry (reason is mandatory) |
+| `/loom-retro` | Retrospective ceremony: reads git activity + closed PRs + planning artifacts, appends learnings + regressions to `.loom/`, suggests ROADMAP mutations |
+| `/loom-learn list` | List learnings newest-first (`--tag <tag>`, `--limit <N>`) |
+| `/loom-learn search "<keyword>"` | Full-text search over learning problem/resolution/tags |
+| `/loom-learn prune --min-confidence <N>` | Delete learnings below a confidence threshold (backup to `.loom/learnings.toon.bak`) |
+| `/loom-learn export --format=toon/md/jsonl` | Emit the learnings corpus in the requested format (`--out <path>`) |
 | `/loom-wiki ingest` | Incremental wiki ingest on uncommitted changes |
 | `/loom-wiki ingest --source <path>` | Ingest a specific file or directory into wiki |
 | `/loom-wiki ingest --url <url>` | Ingest an external document into wiki |
@@ -188,6 +258,17 @@ A multi-agent pipeline for planning, executing, and verifying software projects.
 | `/loom-git merge [PR#]` | Squash-merge PR with cleanup offer |
 | `/loom-git cleanup [branch]` | Delete remote branch (not local) |
 | `/loom-git review-pr [PR#]` | Comprehensive PR review (diff, comments, CI, conflicts) |
+| `/loom-skillify --slug <kebab>` | Codify a successful ad-hoc flow from the transcript into `script.ts` + `test.ts` + TOON fixture under `scripts/skillified/`; runs vitest before registering (`--from <path>`, `--dry-run`) |
+| `/loom-careful` | Enable or explain the destructive-command guard hook (blocks `rm -rf`, force-push, `DROP TABLE`, `chmod -R 777`, raw-device writes); override with `LOOM_CAREFUL_OVERRIDE=1` |
+| `/loom-install --link` | Direct-symlink install of a local Loom checkout (alternative to plugin marketplace); `--host claude-code/hermes/openclaw/codex` |
+| `/loom-install --unlink` / `--check` | Remove the symlink for a host / print current status (default action) |
+| `/loom-update` | Channel-aware update (curl or plugin): apply the latest version |
+| `/loom-update --check` | Detect drift between installed and latest versions (`--json` for machine output) |
+| `/loom-update --pin <version>` | Pin to a specific version |
+| `/loom-update --rollback` / `--resume` | Restore prior version from inventory snapshot / resume a killed mid-update |
+| `/loom-doctor` | Diagnose Loom install health: channel, hook-wiring, settings, tier checks (`--json`, `--quiet`, `--only <id>`, `--output-file <path>`) |
+| `/loom-doctor --fix` | Apply remediation via the migration runner (`--reconcile` reconciles install channel, `--yes` skips prompts) |
+| `/loom-doctor --bundle` | Package a redacted diagnostic tarball under `~/.cache/loom/bundles/` |
 | `/loom-statusline-setup` | Configure the Claude Code status line (Starship integration, ambient state) |
 | `/loom` | Show this reference |
 
@@ -328,6 +409,11 @@ Tier 4 -- Qualify:
 12. /loom-code review            -- full code review
 13. /loom-code fix               -- auto-apply review findings
 14. /loom-roadmap status         -- track progress across everything
+
+Tier 5 -- Ship & Learn:
+15. /loom-ship                   -- rebase, VERSION slot, plan audit, PR
+16. /loom-canary                 -- phased deploy with health gates (post-merge)
+17. /loom-retro                  -- retrospective: append learnings + regressions
 ```
 
 Or one-shot brownfield:

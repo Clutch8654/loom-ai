@@ -1,10 +1,10 @@
 ---
-description: "Smart routing — natural language to the right Loom command"
+description: "One-shot router — match natural language to the right Loom command via intent table + project state, confirm, and run it. For an interactive guided decision tree, use /loom-which."
 ---
 
 # Loom Do
 
-Smart routing -- takes freeform natural language text and dispatches to the right Loom command.
+Smart routing -- takes freeform natural language text and dispatches to the right Loom command. `/loom-do` is the primary router front door: one-shot keyword routing by default, or the guided decision tree via `--guided`.
 
 ## Requirements
 
@@ -14,6 +14,7 @@ $ARGUMENTS
 
 Parse arguments after `do`:
 - The entire remaining text after `do` is the user's intent description.
+- `--guided`: walk the interactive decision tree instead of one-shot keyword routing — delegates to /loom-which's tree (same nodes, same grilling discipline). Any remaining text is passed as the tree's optional description argument.
 - If empty: print help and stop.
 
 ### Instructions
@@ -71,7 +72,7 @@ Only if BOTH checks pass (no matches) proceed to Step 2 and normal routing.
 
 Read project state to inform routing:
 
-1. **Available commands.** Read `~/.claude/skills/library/library.yaml` to get all installed Loom commands with their descriptions. If the file does not exist, use the built-in command list from the reference section above.
+1. **Available commands.** Read `~/.claude/skills/library/library.yaml` to get all installed Loom commands with their descriptions. If the file does not exist, fall back to `~/.claude/commands/loom-reference.md` for the built-in command list.
 
 2. **Project state.** Check for the presence of:
    - `ROADMAP.md` -- record exists/not-exists and approval status (check frontmatter for `status: approved`)
@@ -91,16 +92,22 @@ Analyze the user's text against known patterns and project state. Use both keywo
 
 | Intent Pattern | Matched Command | Condition |
 |----------------|-----------------|-----------|
-| "fix", "bug", "debug", "broken" | `/loom-code fix` or `/loom-quick "{text}"` | If review-report.md exists, use code fix. Otherwise, use quick. |
+| "fix", "bug", "debug", "broken", "error", "crashes" | `/loom-bugfix "{text}"` | Symptom-shaped text ("X is broken", "X errors"). If review-report.md exists and the text references review findings, use `/loom-code fix` instead. |
+| "quickly", "just do", "small change", "tweak" | `/loom-quick "{text}"` | Change-shaped text ("add X", "rename Y") — see skills/loom-quick-routing.md exclusions |
 | "review", "check code", "audit code" | `/loom-code review` | Default to `--branch` if on a feature branch |
 | "review plan", "check plan" | `/loom-plan review` | Only if PLAN.md exists |
 | "review roadmap" | `/loom-roadmap review` | Only if ROADMAP.md exists |
 | "plan", "create plan", "make a plan" | `/loom-plan create` | Only if ROADMAP.md exists and is approved |
 | "roadmap", "create roadmap", "init roadmap" | `/loom-roadmap init` | Append `--from "{text}"` if text contains a description |
+| "vague idea", "not sure yet", "think through", "help me figure out" | `/loom-think` | Fuzzy problem with no crisp deliverable — precedes roadmap |
+| "spec", "ticket", "write it up", "turn this into an issue" | `/loom-spec "{text}"` | One-sentence idea that needs sharpening into a ROADMAP block or GH issue |
+| "prototype", "throwaway", "spike" | `/loom-prototype` | Between approved roadmap and plan |
 | "build", "execute", "implement", "run plan" | `/loom-plan execute` | Only if PLAN.md exists |
 | "test", "run tests", "generate tests" | `/loom-plan test --run` | Only if PLAN.md exists |
-| "note", "remember", "idea", "thought" | `/loom-note "{text}"` | Strip the intent keyword, pass remainder as note text |
+| "test the site", "test it live", "click through", "qa" | `/loom-qa` | Only if `.loom/browser/state.toon` shows a live daemon; otherwise suggest `/loom-browser start` first |
+| "note", "remember", "thought" | `/loom-note "{text}"` | Strip the intent keyword, pass remainder as note text |
 | "status", "progress", "how far", "where are we" | `/loom-status` | Always available |
+| "health", "health check", "quality score", "how healthy" | `/loom-health` | Always available |
 | "what's next", "next step", "what now", "continue" | `/loom-next` | Delegate to the next subcommand |
 | "pause", "save state", "stop here" | `/loom-pause` | Only if active workflow detected |
 | "resume", "continue", "pick up" | `/loom-resume` | Only if resumable state exists |
@@ -108,9 +115,20 @@ Analyze the user's text against known patterns and project state. Use both keywo
 | "auto", "autonomous", "do everything" | `/loom-auto` | Append `--from "{text}"` if text contains a description |
 | "converge", "match target", "golden" | `/loom-converge --target` | Requires target path in text |
 | "tdd", "test first", "criteria", "code review converge", "review until clean" | `/loom-converge --criteria` | Extract --phase, --reviewers from text |
-| "commit", "push", "pr", "merge" | `/loom-git {subcommand}` | Extract git subcommand from text |
+| "commit", "push", "merge" | `/loom-git {subcommand}` | Extract git subcommand from text |
+| "pr", "pull request", "ship it", "release" | `/loom-ship` | Full pre-PR pipeline (version slot, drift check, plan audit). Use `/loom-git pr` when the text asks for a bare PR without ship ceremony |
+| "deploy", "roll out", "canary" | `/loom-canary` | Only if CLAUDE.md has a `## Deploy Configuration` block; otherwise suggest `/loom-setup deploy` first |
+| "retro", "retrospective", "lessons learned" | `/loom-retro` | Always available |
+| "didn't we", "before", "again", "recurring", "learnings" | `/loom-learn search "{text}"` | Query the learnings corpus |
+| "design", "mockup", "variants", "brand" | `/loom-design {consultation\|html\|shotgun}` | consultation = brand kickoff; html = mockup→code; shotgun = N parallel variants |
+| "security", "security review", "audit security" | `/loom-cso daily` | `monthly` when the text asks for a deep/exhaustive scan |
+| "benchmark", "performance", "web vitals" | `/loom-benchmark perf` | `models` when comparing LLM vendors |
+| "diagram", "architecture drawing" | `/loom-diagram "{text}"` | Always available |
+| "worktree", "parallel branches", "overlap" | `/loom-worktree scan` | Always available |
+| "dashboard", "workspaces", "what's in flight" | `/loom-landing-report` | Always available |
+| "docs", "update docs", "changelog" | `/loom-docs {generate\|release}` | generate = cold-start Diataxis; release = post-ship sync |
 | "ingest", "update wiki" | `/loom-wiki ingest` | Only if wiki exists |
-| "lint", "health check" | `/loom-wiki lint` | Always available |
+| "wiki lint" | `/loom-wiki lint` | Only if wiki exists |
 | "profile", "model", "cost" | `/loom-profile` | Always available |
 
 If the intent is ambiguous (no strong keyword match or multiple matches), present the top 2-3 options:
