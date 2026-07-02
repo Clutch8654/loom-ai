@@ -34,7 +34,7 @@ Use this skill when the operator has an idea sentence and needs a precise delive
 - **Idea** (required, positional): the raw one-sentence idea. Free-text.
 - **From** (optional): `--from <path>` — a `/loom-think` doc that seeded this spec.
 - **Worktree** (optional): `--worktree` — after drafting, spawn a worktree via `wt new` (or the local equivalent).
-- **Auto-mutate** (optional): `--auto-mutate` — after drafting a `roadmap-feature`, invoke `/loom-roadmap:mutate` to insert the block into the target roadmap. Default: draft to stdout only; operator runs mutate manually. Requires target=`roadmap-feature`; a no-op with `gh-issue`.
+- **Auto-mutate** (optional): `--auto-mutate` — after drafting a `roadmap-feature`, invoke `/loom-roadmap mutate` to insert the block into the target roadmap. Default: draft to stdout only; operator runs mutate manually. Requires target=`roadmap-feature`; a no-op with `gh-issue`.
 - **Auto-mutate roadmap target** (optional): `--name <slug>` — with `--auto-mutate`, targets `planning/ROADMAP-<slug>.md` instead of the default `planning/ROADMAP.md`.
 - **Skip confirmation** (optional): `--yes` — with `--auto-mutate`, skip the y/n confirmation between draft and mutation. True one-shot mode.
 
@@ -111,8 +111,8 @@ Emit a ROADMAP feature block conforming to `protocols/roadmap.schema.md`:
 
 **Mutation cadence.** Behavior depends on `--auto-mutate`:
 
-- **Default (no flag):** Emit the block to stdout and instruct the operator to run `/loom-roadmap:mutate` with the block as input. Preserves the User-Challenge boundary from `protocols/loom-decision-principles.md` — ROADMAP structure changes are strategic and never auto-answered.
-- **`--auto-mutate`:** Emit the block, then prompt `Apply this to <roadmap-path>? (y/n)`. On `y`, invoke `/loom-roadmap:mutate` internally (or shell out to it) targeting `planning/ROADMAP.md` (default) or `planning/ROADMAP-<slug>.md` if `--name <slug>` was passed. On `n`, exit 0 with the block still visible in stdout.
+- **Default (no flag):** Emit the block to stdout and instruct the operator to save it and run `/loom-roadmap mutate --block <path>` (the block-preserving mode). Preserves the User-Challenge boundary from `protocols/loom-decision-principles.md` — ROADMAP structure changes are strategic and never auto-answered.
+- **`--auto-mutate`:** Emit the block, then prompt `Apply this to <roadmap-path>? (y/n)`. On `y`, write the drafted block to a temp file and invoke `/loom-roadmap mutate --block <temp-path>` targeting `planning/ROADMAP.md` (default) or `planning/ROADMAP-<slug>.md` if `--name <slug>` was passed. The `--block` handoff is load-bearing: it makes mutate insert this draft verbatim (Origin, status machine, acceptance criteria all survive) instead of regenerating its own block from a description string. On `n`, exit 0 with the block still visible in stdout.
 - **`--auto-mutate --yes`:** Skip the confirmation. True one-shot from spec to roadmap mutation. Use for known-good asks where you've already exercised judgment upstream (e.g., inside `/loom-auto` or after a `/loom-think` doc explicitly recommended the ask).
 
 Whichever path taken, the drafted block is always visible in stdout for the operator to review or copy.
@@ -193,7 +193,7 @@ spec:
   worktree: <slug or empty>
 ```
 
-The `status:` field follows the SpecRecord state machine defined in the gstack-adoption plan: `drafted → roadmapped → in-progress → merged → closed`. `/loom-spec` always emits `drafted`. Downstream commands (`/loom-roadmap:mutate`, `gh issue create`, `/loom-git pr`, PR merge) drive the later transitions.
+The `status:` field follows the SpecRecord state machine defined in the gstack-adoption plan: `drafted → roadmapped → in-progress → merged → closed`. `/loom-spec` always emits `drafted`. Downstream commands (`/loom-roadmap mutate`, `gh issue create`, `/loom-git pr`, PR merge) drive the later transitions.
 
 ## Contracts Referenced
 
@@ -201,5 +201,5 @@ The `status:` field follows the SpecRecord state machine defined in the gstack-a
 - `protocols/loom-decision-principles.md` — user-challenge boundary; no auto-mutation of ROADMAP.
 - SpecRecord conceptual entity in gstack-adoption plan (id, sourceIssue, roadmapFeatureRef, status).
 - `/loom-think` — feeds this skill via `--from`.
-- `/loom-roadmap:mutate` — consumes the drafted ROADMAP block.
+- `/loom-roadmap mutate` — consumes the drafted ROADMAP block.
 - `/loom-git pr merge` — honors the auto-close-on-merge contract.

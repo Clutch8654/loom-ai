@@ -3,9 +3,9 @@ name: loom-setup-browser-cookies
 description: Import real Chrome cookies into headless daemon for authenticated live-site QA. Interactive domain picker; per-project storage at .loom/browser/cookies/{domain}.toon with expiry tracking.
 ---
 
-# /loom-setup:browser-cookies — Import Chrome Cookies (M-11 F-34)
+# /loom-setup browser-cookies — Import Chrome Cookies (M-11 F-34)
 
-Authenticated live-site QA (`/loom-qa`, `/loom-devex:review`) needs to sign in
+Authenticated live-site QA (`/loom-qa`, `/loom-devex review`) needs to sign in
 as a real user. Rather than script an OAuth dance for every site, this
 subcommand extracts cookies from the operator's **real** Chrome / Chromium /
 Brave / Edge install and hands them to the `/loom-browser` daemon at boot.
@@ -73,5 +73,5 @@ revoke the session on the source site and rotate.
 ## Downstream
 
 Loaded by `/loom-browser start` on next boot; consumed transparently by
-`/loom-qa`, `/loom-devex:review`, `/loom-cso`, and `/loom-design:*` when they
+`/loom-qa`, `/loom-devex review`, `/loom-cso`, and `/loom-design (consultation|html|shotgun)` when they
 navigate to the matching domain.

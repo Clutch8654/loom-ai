@@ -73,9 +73,21 @@ loop:
      budget-exhausted.
 ```
 
-Fixer-agent selection: the loop first tries `agents/fix-agent.md` if
-registered; otherwise it falls back to a manual instruction stub in the
+Fixer-agent selection: the loop spawns `agents/fixer-agent.md` (the same
+fixer `/loom-code fix` and `/loom-converge` use). Before every spawn,
+resolve the model per the standard mandate (CLAUDE.md § Agent Conventions):
+(1) `orchestration.toml` `modelProfile` **utility** tier, (2) the fixer's
+frontmatter `model:`, (3) inherit — and pass `model: "{resolved}"` on the
+Agent call. The fixer receives the BugCandidate as input and MUST return a
+standard AgentResult envelope (`protocols/agent-result.schema.md`) whose
+findings carry `confidence: 1-10`. If `agents/fixer-agent.md` is not
+registered in this project, fall back to a manual instruction stub in the
 output envelope so the developer can pick up where the loop stopped.
+
+Wiki context: if `.loom/wiki/index.toon` exists, match the bug's page/flow
+against wiki pages before spawning the fixer and inject the matched page
+content into the fixer prompt — the same discipline `/loom-bugfix` applies.
+Fixes made with flow context regress less.
 
 ## Output envelope
 
@@ -103,8 +115,16 @@ Each successful fix is a single commit. Commit messages follow the template
 above so `/loom-git cleanup` can group them. Failed patches are reverted
 before the next iteration.
 
+## Fix archiving
+
+Every fixed finding is archived to `.loom/fix-archive/{date}-{slug}.toon`
+(schema: `protocols/fix-archive.schema.md`) — the same archive `/loom-bugfix`
+writes, so `/loom-learn` queries and future bugfix runs see qa-loop fixes
+too. Archive after the commit succeeds; include page, ref, symptom,
+confidence, and commitSha.
+
 ## Non-goals
 
 - No load / performance testing (that's `/loom-benchmark`, M-08 F-27).
 - No security scanning (that's `/loom-cso`, F-19).
-- No visual design review (that's `/loom-design:*`, M-13).
+- No visual design review (that's `/loom-design (consultation|html|shotgun)`, M-13).

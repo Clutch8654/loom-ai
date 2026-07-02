@@ -3,9 +3,9 @@ name: loom-setup-deploy
 description: "Detect Fly/Vercel/Render/Cloudflare/Netlify/Railway deploy target from repo signals; write config to CLAUDE.md so /loom-ship and /loom-canary auto-work."
 ---
 
-# /loom-setup:deploy — Deploy Target Detection (M-10 F-32)
+# /loom-setup deploy — Deploy Target Detection (M-10 F-32)
 
-`/loom-setup:deploy` inspects the repo for deploy-target signals, picks the
+`/loom-setup deploy` inspects the repo for deploy-target signals, picks the
 first match, and appends a `## Deploy Configuration` block to CLAUDE.md so
 `/loom-ship` and `/loom-canary` can wire themselves without extra flags.
 
@@ -56,7 +56,7 @@ Configuration` heading in CLAUDE.md:
 ```markdown
 ## Deploy Configuration
 
-<!-- Managed by /loom-setup:deploy — do not hand-edit; re-run the command to refresh. -->
+<!-- Managed by /loom-setup deploy — do not hand-edit; re-run the command to refresh. -->
 
 ```toon
 schemaVersion: 1

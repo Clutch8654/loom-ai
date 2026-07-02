@@ -2,7 +2,7 @@
 description: Import real Chrome cookies into the loom-browser daemon for authenticated live-site QA
 ---
 
-# /loom-setup:browser-cookies
+# /loom-setup browser-cookies
 
 Import cookies from the operator's local Chrome / Chromium / Brave / Edge
 profile into `.loom/browser/cookies/{domain}.toon` so `/loom-browser start`

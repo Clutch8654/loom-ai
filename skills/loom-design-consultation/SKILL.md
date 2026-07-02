@@ -3,11 +3,11 @@ name: loom-design-consultation
 description: "Ground-up brand kickoff — aesthetic direction, typography, color system, motion principles, font preview render. Uses .loom/learnings.toon to pull prior design decisions across projects."
 ---
 
-# /loom-design:consultation — Ground-Up Brand Kickoff (M-13 F-22)
+# /loom-design consultation — Ground-Up Brand Kickoff (M-13 F-22)
 
-`/loom-design:consultation` runs a five-phase interview that produces a
+`/loom-design consultation` runs a five-phase interview that produces a
 durable **design premise artifact** for the project. It is the ground-up
-kickoff that later `/loom-design:html` and `/loom-design:shotgun` runs
+kickoff that later `/loom-design html` and `/loom-design shotgun` runs
 consume as their taste baseline.
 
 ## When to run
@@ -16,7 +16,7 @@ consume as their taste baseline.
 - Rebooting an existing product whose visual language has drifted
 - After a rebrand, before any UI code is written
 
-If a premise already exists (`.loom/design/*.md`), `/loom-design:consultation`
+If a premise already exists (`.loom/design/*.md`), `/loom-design consultation`
 must be re-invoked explicitly — never overwrite.
 
 ## Prior-decision context
@@ -47,7 +47,7 @@ answers verbatim; do not paraphrase to fit a template.
 - Primary display face + primary text face (name and rationale).
 - Fallback stack (system-safe).
 - Line-height and measure rules of thumb the project will adopt.
-- Optional: render a font preview via `/loom-design:html` (F-23) using
+- Optional: render a font preview via `/loom-design html` (F-23) using
   the pairing on a sample article page.
 
 ### Phase 4 — Color system
@@ -76,7 +76,7 @@ Write the premise to `.loom/design/{slug}-{ISO-timestamp}.md`.
 ## Optional preview render
 
 If the user asks for a visual preview of the typography or color system,
-delegate to `/loom-design:html` (F-23) with a prose mockup like:
+delegate to `/loom-design html` (F-23) with a prose mockup like:
 
 ```
 Render a two-column article page using {display-face} for headings and

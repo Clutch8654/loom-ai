@@ -2,7 +2,7 @@
 description: "Core Web Vitals perf regression via /loom-browser daemon — baseline/PR-diff per PR."
 ---
 
-# /loom-benchmark:perf
+# /loom-benchmark perf
 
 Measures LCP, CLS, FID, and INP on both the base branch and the PR head via
 the `/loom-browser` daemon, then reports the per-metric delta and a pass/

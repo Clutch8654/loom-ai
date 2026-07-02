@@ -47,10 +47,11 @@ $ARGUMENTS
 Parse the first positional argument as the subcommand:
 - No args or `status`: show unified status (roadmap + plan progress + milestones + risk indicators)
 - `init`: create a new ROADMAP.md interactively using the roadmap-builder-agent
-  - Supports: `--plan`, `--full`, `--from "description"`, `--brownfield`
+  - Supports: `--plan`, `--full`, `--from <description-or-path>`, `--brownfield`
   - `init --plan`: alias for `/loom-plan create` — create PLAN.md from approved ROADMAP.md
   - `init --full`: run full pipeline: roadmap → roadmap review → plan → plan review (interactive at each gate)
   - `init --from "description"`: create from a one-line description
+  - `init --from <path>`: seed from an artifact file — a `/loom-think` design doc (`.loom/thinks/*.md`) is read and its Synthesis drives the roadmap; the full doc is passed to the builder as context
   - `init --brownfield`: run codebase analysis (API surface, tech debt, existing patterns) before discussion phase
 - `review`: 4 agents review roadmap in parallel (scope, features, strategy, UX)
 - `approve`: mark ROADMAP.md as approved, unlocking plan generation

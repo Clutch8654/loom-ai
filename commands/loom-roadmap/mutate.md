@@ -24,7 +24,8 @@ Appends a new feature and phase to ROADMAP.md without regenerating the entire do
 ### Step A2: Parse Arguments
 
 Extract from args:
-- **description** (required): the feature description string
+- **description** (required unless `--block` is provided): the feature description string
+- **--block \<path\>** (optional): path to a **pre-drafted feature block** (canonical producer: `/loom-spec --auto-mutate`, which writes its draft to a temp file and passes it here). When provided, Step A3 does NOT generate a new block — it inserts the drafted block verbatim, preserving every field the author wrote (`Origin:`, status-machine fields like `drafted→roadmapped`, acceptance criteria). Mutate still owns: assigning the sequential `F-XX` ID (overwriting any placeholder ID in the block), deriving/validating the slug, placement (`--priority`/`--after` rules apply unchanged), and the changelog entry. If the block fails to parse as a feature block (`protocols/roadmap.schema.md`), reject with a clear error — do NOT fall back to treating the file content as a description.
 - **--name \<slug\>** (optional): target `ROADMAP-{slug}.md` instead of the default `ROADMAP.md`. Slug is lowercase-hyphen (validate against `^[a-z0-9][a-z0-9-]*$`). Reject unknown/invalid slugs with a clear error listing valid `planning/ROADMAP-*.md` files.
 - **--milestone \<name\>** (optional): target milestone. Default: the current (last incomplete) milestone.
 - **--priority \<value\>** (optional): sets the feature's priority. Accepted values: `P0`, `P1`, `P2`, `high`, `medium`, `low`. Aliases normalize at write time to the canonical schema enum (`protocols/roadmap.schema.md`: `**Priority:** P0 | P1 | P2`): `high` → `P0`, `medium` → `P1`, `low` → `P2`. The feature block persists ONLY the canonical P-value (`**Priority:** P0`); record the verbatim user input in the changelog entry. Placement rules: `P0` places the feature at the top of the target milestone's feature list; `P1`/`P2` append. Unknown values MUST be rejected with an error listing the accepted set — do NOT silently coerce or drop the flag.
@@ -36,7 +37,10 @@ If neither `--priority` nor `--after` is specified, append to the end of the tar
 
 1. Generate a feature ID: next sequential `F-XX` after the last feature in the roadmap.
 2. Generate a slug from the description (lowercase, hyphens, strip non-alphanumeric). E.g., "user management with RBAC" becomes `user-management-rbac`.
-3. Place the feature in the feature list at the determined position (top if the normalized priority is `P0`, after the named feature if `--after`, otherwise append). If `--priority` was provided, persist the normalized canonical value on the feature block (`**Priority:** P0 | P1 | P2` per `protocols/roadmap.schema.md`).
+3. **Block source:**
+   - With `--block <path>`: read the drafted block, validate it parses as a feature block, stamp the sequential `F-XX` ID from step 1 (replacing any placeholder), and use it verbatim — every author-written field survives.
+   - Without `--block`: generate the block from the description as before.
+4. Place the feature in the feature list at the determined position (top if the normalized priority is `P0`, after the named feature if `--after`, otherwise append). If `--priority` was provided, persist the normalized canonical value on the feature block (`**Priority:** P0 | P1 | P2` per `protocols/roadmap.schema.md`).
 
 ### Step A4: Create Phase Entry (if roadmap has phases)
 

@@ -65,6 +65,8 @@ The three output files:
 
 ## Index registration
 
+Schema: `protocols/diagram-index.schema.toon`
+
 Every generated triplet is appended to `.loom/diagrams/index.toon`:
 
 ```toon
@@ -73,7 +75,7 @@ diagrams[N]{slug,path,source,generatedAt,shaShort}:
 ```
 
 The `shaShort` is a truncated SHA-256 of the `.md` source, used by
-`/loom-docs:release` to detect drift between the source `.md` and the
+`/loom-docs release` to detect drift between the source `.md` and the
 rendered `.excalidraw` / `.svg`. If the SHA of the `.md` differs from the
 recorded value but the render files predate the last edit, the release gate
 reports the drift.

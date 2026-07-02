@@ -244,7 +244,10 @@ This step produces a deep analysis of the existing codebase so the roadmap accou
 
 ### Step 2: Roadmap Generation
 
-1. If `--from` provided, use the description directly. Otherwise, ask the user:
+1. If `--from` provided, resolve its form first:
+   - **Path form** — if the value resolves to an existing file (canonical case: a `/loom-think` design doc at `.loom/thinks/{slug}-{timestamp}.md`), READ the file. Use its `## Synthesis` section (or the whole body when no Synthesis heading exists) as the project description, and pass the full document to the roadmap-builder-agent as seeding context — the think doc's Problem, Demand Evidence, Approach Candidates, and Target User sections map directly onto roadmap sections. Record `seededFrom: {path}` in the roadmap frontmatter so the doc's Supersedes chain stays traceable.
+   - **Description form** — otherwise treat the value as a literal one-line description and use it directly.
+   If `--from` was not provided, ask the user:
    - What are you building? (end-user experience: UI, API, CLI?)
    - Who is it for? (target users)
    - What data does this manage? (entities → conceptual model)

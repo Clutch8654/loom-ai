@@ -2,7 +2,7 @@
 description: "Detect deploy target from repo signals (Fly/Vercel/Cloudflare/Netlify/Railway/Render/Docker) and append the config block to CLAUDE.md so /loom-ship and /loom-canary auto-work. Read-only w.r.t. native deploy config files (C-06)."
 ---
 
-# /loom-setup:deploy
+# /loom-setup deploy
 
 One-time setup subcommand that inspects the repo, picks a deploy target from
 signal files (in priority order: `fly.toml` → `vercel.json`/`.vercel/` →

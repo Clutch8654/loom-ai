@@ -12,14 +12,14 @@ rolling back on any failure.
 
 ## Reads deploy config from CLAUDE.md
 
-The config block is populated by `/loom-setup:deploy` (M-10 F-32). It
+The config block is populated by `/loom-setup deploy` (M-10 F-32). It
 conforms to `protocols/loom-ship-config.schema.toon`. `/loom-canary` looks
 for a fenced block introduced by a heading titled `## Deploy Configuration`
 in CLAUDE.md, parses the TOON fields, and refuses to run when:
 
 - CLAUDE.md is missing that block (halt with `CANARY_NO_CONFIG`,
   confidence: 10, severity: blocker) — instruct the user to run
-  `/loom-setup:deploy`.
+  `/loom-setup deploy`.
 - `healthCheckUrl` is empty (halt with `CANARY_NO_HEALTHCHECK`,
   confidence: 10, severity: blocker).
 
@@ -58,6 +58,8 @@ change to phases, thresholds, or targets MUST preserve "one gate failure ⇒
 rollback executed ⇒ history row records `rolledBack: true`".
 
 ## History
+
+Schema: `protocols/canary-history.schema.toon`
 
 Every run appends to `.loom/canary-history.toon`:
 

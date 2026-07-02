@@ -66,6 +66,8 @@ regressedMetrics[2]: LCP, CLS
 
 ## History file
 
+Schema: `protocols/perf-history.schema.toon`
+
 `.loom/perf-history.toon` is an append-only trend log:
 
 ```toon

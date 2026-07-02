@@ -2,7 +2,7 @@
 description: Parallel UI variant board — generate N candidates on distinct axes, render side-by-side via /loom-browser (fallback to files), capture preference with capturedAt, decay old preferences at 90d/180d
 ---
 
-# /loom-design:shotgun
+# /loom-design shotgun
 
 Runs the M-13 F-24 parallel UI variant board with time-decaying taste
 memory.

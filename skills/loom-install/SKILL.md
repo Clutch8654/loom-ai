@@ -99,8 +99,8 @@ host, drops that entry from `hostBindings[]`, and rewrites the manifest
 atomically. When the last binding is removed, the manifest file is deleted.
 
 On a corrupt or missing manifest, `--unlink` raises `INSTALL_MANIFEST_INVALID`
-(blocking) with a non-zero exit — matching the error catalog in
-`planning/plans/PLAN-gstack-adoption.md`.
+(blocking) with a non-zero exit — registered in the canonical error catalog at
+`protocols/exit-codes.md`.
 
 ## Relationship to the plugin channel
 

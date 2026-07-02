@@ -12,9 +12,17 @@ Reads:
 - `~/.loom/version-slots.toon` for reserved VERSION slots.
 - Open PRs via `gh pr list --state open --json
   number,headRefName,state,isDraft,updatedAt` (best-effort).
+- `.loom/canary-history.toon` in each workspace (best-effort) — the newest
+  entry whose version matches the workspace's `versionSlot` supplies deploy
+  status.
 
 Emits a TOON `workspaces[N]` table with `workspace`, `branch`, `versionSlot`,
-`lastCommit`, `prNumber`, `prState`, and `stale`.
+`lastCommit`, `prNumber`, `prState`, `deployed`, and `stale`.
+
+`deployed` is one of `yes` (canary run reached 100% for the slot version),
+`partial` (rolled back or stopped mid-phase), `no` (no matching canary
+entry), or `-` (no canary-history file — project doesn't deploy via
+`/loom-canary`).
 
 `stale = true` iff no commits in 24 h AND no matching open PR.
 

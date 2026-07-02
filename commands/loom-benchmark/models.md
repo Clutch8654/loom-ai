@@ -2,7 +2,7 @@
 description: "Cross-vendor LLM comparison (Claude/GPT/Gemini) with LLM judge — dashboard reports latency, tokens, cost, and quality per vendor."
 ---
 
-# /loom-benchmark:models
+# /loom-benchmark models
 
 Runs the same prompt(s) across configured LLM vendors, uses an LLM judge to
 score output quality, and emits a TOON dashboard.
