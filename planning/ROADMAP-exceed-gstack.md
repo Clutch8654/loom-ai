@@ -13,7 +13,7 @@ totalMilestones: 9
 
 ## Vision
 
-Loom-ai and Garry Tan's gstack (github.com/garrytan/gstack) were subjected to a completed 4-agent comparative review across seven quality dimensions. Loom leads on prompt-assets and ties on architecture and docs, but trails on code quality (6 vs 8), tests (6 vs 9), extensibility (7 vs 8), and ops polish (7 vs 9) — overall ~7.1 vs ~8.3. This initiative closes and then reverses those gaps: fix 15 verified defects, harden the test and release spines, generate drift-proof docs, add a free-by-default eval tier ladder, and upgrade every gstack-derived skill past its upstream. Success is not self-declared — it is confirmed by re-running the same 4-agent review and requiring every dimension to meet or beat gstack with an overall score above 8.3. The work sequences foundation-first: CI gates and a shared core library land before any defect fix, and defect fixes land before the exceed milestones.
+Loom-ai and Garry Tan's gstack (github.com/garrytan/gstack, MIT) were subjected to a completed 4-agent comparative review across seven quality dimensions. Loom leads on prompt-assets and ties on architecture and docs, but trails on code quality (6 vs 8), tests (6 vs 9), extensibility (7 vs 8), and ops polish (7 vs 9) — overall ~7.1 vs ~8.3. The baseline is preserved in `research/loom-vs-gstack-scorecard.toon`. This initiative closes and then reverses those gaps: fix 15 verified defects, harden the test and release spines, generate drift-proof docs, add a free-by-default eval tier ladder, and upgrade every gstack-derived skill past its upstream. Success is not self-declared — it is confirmed by re-running the same 4-agent review and requiring every dimension to meet or beat gstack with an overall score above 8.3. The work sequences foundation-first: CI gates and a shared core library land before any defect fix, and defect fixes land before the exceed milestones.
 
 ## Success Metrics
 
@@ -794,7 +794,7 @@ automatable: true
 
 **Priority:** P0
 **Milestone:** M-09
-**Description:** Implement the final-acceptance half of C-09. Re-run the same 4-agent comparative review that produced the baseline (loom ~7.1 vs gstack ~8.3). Record every dimension's new score into a `ScorecardResult` and gate acceptance on every dimension being ≥ its gstack score with overall > 8.3. If any dimension falls short, the initiative is not complete and the gap feeds back into the responsible milestone.
+**Description:** Implement the final-acceptance half of C-09. Re-run the same 4-agent comparative review that produced the baseline (loom ~7.1 vs gstack ~8.3), preserved in `research/loom-vs-gstack-scorecard.toon` (seven dimensions, 15-defect evidence trail, and the exact rubric to reuse). Record every dimension's new score into a `ScorecardResult` and gate acceptance on every dimension being ≥ its gstack score with overall > 8.3. If any dimension falls short, the initiative is not complete and the gap feeds back into the responsible milestone.
 
 **Entities involved:** ScorecardResult
 
