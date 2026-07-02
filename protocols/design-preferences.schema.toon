@@ -1,0 +1,45 @@
+# Design Preferences (Taste Memory) Schema
+#
+# Path: .loom/design/preferences.toon
+# Producer: /loom-design shotgun (skills/loom-design-shotgun/SKILL.md) —
+#           appends one record when the user selects a preferred variant
+# Consumers:
+#   - /loom-design shotgun — reads at session start, applies time decay, and
+#     uses the surviving weighted preferences as a SOFT bias on the
+#     axis-selection step (distinct axes are still mandatory)
+#
+# Rules:
+#   - Append-only; records are retained on disk indefinitely for provenance
+#   - Writes are atomic: write to {path}.tmp then fs.renameSync
+#   - capturedAt is REQUIRED on every record (hard F-24 acceptance criterion)
+#   - rejectedAxes is semicolon-separated (commas are the TOON column
+#     separator)
+#   - schemaVersion bumped on any breaking field change
+#
+# Time decay (normative — applied by every reader, on every read):
+#   ageDays = floor((now - capturedAt) / 86400s)
+#   - ageDays <= 90:           weight = 1.0 (full contribution)
+#   - 90 < ageDays <= 180:     weight = 0.5 ^ ((ageDays - 90) / 30)
+#                              (halves every 30 days past the 90-day mark)
+#   - ageDays > 180:           archived — weight = 0; the record drops out
+#                              of active influence and is EXCLUDED from the
+#                              generation prompt, but stays on disk
+#   Decay is computed at read time from capturedAt; no weight or archived
+#   flag is stored in the record. This guarantees the taste memory adapts as
+#   the user's taste evolves — the system must not ossify.
+#
+# Field descriptions:
+#   slug           string  identifier of the shotgun target UI
+#   capturedAt     string  ISO 8601 timestamp of the preference capture
+#                          (required)
+#   winnerVariant  integer 1-based number of the variant the user selected
+#   winnerAxis     string  axis label of the winning variant (e.g.
+#                          minimalist, dense, brutalist, editorial)
+#   rejectedAxes   string  semicolon-separated axis labels of every rejected
+#                          variant — lets the decay layer learn what the
+#                          user consistently avoids
+
+schemaVersion: 1
+
+preferences[N]{slug,capturedAt,winnerVariant,winnerAxis,rejectedAxes}:
+  pricing-page,2026-06-30T18:20:00Z,2,minimalist,dense;brutalist;editorial

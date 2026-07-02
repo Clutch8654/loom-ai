@@ -1,0 +1,39 @@
+# Security History Schema
+#
+# Path: .loom/security-history.toon
+# Producers:
+#   - scripts/loom-cso.ts (deterministic runtime — gate math + atomic append)
+#   - /loom-cso (skills/loom-cso/SKILL.md) — drives the script with the
+#     model-driven lens counts injected via flags
+# Consumers:
+#   - scripts/loom-cso.ts fast gate — compares the new score against the
+#     most-recent `daily` entry (exit 1 on regression or score < 8)
+#   - CSO retro — trend review of monthly deep-scan results
+#
+# Rules:
+#   - Append-only; an entry is appended on every run, pass or block
+#   - Writes are atomic: write to {path}.tmp then fs.renameSync
+#   - Schema mirrors .loom/health-history.toon (Phase 2 F-05 precedent)
+#   - Every column between confidenceFloor and gitSha is a per-lens finding
+#     count (the seven CSO lenses)
+#   - schemaVersion bumped on any breaking field change
+#
+# Field descriptions:
+#   timestamp            string   ISO 8601 timestamp of the run
+#   mode                 enum     daily | monthly
+#   score                integer  0-10 security score (10 = clean)
+#   confidenceFloor      integer  finding-confidence floor applied: 8 for
+#                                 daily, 2 for monthly
+#   secretsCount         integer  lens 1 — secrets-in-code findings
+#   depVulnCount         integer  lens 2 — dependency vulnerability findings
+#   authGaps             integer  lens 3 — missing auth-boundary checks
+#   inputValidationGaps  integer  lens 4 — unvalidated user-input paths
+#   llmTrustIssues       integer  lens 5 — LLM trust-boundary findings
+#   filePermIssues       integer  lens 6 — file-permission findings
+#   cicdIssues           integer  lens 7 — CI/CD supply-chain findings
+#   gitSha               string   short git SHA of the audited tree
+
+schemaVersion: 1
+
+entries[N]{timestamp,mode,score,confidenceFloor,secretsCount,depVulnCount,authGaps,inputValidationGaps,llmTrustIssues,filePermIssues,cicdIssues,gitSha}:
+  2026-06-30T15:00:00Z,daily,9,8,0,0,0,0,0,0,0,abc1234

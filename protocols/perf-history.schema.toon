@@ -1,0 +1,32 @@
+# Perf History Schema
+#
+# Path: .loom/perf-history.toon
+# Producer: /loom-benchmark perf (skills/loom-benchmark/SKILL.md) — appends
+#           one row per run
+# Consumers:
+#   - /loom-status — renders a per-PR trend line (before/after per metric
+#     across the last N runs)
+#
+# Rules:
+#   - Append-only trend log; rows are never rewritten or deleted
+#   - Writes are atomic: write to {path}.tmp then fs.renameSync
+#   - All four metrics are lower-is-better; the default regression threshold
+#     is deltaPct > +10% vs the baseline ref (overridable via
+#     --regression-threshold)
+#   - schemaVersion bumped on any breaking field change
+#
+# Field descriptions:
+#   runId      string   run identifier: "perf-{YYYY-MM-DD}-{HHmm}"
+#   timestamp  string   ISO 8601 timestamp of the run
+#   prRef      string   PR-head ref measured, "{branch}@{shortSha}"
+#   LCP        number   Largest Contentful Paint, ms (PR-head value)
+#   CLS        number   Cumulative Layout Shift, unitless (PR-head value)
+#   FID        number   First Input Delay, ms (PR-head value)
+#   INP        number   Interaction to Next Paint, ms (PR-head value)
+#   verdict    enum     `regression` when any metric regressed past the
+#                       threshold, `pass` otherwise
+
+schemaVersion: 1
+
+runs[N]{runId,timestamp,prRef,LCP,CLS,FID,INP,verdict}:
+  perf-2026-06-30-1745,2026-06-30T17:45:00Z,exploregstack@def5678,2010,0.09,42,175,regression
