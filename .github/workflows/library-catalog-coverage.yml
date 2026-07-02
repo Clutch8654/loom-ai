@@ -1,0 +1,52 @@
+# library-catalog-coverage — guard against skills/agents/prompts existing on
+# disk without being correctly registered in skills/library.yaml.
+#
+# End-user symptom when this drifts: a skill directory ships in the repo but
+# /loom-library can't install it (or installs it to the wrong target), so the
+# SKILL.md never lands at ~/.claude/skills/<name>/SKILL.md and the skill never
+# activates. The M-08 batch (loom-learn, loom-benchmark, loom-benchmark-models,
+# loom-docs-generate, loom-diagram) shipped misfiled under
+# library.infrastructure and was undeliverable on the curl channel for weeks.
+#
+# Pairs with:
+#   - .github/workflows/install-command-coverage.yml  (commands/ ↔ install.sh)
+#   - scripts/validate-library-catalog.js             (the actual assertions)
+#
+# Failure remediation: the validator output names the exact entry to move or
+# add — edit skills/library.yaml accordingly and re-run locally with
+#   node scripts/validate-library-catalog.js
+
+name: library-catalog-coverage
+
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'agents/**'
+      - 'commands/**'
+      - 'protocols/**'
+      - 'scripts/validate-library-catalog.js'
+      - '.github/workflows/library-catalog-coverage.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'skills/**'
+      - 'agents/**'
+      - 'commands/**'
+      - 'protocols/**'
+      - 'scripts/validate-library-catalog.js'
+      - '.github/workflows/library-catalog-coverage.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify skills/ ↔ library.yaml coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Validate library catalog
+        run: node scripts/validate-library-catalog.js
