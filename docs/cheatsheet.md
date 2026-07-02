@@ -16,7 +16,16 @@ One page. Organized by **what you want to do**, not by command grouping. For the
 | Go fully autonomous from a one-line idea | `/loom-auto --from "<idea>"` |
 | See what's installed vs. available | `/loom-library list` |
 | Install a kit on demand | `/loom-library use <kit>` |
-| Not sure which `/loom-*` command applies — get a decision-tree recommendation | `/loom-which` |
+| Not sure which `/loom-*` command applies — get a decision-tree recommendation | `/loom-which` (or `/loom-do --guided`) |
+
+## Idea to spec (pre-plan)
+
+| I want to… | Run this |
+|---|---|
+| Deep-think a fuzzy problem into a design doc (with cross-model second opinion) | `/loom-think "<topic>"` |
+| Sharpen a one-liner into a ROADMAP feature block or GH issue | `/loom-spec "<idea>"` |
+| Spec straight into the roadmap, no confirmation | `/loom-spec "<idea>" --auto-mutate --yes` |
+| Spec from a prior think doc | `/loom-spec "<idea>" --from .loom/thinks/<doc>.md` |
 
 ## Building a feature
 
@@ -66,6 +75,18 @@ One page. Organized by **what you want to do**, not by command grouping. For the
 | Apply review findings as fixes | `/loom-code fix` |
 | Dry-run the fix plan first | `/loom-code fix --dry-run` |
 | Apply only critical findings | `/loom-code fix --severity critical` |
+
+## Quality gates & QA
+
+| I want to… | Run this |
+|---|---|
+| Live-site find-and-fix loop (needs the browser daemon) | `/loom-qa --tier quick\|standard\|exhaustive <url>` |
+| Composite 0–10 quality score with trend | `/loom-health` |
+| Fast pre-PR security gate (blocks on regression or <8/10) | `/loom-cso daily` |
+| Exhaustive security deep-scan (never blocks) | `/loom-cso monthly` |
+| Core Web Vitals regression: baseline vs PR head | `/loom-benchmark perf` |
+| Compare Claude / GPT / Gemini on one prompt suite | `/loom-benchmark models` |
+| Measure real time-to-hello-world vs the plan's prediction | `/loom-devex review` |
 
 ## Schema / spec changes (post-materialize)
 
@@ -118,6 +139,52 @@ One page. Organized by **what you want to do**, not by command grouping. For the
 | Open a PR | `/loom-git pr` |
 | Merge a PR | `/loom-git merge` |
 | Review a PR | `/loom-git review-pr <num>` |
+
+## Ship & deploy
+
+| I want to… | Run this |
+|---|---|
+| Configure the deploy target once (writes a `CLAUDE.md` block) | `/loom-setup deploy` |
+| Full pre-PR pipeline (rebase + VERSION slot + drift check + plan audit) | `/loom-ship` |
+| Progressive 10/50/100 deploy with health gates + auto-rollback | `/loom-canary` |
+| Cross-workspace dashboard (branches, slots, PRs, staleness) | `/loom-landing-report` |
+| Scan sibling worktrees for overlap before a PR | `/loom-worktree scan` |
+| Release a worktree lease | `/loom-worktree release <id>` |
+
+## Learn & improve (post-ship)
+
+| I want to… | Run this |
+|---|---|
+| Run a retrospective (appends learnings + regressions) | `/loom-retro` |
+| Search prior learnings ("didn't we fix this before?") | `/loom-learn search "<keyword>"` |
+| Prune low-confidence learnings (backs up first) | `/loom-learn prune --min-confidence <N>` |
+| Codify a successful transcript flow into a tested script | `/loom-skillify --slug <name>` |
+
+## Design & docs
+
+| I want to… | Run this |
+|---|---|
+| Brand kickoff interview (premise to `.loom/design/`) | `/loom-design consultation` |
+| Production HTML/CSS from a mockup | `/loom-design html` |
+| N parallel UI variants with taste memory | `/loom-design shotgun --n 4` |
+| Cold-start a Diataxis docs tree | `/loom-docs generate` |
+| Post-ship doc sync with doc-debt gate | `/loom-docs release` |
+| Preview doc debt without the gate | `/loom-docs release --dry-run` |
+| English or mermaid → excalidraw triplet | `/loom-diagram --prose "<text>" --out docs/diagrams/<slug>` |
+
+## Browser daemon
+
+| I want to… | Run this |
+|---|---|
+| Start / stop / query the headless daemon | `/loom-browser start\|stop\|status` |
+| Run one command against the daemon | `/loom-browser exec "<command>"` |
+| Import Chrome cookies for authenticated QA | `/loom-setup browser-cookies` |
+
+## Guardrails
+
+| I want to… | Run this |
+|---|---|
+| Run one legitimately destructive command past the `/loom-careful` guard | `LOOM_CAREFUL_OVERRIDE=1 <command>` |
 
 ## Authoring (extending Loom + creating new artifacts)
 
