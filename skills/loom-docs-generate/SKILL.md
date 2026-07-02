@@ -7,6 +7,8 @@ description: "Cold-start docs via Diataxis quadrant (tutorial/how-to/reference/e
 
 Generates a **complete Diataxis-shaped `docs/` tree** for a project that has
 no docs yet (or wants to normalize existing ad-hoc docs to the framework).
+The quadrant structure is the [Diátaxis](https://diataxis.fr) documentation
+framework by Daniele Procida, applied here as a methodology (see `NOTICE`).
 The four Diataxis quadrants are:
 
 | Quadrant | Purpose | Generated file |

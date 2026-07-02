@@ -48,7 +48,7 @@ What you actually get when you run Loom on a project:
 - **Convergence loops** that iterate `do work → check work → remediate` until tests pass and reviewers approve, with circuit breakers (stalled, regression, budget-exhausted) instead of infinite spin.
 - **A repo-committed wiki** (`.loom/wiki/`) that captures scope decisions, contracts, scenarios, and per-domain `contract-*` pages — coherent across changes because `/loom-change` mutates atomically.
 - **Given/When/Then scenarios as the canonical testable unit** — the convergence-planner emits verification targets directly from scenarios at four tiers (unit / integration / e2e / qa-review).
-- **Tool-call-level discipline** — fourteen enforcement hooks plus a 100k-token context-budget cap per spawn keep long agentic runs predictable and auditable.
+- **Tool-call-level discipline** — eighteen enforcement and monitoring hooks plus a 100k-token context-budget cap per spawn keep long agentic runs predictable and auditable.
 
 ## Quickstart
 
@@ -568,7 +568,7 @@ Two remaining surfaces don't fit a lifecycle stage: `/loom-careful` guards every
 
 `/loom-careful` is not a workflow command — it documents and manages the `loom-careful` PreToolUse hook (`hooks/loom-careful.ts`) that intercepts Bash commands before Claude Code runs them and denies the destructive ones: `rm -rf` against `/`, `~`, `.`, or `*`; destructive SQL DDL (`DROP TABLE`, `DROP DATABASE`, `TRUNCATE TABLE`); `git push --force` / `git reset --hard`; `chmod -R 777 .`; raw-device writes (`dd of=/dev/sda`); and filesystem formatters (`mkfs`). A blocked call surfaces to the agent as `CAREFUL_BLOCKED` with the reason.
 
-When a legitimately destructive command must run, the escape hatches are graduated: `LOOM_CAREFUL_OVERRIDE=1 <command>` for one command, `export LOOM_CAREFUL_OVERRIDE=1` for the session, or remove the hook's `PreToolUse` entry from `~/.claude/settings.json` (or unregister via `/loom-library` if kit-installed) to disable it globally. Unlike Loom's per-project enforcement hooks, this one guards the agent session itself — it pairs with, rather than replaces, the 14 per-project hooks described under [Hook enforcement](#hook-enforcement-per-project).
+When a legitimately destructive command must run, the escape hatches are graduated: `LOOM_CAREFUL_OVERRIDE=1 <command>` for one command, `export LOOM_CAREFUL_OVERRIDE=1` for the session, or remove the hook's `PreToolUse` entry from `~/.claude/settings.json` (or unregister via `/loom-library` if kit-installed) to disable it globally. Unlike Loom's per-project enforcement hooks, this one guards the agent session itself — it pairs with, rather than replaces, the 17 per-project hooks described under [Hook enforcement](#hook-enforcement-per-project).
 
 ### /loom-skillify
 
@@ -700,7 +700,7 @@ The curl install also stages inert hook templates under `~/.claude/templates/hoo
 Loom uses a **two-tier install model**:
 
 1. **User-global tier (`~/.claude/`)** — slash commands, agents, statusline, update-checker, and inert hook templates. Installed once by the curl installer.
-2. **Per-project tier (`<repo>/hooks/` + `<repo>/.claude/settings.json`)** — the 14 enforcement hooks (file-ownership, contract-lock, context-budget, deploy-guard, quality-gate, typecheck-on-write, wiki guards, plus ambient monitors). Installed per-project, opt-in.
+2. **Per-project tier (`<repo>/hooks/` + `<repo>/.claude/settings.json`)** — the 17 enforcement hooks (file-ownership, contract-lock, context-budget, deploy-guard, quality-gate, typecheck-on-write, wiki guards, plus ambient monitors; full table in [`docs/hooks.md`](docs/hooks.md)). Installed per-project, opt-in.
 
 Claude Code hooks reference `$CLAUDE_PROJECT_DIR/hooks/...`, so the user-global tier alone cannot wire enforcement. The per-project tier is bootstrapped during these commands:
 
@@ -1486,7 +1486,7 @@ Available as direct commands (`/loom-debate`) or flags on any command (`--debate
 
 ## Hooks (Deterministic Enforcement)
 
-Thirteen Claude Code hooks enforce Loom invariants at the tool-call level — file ownership, contract locks, context budgets, deploy guards, wiki integrity. Fail-open on missing state, fail-closed on schema-version mismatches. For the severity convention (which event type to slot a hook into when authoring a kit), see [Install → Hook enforcement](#hook-enforcement-per-project) above.
+Eighteen Claude Code hooks enforce Loom invariants at the tool-call level — file ownership, contract locks, context budgets, deploy guards, wiki integrity. Fail-open on missing state, fail-closed on schema-version mismatches. For the severity convention (which event type to slot a hook into when authoring a kit), see [Install → Hook enforcement](#hook-enforcement-per-project) above.
 
 **Full hook reference, infra scripts, and registration:** see [`docs/hooks.md`](docs/hooks.md).
 
@@ -1573,9 +1573,7 @@ Reference material kept out of the main README to keep it scannable:
 
 ## Status
 
-Loom is **alpha (`v0.0.x`)** — the core pipeline (planning, execution, convergence, code review, change lifecycle) is stable and exercised on real work. The distribution layer is still settling: install is curl-only, signed tarballs and a Homebrew formula land in v0.1.0. Schemas can evolve with migrations; `/loom-upgrade` handles per-project migration when new versions ship.
-
-See [`planning/plans/PLAN-oss-launch.md`](planning/plans/PLAN-oss-launch.md) for v0.1.0 scope.
+Loom is **alpha (`v0.0.x`)** — the core pipeline (planning, execution, convergence, code review, change lifecycle) is stable and exercised on real work. The distribution layer is still settling: the plugin marketplace and curl paths both work today (plugin is the default; see [Quickstart](#quickstart)), while signed tarballs and a Homebrew formula land in v0.1.0. Schemas can evolve with migrations; `/loom-upgrade` handles per-project migration when new versions ship.
 
 ## Support
 
@@ -1585,9 +1583,11 @@ Loom is open-source under Apache 2.0 and maintained by [Launchstack Dev](https:/
 
 ## Acknowledgments
 
-Loom's judgment layer — learnings, regressions, decision principles, confidence-calibrated findings, retrospectives, the ship-engineer cluster, the browser daemon foundation, and the direct-symlink distribution path — was adapted from Garry Tan's [gstack](https://github.com/garrytan/gstack). Every idea is re-authored as a Loom-native resource (agent / prompt / protocol / skill / infrastructure) rather than copied verbatim, per the M-13 gstack adoption locked decision (`planning/ROADMAP-gstack-adoption.md`). The 36 features across 13 milestones landed in commit `050ff24`; browsing `planning/ROADMAP-gstack-adoption.md` shows the one-to-one mapping from gstack idea to Loom resource. gstack itself is a rigorous, opinionated methodology worth reading directly — we recommend it to anyone building agentic tooling on Claude Code.
+Loom's judgment layer — learnings, regressions, decision principles, confidence-calibrated findings, retrospectives, the ship-engineer cluster, the browser daemon foundation, and the direct-symlink distribution path — was adapted from Garry Tan's [gstack](https://github.com/garrytan/gstack) (MIT License). Every idea is re-authored as a Loom-native resource (agent / prompt / protocol / skill / infrastructure) rather than copied verbatim, per locked decision C-01 ("Adopt, don't fork") in `planning/ROADMAP-gstack-adoption.md`. The 36 features across 13 milestones landed in PR [#31](https://github.com/launchstack-dev/loom-ai/pull/31); browsing `planning/ROADMAP-gstack-adoption.md` shows the one-to-one mapping from gstack idea to Loom resource. gstack itself is a rigorous, opinionated methodology worth reading directly — we recommend it to anyone building agentic tooling on Claude Code.
 
 Several of Loom's core patterns — including the codebase-design vocabulary (Module/Seam/Adapter), the feedback-loop ladder, the no-op test framing for skill authoring, the horizontal-slice anti-pattern for TDD, the throwaway-prototype branch discipline, and the grilling discipline with a 12-question cap — were adapted from educational content by Matt Pocock. Full attribution, MIT-license source references, and a description of how each pattern was adapted are recorded in [`NOTICE`](NOTICE) at the root of this repository.
+
+Loom's on-disk data format is [TOON](https://github.com/toon-format/toon) (Token-Oriented Object Notation), an open MIT-licensed specification by Johann Schopplich — Loom implements the grammar independently and uses the upstream `@toon-format/toon` package for programmatic encode/decode. The documentation quadrant enforced by `/loom-docs generate` is the [Diátaxis](https://diataxis.fr) framework by Daniele Procida.
 
 The wiki system and behavioral-guidelines draw from Andrej Karpathy's observations on LLM failure patterns. The change-proposal lifecycle is inspired by OpenSpec; Loom departs from it by treating scenarios as enforcement gates rather than documentation. The parallel-orchestration shape is in the tradition of the get-shit-done (GSD) pattern of turning agentic runs into a pipeline. TDD discipline (red-green-refactor, tracer bullets, tight feedback loop) is in the Superpowers tradition. The convergence loop is a sophisticated cousin of Ralph's endless-refinement pattern with typed findings, snapshots, and a driver that halts instead of spinning. See [docs/design-philosophy.md](docs/design-philosophy.md) for the fuller lineage.
 
