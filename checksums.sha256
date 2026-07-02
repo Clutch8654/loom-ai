@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-8ce680d863f72c442eaa71030bbab5bf245b5ab772cc0e0e111d5bc697102463  skills/library.yaml
-21e0cbddd2ac0878c98938bc700162af0de5948a62c86d79cd96033c7605a438  hooks/statusline-renderer.cjs
-=======
 e9ed873a7e888e9a4aa696fca0ea32dcbfd76153ff69b4c9a233f71d92409f49  skills/library.yaml
-76536cce6388f1dab0f2db31bd8430baf5db54c90a954269b825aa99942ab5d5  hooks/statusline-renderer.cjs
->>>>>>> c303fb1 (fix(install): anchor installs to the main checkout, never a worktree)
+21e0cbddd2ac0878c98938bc700162af0de5948a62c86d79cd96033c7605a438  hooks/statusline-renderer.cjs
 ce446f87f73c4896628464452416ddb1fcede90180d36c6d0a475f4c2a8e6b82  hooks/statusline-command.sh
 410c4ea020e01550aa25357f561c7193cddfd542afd779ecd3466d457eeccc13  hooks/loom-update-checker.cjs
 ed035e85182e8963eb9dc2d22acf55f7e743a7ec9d2ac864491a25b60f1cdd56  commands/loom-library.md
@@ -61,15 +56,7 @@ fe7b8c75013d3ea9feb902e8a58847279dc49aefa7d1d45bf00ae447dd13e7d7  commands/loom-
 1fd98254b5e1c553ad24b517c65ba79531f43ed2e82665082569b430f5b1cae8  commands/loom-plan/create.md
 299dcc87c11fa4cab8971c4d0304d71a287882743540f9a38e9f82bd03eef843  commands/loom-plan/execute.md
 7d97425e558354941a599b351455ce886311f2197cf0e1e998f14dd8fd3d1295  commands/loom-plan/materialize.md
-<<<<<<< HEAD
-f8cea01736889fb4d16c12445478f18e6b8c720f7c0a7797d9e96c8be65cd704  commands/loom-plan/review.md
-=======
-<<<<<<< HEAD
-f42a41284f2ab42b8f74edaf68abd39ee8ccc34578d4a3b0f49a9eff62163e4c  commands/loom-plan/review.md
-=======
 92ac7aab9c4ca60689e51e10d27821469638d68f5557479ddbd925700cc22349  commands/loom-plan/review.md
->>>>>>> a62c6df (fix(install): anchor installs to the main checkout, never a worktree)
->>>>>>> c303fb1 (fix(install): anchor installs to the main checkout, never a worktree)
 b4db7ac712b5ed8f264166e420be09e1a7d9c1efee218aa5ee2f043a794f53e3  commands/loom-plan/status.md
 44c557a26434e7509b009cddc28637ab668c814cf55b84f68f61d475903acfd8  commands/loom-plan/test.md
 5a32870bbe882d24f39dfded9dcdcaffb6ea204a6f16c72e21cafcd0d19c71e7  commands/loom-profile.md
