@@ -20,6 +20,7 @@
  *   - INSTALL_MANIFEST_INVALID (blocking) raised on parse failure during --unlink.
  */
 
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -65,7 +66,38 @@ function repoRoot(): string {
   // scripts/loom-install.ts → parent is scripts/, grandparent is repo root.
   // `fileURLToPath` handles the Windows `/C:/…` leading-slash pitfall that
   // `new URL(import.meta.url).pathname` produces.
-  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const scriptRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  return canonicalCheckoutRoot(scriptRoot);
+}
+
+/**
+ * If `root` is inside a linked git worktree, resolve to the main checkout
+ * instead. Symlinks anchored to a worktree path die the moment the worktree
+ * is removed — a real incident took all 26 installed Loom skills dark when
+ * `.worktrees/exploregstack` was deleted. `--git-common-dir` points at the
+ * main checkout's .git from any linked worktree; from the main checkout it
+ * equals its own .git, making this a no-op there. Fail-open: if git is
+ * unavailable or the path isn't a repo, return `root` unchanged.
+ */
+function canonicalCheckoutRoot(root: string): string {
+  try {
+    const commonDir = execFileSync("git", ["-C", root, "rev-parse", "--git-common-dir"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    const absCommon = path.resolve(root, commonDir);
+    if (path.basename(absCommon) !== ".git") return root; // bare or unusual layout — leave as-is
+    const mainRoot = path.dirname(absCommon);
+    if (path.resolve(mainRoot) !== path.resolve(root)) {
+      process.stderr.write(
+        `warning: running from a linked worktree (${root}); anchoring install symlinks to the main checkout at ${mainRoot} so they survive worktree removal.\n`,
+      );
+      return mainRoot;
+    }
+    return root;
+  } catch {
+    return root;
+  }
 }
 
 function readLoomVersion(root: string): string {
