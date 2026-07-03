@@ -1,6 +1,6 @@
 ---
 agent: skills/loom-spec/SKILL.md
-description: 5-phase interview from vague idea → ROADMAP feature block or GH issue. Flags — --auto-mutate (chain into /loom-roadmap:mutate), --name <slug> (target ROADMAP-<slug>.md), --yes (skip confirmation), --worktree (spawn branch), --from <path> (seed from /loom-think doc).
+description: 5-phase interview from vague idea → ROADMAP feature block or GH issue. Flags — --auto-mutate (chain into /loom-roadmap mutate), --name <slug> (target ROADMAP-<slug>.md), --yes (skip confirmation), --worktree (spawn branch), --from <path> (seed from /loom-think doc).
 ---
 
 # /loom-spec

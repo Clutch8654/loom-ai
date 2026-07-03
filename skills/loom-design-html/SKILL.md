@@ -3,13 +3,13 @@ name: loom-design-html
 description: "Ships production HTML/CSS from mockup with 'Pretext-native' approach (text reflows, heights computed, layouts not pixel-frozen)."
 ---
 
-# /loom-design:html — Pretext-Native HTML/CSS from Mockup (M-13 F-23)
+# /loom-design html — Pretext-Native HTML/CSS from Mockup (M-13 F-23)
 
-`/loom-design:html` converts an approved mockup — either a prose
+`/loom-design html` converts an approved mockup — either a prose
 description or a supplied image path — into production-quality HTML +
 CSS that reflows correctly across viewports, does not encode heights in
 pixels, and follows the project's design premise (see
-`/loom-design:consultation`).
+`/loom-design consultation`).
 
 ## Input
 

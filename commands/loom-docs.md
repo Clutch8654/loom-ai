@@ -7,7 +7,8 @@ description: "Post-ship doc sync — subcommands for diff-driven README/CHANGELO
 Doc lifecycle commands. Parse the first positional argument as the subcommand:
 
 - No args: show available subcommands.
-- `release`: post-ship doc sync — diff-driven README/CHANGELOG/architecture updates with a CHANGELOG sell-test rubric. See `commands/loom-docs/release.md`.
+- `release`: post-ship doc sync — diff-driven README/CHANGELOG/architecture updates with a CHANGELOG sell-test rubric. Supports `--dry-run` (report-only, always exit 0 — the mode `/loom-ship` consumes). See `commands/loom-docs/release.md`.
+- `generate`: cold-start Diataxis docs — scaffolds `docs/tutorial`, `docs/how-to`, `docs/reference`, `docs/explanation` with `diataxis:` frontmatter. See `commands/loom-docs/generate.md`.
 
 Remaining arguments after the subcommand are forwarded to the subcommand handler.
 
@@ -16,8 +17,7 @@ Remaining arguments after the subcommand are forwarded to the subcommand handler
 | Subcommand | Handler |
 |---|---|
 | `release` | `commands/loom-docs/release.md` → `skills/loom-docs-release/SKILL.md` |
+| `generate` | `commands/loom-docs/generate.md` → `skills/loom-docs-generate/SKILL.md` |
 
 ## Notes
-
-- Future subcommands (`generate`, per M-08) will land under `commands/loom-docs/generate.md`.
 - All subcommands read-only against source code; the only writes are to `README.md`, `CHANGELOG.md`, `docs/**`, and (via PR) the PR body.

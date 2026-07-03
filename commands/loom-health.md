@@ -32,6 +32,15 @@ Or via `npx`:
 npx tsx scripts/loom-health.ts
 ```
 
+### Flags
+
+- `--quick` — in-loop mode (used by `/loom-qa` between fix iterations).
+  Skips the two slow components (`tests`, `dead-code`); the composite
+  re-normalizes over the components that ran, exactly like a missing tool.
+  Quick runs do **not** append to `.loom/health-history.toon` — the history
+  file is the full-run trend line, and a qa loop would flood it with
+  near-duplicate rows.
+
 ## Output
 
 ```toon

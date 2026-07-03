@@ -39,8 +39,8 @@ TOON dashboard printed to stdout:
 ```toon
 schemaVersion: 1
 generatedAt: 2026-06-30T00:00:00Z
-workspaces[N]{workspace,branch,versionSlot,lastCommit,prNumber,prState,stale}:
-  <worktreeName>,<branch>,<semver>,<ISO 8601>,<int>,<enum>,<bool>
+workspaces[N]{workspace,branch,versionSlot,lastCommit,prNumber,prState,deployed,stale}:
+  <worktreeName>,<branch>,<semver>,<ISO 8601>,<int>,<enum>,<enum>,<bool>
 ```
 
 - `workspace` — basename of the worktree path.
@@ -50,6 +50,12 @@ workspaces[N]{workspace,branch,versionSlot,lastCommit,prNumber,prState,stale}:
 - `lastCommit` — ISO 8601 of the latest commit on that branch.
 - `prNumber` — 0 when there is no open PR.
 - `prState` — `open` / `draft` / `none`.
+- `deployed` — from the workspace's `.loom/canary-history.toon` (best-effort
+  read): `yes` when the newest entry matching `versionSlot` has
+  `phasesCompleted: 3` and `rolledBack: false`; `partial` when it exists but
+  was rolled back or stopped mid-phase; `no` when the file exists with no
+  matching entry; `-` when the file is absent (project doesn't deploy via
+  `/loom-canary`).
 - `stale` — `true` / `false` per the staleness rule.
 
 ## Reused code

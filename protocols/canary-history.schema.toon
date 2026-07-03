@@ -1,0 +1,37 @@
+# Canary Deploy History Schema
+#
+# Path: .loom/canary-history.toon
+# Producer: /loom-canary (skills/loom-canary/SKILL.md) — appends one row per
+#           run, including rolled-back runs
+# Consumers:
+#   - /loom-landing-report — renders the cross-workspace deploy summary
+#     (consumer wiring being added in a parallel change)
+#
+# Rules:
+#   - Append-only; rows are never rewritten or deleted
+#   - Writes are atomic: write to {path}.tmp then fs.renameSync
+#   - Correctness invariant (primary property of /loom-canary): one health
+#     gate failure => rollback executed => the history row records
+#     rolledBack: true with phasesCompleted set to the last PASSED phase
+#   - schemaVersion bumped on any breaking field change
+#
+# Field descriptions:
+#   canaryId         string   deterministic short id based on git SHA +
+#                             timestamp
+#   target           enum     one of: fly, vercel, render, cloudflare,
+#                             netlify, railway, other
+#   version          string   semver from the version manifest at run time
+#   startedAt        string   ISO 8601 timestamp of rollout start
+#   finishedAt       string   ISO 8601 timestamp of rollout end (or rollback)
+#   phasesCompleted  integer  0..3 — phases passed (1 = 10%, 2 = 50%,
+#                             3 = 100% traffic)
+#   rolledBack       boolean  true when any health gate failed and the
+#                             target-native rollback was invoked
+#   healthCheckUrl   string   the probe URL used for the phase gates
+#   notes            string   one-line summary (e.g. "healthy through
+#                             phase 3")
+
+schemaVersion: 1
+
+runs[N]{canaryId,target,version,startedAt,finishedAt,phasesCompleted,rolledBack,healthCheckUrl,notes}:
+  a1b2c3d-1745,fly,1.4.2,2026-06-30T17:45:00Z,2026-06-30T17:52:10Z,3,false,https://app.example.com/healthz,healthy through phase 3

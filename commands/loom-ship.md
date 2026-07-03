@@ -17,7 +17,7 @@ Executes six steps in order — halt on any failure:
    (DIFF-VERIFIABLE / CROSS-REPO / EXTERNAL-STATE / CONTENT-SHAPE) and
    reconciles against `git diff <base>...HEAD`. Cap at 50 items.
 5. Generate PR body markdown with Summary + Plan Completion Ledger +
-   Test Plan + optional Doc Debt (from /loom-docs:release if wired).
+   Test Plan + optional Doc Debt (from /loom-docs release if wired).
 6. `gh pr create` with the assembled body.
 
 ## Handler

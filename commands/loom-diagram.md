@@ -32,7 +32,7 @@ Flags:
 
 Every generated triplet is registered in `.loom/diagrams/index.toon` with a
 SHA-256 of the `.md` source for later drift-detection by
-`/loom-docs:release`.
+`/loom-docs release`.
 
 ## Toolchain
 

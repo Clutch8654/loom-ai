@@ -13,8 +13,8 @@ and other Loom flows. Provides interactive search, pruning, and export.
 
 | Subcommand | Purpose |
 |---|---|
-| `list` | Show all learnings in chronological (newest first) order with id, date, tags, confidence. |
-| `search <keyword>` | Full-text search over `problem`, `resolution`, `tags`. Ranks by BM25-ish score; returns top 10. |
+| `list` | Show all learnings in chronological (newest first) order with id, key, sourceDate, tags, confidence. |
+| `search <keyword>` | Full-text search over `key`, `description`, `tags` (the fields `scripts/loom-learnings-search.ts` actually matches). Ranks by BM25-ish score; returns top 10. |
 | `prune --min-confidence <N>` | Delete learnings with `confidence < N`. Writes backup to `.loom/learnings.toon.bak` before rewriting. |
 | `export --format=<toon\|md\|jsonl>` | Emit the full corpus to stdout in the requested format. |
 
@@ -31,10 +31,13 @@ that script with a stable UI contract.
 Output (TOON):
 
 ```toon
-learnings[N]{id,date,tags,confidence,problemPreview}:
-  L-2026-06-05-01,2026-06-05,"scope|toon",9,"scope-contract.toon out of sync"
-  L-2026-05-30-02,2026-05-30,"tests|flaky",7,"vitest race condition on parallel writes"
+learnings[N]{id,key,description,confidence,sourcePlan,sourceDate,domain,tags}:
+  L-001,scope-contract-drift,"scope-contract.toon out of sync with plan",9,planning/plans/PLAN-m07.md,2026-06-05,planning,"scope,toon"
+  L-002,vitest-parallel-write-race,"vitest race condition on parallel writes",7,manual,2026-05-30,tests,"tests,flaky"
 ```
+
+(Columns per `protocols/learnings.schema.toon` — the same shape
+`scripts/loom-learnings-search.ts` emits.)
 
 ### search
 
@@ -54,6 +57,7 @@ Returns top matches with matched snippets highlighted.
 Reads `.loom/learnings.toon`, filters entries with `confidence >= N`, writes
 survivors atomically to `.loom/learnings.toon.tmp` and renames. Backup of the
 prior corpus goes to `.loom/learnings.toon.bak`. Reports the count removed.
+The rewritten corpus MUST conform to `protocols/learnings.schema.toon`.
 
 ### export
 
@@ -62,7 +66,7 @@ prior corpus goes to `.loom/learnings.toon.bak`. Reports the count removed.
 ```
 
 - `toon` — same schema as `.loom/learnings.toon` (default).
-- `md` — one heading per entry, `## L-<id>` with problem/resolution sections.
+- `md` — one heading per entry, `## L-<id> <key>` with the description body and a source/confidence footer line.
 - `jsonl` — one JSON object per line for consumption by external tools.
 
 If `--out` is omitted, writes to stdout.

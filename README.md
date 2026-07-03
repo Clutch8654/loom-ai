@@ -45,10 +45,11 @@ The differentiator is not any one layer — it's that Loom composes all five and
 What you actually get when you run Loom on a project:
 
 - **Wave-based execution** with file-ownership and contract-lock hooks that block off-task writes before they happen — not after a review catches them.
+- **Parallel agents in small context windows** — because the plan emits typed contracts and file-ownership boundaries, implementers run concurrently while each reads only its own contract and stage summary from disk, never the whole repo, the plan, or the conversation history. The planning rigor is what makes the cheap, parallel execution possible — not a workaround bolted on after.
 - **Convergence loops** that iterate `do work → check work → remediate` until tests pass and reviewers approve, with circuit breakers (stalled, regression, budget-exhausted) instead of infinite spin.
 - **A repo-committed wiki** (`.loom/wiki/`) that captures scope decisions, contracts, scenarios, and per-domain `contract-*` pages — coherent across changes because `/loom-change` mutates atomically.
 - **Given/When/Then scenarios as the canonical testable unit** — the convergence-planner emits verification targets directly from scenarios at four tiers (unit / integration / e2e / qa-review).
-- **Tool-call-level discipline** — fourteen enforcement hooks plus a 100k-token context-budget cap per spawn keep long agentic runs predictable and auditable.
+- **Tool-call-level discipline** — eighteen enforcement and monitoring hooks plus a 100k-token context-budget cap per spawn keep long agentic runs predictable and auditable.
 
 ## Quickstart
 
@@ -147,7 +148,7 @@ The visual above is the "build" middle. Around it sit **pre-plan** meta-steps th
 ```
        ┌───────────  PRE-PLAN  ────────────┐   ┌──────────  BUILD (shown above)  ──────────┐   ┌───────────  POST-SHIP  ────────────┐
        │                                    │   │                                            │   │                                     │
-IDEA ─▶│  /loom-think ──▶ /loom-spec ─▶ /loom-roadmap ─▶ /loom-plan ─▶ /loom-plan execute ─▶ /loom-converge ─▶ /loom-code review ─▶ /loom-ship ─▶ /loom-canary ─▶ /loom-docs:release ─▶ /loom-retro ─▶ /loom-learn
+IDEA ─▶│  /loom-think ──▶ /loom-spec ─▶ /loom-roadmap ─▶ /loom-plan ─▶ /loom-plan execute ─▶ /loom-converge ─▶ /loom-code review ─▶ /loom-ship ─▶ /loom-canary ─▶ /loom-docs release ─▶ /loom-retro ─▶ /loom-learn
        │  5-phase deep-think    5-phase                                                                         VERSION-slot   staged        diff-driven README/    captures     surfaces to next
        │  design doc            idea → spec                                                                     reserve +      health-gate   CHANGELOG parity        learnings/  cycle via
        │  (fuzzy → clear)       (spec → issue)                                                                  audit inline   deploy        + doc-debt gate         regressions .loom/learnings.toon
@@ -160,16 +161,18 @@ IDEA ─▶│  /loom-think ──▶ /loom-spec ─▶ /loom-roadmap ─▶ /lo
 - **`/loom-roadmap:explore`** *(optional detour between `/loom-think` and `/loom-spec`)* — when the topic is specific but you want many voices before crystallizing, fan out a multi-persona brainstorm (design, strategy, UX, risk). Rule of thumb <!-- mirror of the canonical triad in skills/loom-think/SKILL.md — edit together -->: `/loom-think` — fuzzy problem, one operator wants to converge; `/loom-roadmap:explore` — specific topic, wants many voices; `/loom-spec` — crystallize a chosen direction into a ticket.
 - **`/loom-spec`** — 5-phase interview from vague idea to a precise ROADMAP feature block or GitHub issue, with optional worktree spawn.
 - **`/loom-ship`** — pre-flight rebase-from-base + drift detection + VERSION-slot reservation + plan-completion audit inline in the PR body via `gh pr create`. Chief ship-engineer skill.
-- **`/loom-canary`** — progressive deploy with health-check gates and auto-rollback. Reads deploy config from `CLAUDE.md`; wraps `fly` / `vercel` / `wrangler` / `netlify` / `railway` / `render`. Configure with `/loom-setup:deploy`.
-- **`/loom-docs:release`** — post-ship diff-driven doc sync: README/CHANGELOG/ARCH updates, diagram drift detection, CHANGELOG sell-test rubric. Surfaces doc-debt in the PR body and exits non-zero without a documented plan.
+- **`/loom-canary`** — progressive deploy with health-check gates and auto-rollback. Reads deploy config from `CLAUDE.md`; wraps `fly` / `vercel` / `wrangler` / `netlify` / `railway` / `render`. Configure with `/loom-setup deploy`.
+- **`/loom-docs release`** — post-ship diff-driven doc sync: README/CHANGELOG/ARCH updates, diagram drift detection, CHANGELOG sell-test rubric. Surfaces doc-debt in the PR body and exits non-zero without a documented plan.
 - **`/loom-retro`** — retrospective ceremony that reads git activity, closed PRs, and planning artifacts, then appends structured entries to `.loom/learnings.toon` and `.loom/regressions.toon`. Also suggests ROADMAP mutations when recurring themes emerge.
 - **`/loom-learn`** — learnings management UI: review, search, prune, export. Auto-surfaces prior learnings when a prompt mentions "didn't we", "before", "again", or "recurring".
 
 Cross-cutting side-loops (any stage):
 
 - **`/loom-worktree`** — cross-worktree fan-in coordination: advisory ownership scan across sibling worktrees with a lease registry (`~/.loom/leases/{repo}.toon`) and a PreToolUse preflight hook for `/loom-git pr`. Prevents semantic conflicts before merge time.
-- **`/loom-browser`** — persistent headless Chromium daemon at `.loom/browser/` with tiered READ/WRITE/META command semantics, accessibility-tree refs, and anti-bot stealth stubs. Foundation for `/loom-qa` and `/loom-benchmark:perf`.
+- **`/loom-browser`** — persistent headless Chromium daemon at `.loom/browser/` with tiered READ/WRITE/META command semantics, accessibility-tree refs, and anti-bot stealth stubs. Foundation for `/loom-qa` and `/loom-benchmark perf`.
 - **`/loom-qa`** — live-site iterative test-fix loop that browser-drives the site via the `/loom-browser` daemon, finds bugs, fixes iteratively, atomic-commits, and re-verifies. `--tier quick|standard|exhaustive`.
+
+Every surface named above has a full section later in this README: [The idea pipeline](#the-idea-pipeline), [Quality gates](#quality-gates), [Shipping](#shipping), [Learning loop](#learning-loop), [Design](#design), [Docs & diagrams](#docs--diagrams), [Browser automation](#browser-automation), and [Guardrails & meta](#guardrails--meta).
 
 ## Decision matrix
 
@@ -188,7 +191,9 @@ See [`docs/install-decision-matrix.md`](docs/install-decision-matrix.md) for the
 
 ## Differentiators
 
-The combination that matters: `/loom-doctor` and `/loom-converge` compose. `/loom-doctor` produces a deterministic diagnostic report; `/loom-converge` iterates any artifact (code, plan, document, PR head) toward a check passing. Run them together and you get a self-healing install + self-healing build: doctor surfaces drift, converge drives it to zero. That composability — diagnostics that emit findings + a generic convergence engine that consumes findings — is the load-bearing claim of Loom's tool-call-level discipline. Neither alone is the differentiator; together they let you wire `/loom-doctor` output straight into `/loom-converge` and watch the install heal itself.
+**Planning is a compiler for context.** This is the substrate the rest of Loom runs on, and it's the part most agent tooling skips. The usual approach hands a model the whole repo and hopes; Loom's plan phase decomposes work into Wave 0 typed contracts, file-ownership boundaries, and disk-based stage summaries — so each downstream agent reads only its own contract and its stage's summary, never the full repo, the plan, or the prior conversation. The pipeline's own agents are instructed exactly this: *operate with disk-only state; never assume anything from prior conversation; do not read `PLAN.md` or `rolling-context.md` — they would inflate your context for no benefit.* A 100k-token cap per spawn — half the window — is enforced at the tool call, not requested in a prompt. The payoff is orchestration that most setups can't reach: dozens of agents running in parallel, each in a small contract-scoped context, without colliding on files or drowning in undifferentiated tokens. The rigor you invest up front in the plan is precisely what buys cheap, parallel, predictable execution downstream — a 40k-token contract-scoped agent beats one lost in 200k of everything.
+
+On top of that substrate, a second differentiator: `/loom-doctor` and `/loom-converge` compose. `/loom-doctor` produces a deterministic diagnostic report; `/loom-converge` iterates any artifact (code, plan, document, PR head) toward a check passing. Run them together and you get a self-healing install + self-healing build: doctor surfaces drift, converge drives it to zero. That composability — diagnostics that emit findings + a generic convergence engine that consumes findings — is the load-bearing claim of Loom's tool-call-level discipline. Neither alone is the differentiator; together they let you wire `/loom-doctor` output straight into `/loom-converge` and watch the install heal itself.
 
 The convergence loop, applied everywhere:
 
@@ -260,19 +265,19 @@ For a guided 30-minute tour see [`docs/first-30-minutes.md`](docs/first-30-minut
 | Commit / push / open a PR | `/loom-git commit \| push \| pr` | Git workflow automation |
 | Open a PR with plan-completion audit inlined | `/loom-ship` | Pre-flight rebase + drift detection + VERSION-slot reserve + plan-audit body via `gh pr create` |
 | See all sibling worktrees + VERSION slots + stale branches | `/loom-landing-report` | Read-only TOON dashboard: enumerates `../` and `~/.worktrees/`, cross-references `~/.loom/version-slots.toon` and open PRs |
-| Progressive deploy with health-gate + rollback | `/loom-canary` | Wraps `fly` / `vercel` / `wrangler` / `netlify` / `railway` / `render`. Configure with `/loom-setup:deploy` |
-| Post-ship doc sync (README / CHANGELOG / diagrams) | `/loom-docs:release` | Diff-driven; exits non-zero when doc-debt is detected without a `--plan` acknowledgement |
+| Progressive deploy with health-gate + rollback | `/loom-canary` | Wraps `fly` / `vercel` / `wrangler` / `netlify` / `railway` / `render`. Configure with `/loom-setup deploy` |
+| Post-ship doc sync (README / CHANGELOG / diagrams) | `/loom-docs release` | Diff-driven; exits non-zero when doc-debt is detected without a `--plan` acknowledgement |
 | **Test, benchmark & QA** | | |
 | Live-site iterative fix loop over a headless browser | `/loom-qa --tier quick\|standard\|exhaustive` | Drives the site via `/loom-browser` daemon, finds bugs, atomic-commits, re-verifies |
-| Cross-vendor LLM comparison with LLM-judge scoring | `/loom-benchmark:models` | Claude / GPT / Gemini side-by-side: latency, tokens, cost, quality |
-| Core Web Vitals perf regression via headless browser | `/loom-benchmark:perf` | Baseline vs PR-diff per PR |
+| Cross-vendor LLM comparison with LLM-judge scoring | `/loom-benchmark models` | Claude / GPT / Gemini side-by-side: latency, tokens, cost, quality |
+| Core Web Vitals perf regression via headless browser | `/loom-benchmark perf` | Baseline vs PR-diff per PR |
 | CSO-lens plan + code audit | `/loom-cso` | Daily 8/10 gate + monthly 2/10 deep-scan with trend tracking |
-| Live TTHW boomerang against the plan's prediction | `/loom-devex:review` | Measures actual install-to-hello-world time in a temp dir; reports delta vs `plan-devex-review-agent`'s `predictedTTHW` |
+| Live TTHW boomerang against the plan's prediction | `/loom-devex review` | Measures actual install-to-hello-world time in a temp dir; reports delta vs `plan-devex-review-agent`'s `predictedTTHW` |
 | **Design & docs (build-time)** | | |
-| Ground-up brand kickoff (typography, color, motion) | `/loom-design:consultation` | 5-phase design consultation; writes a durable premise artifact to `.loom/design/` |
-| Parallel UI variants on one route with taste memory | `/loom-design:shotgun` | Generate N candidates on distinct axes; capture preference; decay old prefs (90d/180d) |
-| Ship production HTML/CSS from a mockup | `/loom-design:html` | Pretext-native rules + anti-AI-slop guards; emits to `docs/design/{slug}/` |
-| Cold-start Diataxis docs | `/loom-docs:generate` | Generates `docs/tutorial`, `docs/how-to`, `docs/reference`, `docs/explanation` with frontmatter |
+| Ground-up brand kickoff (typography, color, motion) | `/loom-design consultation` | 5-phase design consultation; writes a durable premise artifact to `.loom/design/` |
+| Parallel UI variants on one route with taste memory | `/loom-design shotgun` | Generate N candidates on distinct axes; capture preference; decay old prefs (90d/180d) |
+| Ship production HTML/CSS from a mockup | `/loom-design html` | Pretext-native rules + anti-AI-slop guards; emits to `docs/design/{slug}/` |
+| Cold-start Diataxis docs | `/loom-docs generate` | Generates `docs/tutorial`, `docs/how-to`, `docs/reference`, `docs/explanation` with frontmatter |
 | Author an excalidraw triplet from English or mermaid | `/loom-diagram` | Source `.md` + editable `.excalidraw` + rendered `.svg`/`.png` |
 | **Learn & improve (post-ship)** | | |
 | Retrospective ceremony after a milestone | `/loom-retro` | Reads git + closed PRs + planning artifacts; appends to `.loom/learnings.toon` and `.loom/regressions.toon`; suggests ROADMAP mutations |
@@ -290,8 +295,8 @@ For a guided 30-minute tour see [`docs/first-30-minutes.md`](docs/first-30-minut
 | **Cross-cutting side-loops** | | |
 | Coordinate parallel worktrees before opening a PR | `/loom-worktree` | Advisory ownership scan + `~/.loom/leases/{repo}.toon` registry; PreToolUse preflight on `/loom-git pr` |
 | Start / stop / query the headless browser daemon | `/loom-browser start\|stop\|status\|exec` | Persistent Chromium at `.loom/browser/` with READ/WRITE/META tiers |
-| Import real Chrome cookies for authenticated live-site QA | `/loom-setup:browser-cookies` | Interactive domain picker; per-project storage at `.loom/browser/cookies/{domain}.toon` |
-| Detect the deploy target from repo signals | `/loom-setup:deploy` | Scans for Fly / Vercel / Cloudflare / Netlify / Railway / Render / Docker; writes config to `CLAUDE.md` so `/loom-ship` and `/loom-canary` auto-work |
+| Import real Chrome cookies for authenticated live-site QA | `/loom-setup browser-cookies` | Interactive domain picker; per-project storage at `.loom/browser/cookies/{domain}.toon` |
+| Detect the deploy target from repo signals | `/loom-setup deploy` | Scans for Fly / Vercel / Cloudflare / Netlify / Railway / Render / Docker; writes config to `CLAUDE.md` so `/loom-ship` and `/loom-canary` auto-work |
 | **Customize & maintain** | | |
 | Manage the project roadmap | `/loom-roadmap {init\|review\|approve\|…}` | Roadmap lifecycle + dependency graphs |
 | Run a change proposal over contract pages | `/loom-change {init\|review\|approve\|run\|…}` | OpenSpec-style atomic change-proposal lifecycle |
@@ -363,6 +368,216 @@ The split is the layer they touch:
 | `/loom-setup` | deploy, browser-cookies | Setup dispatcher — `deploy` writes deploy config to `CLAUDE.md`; `browser-cookies` imports real Chrome cookies for authenticated QA. |
 | `/loom-diagram` | — | English or mermaid → excalidraw triplet (`.md` source + `.excalidraw` + rendered `.svg`/`.png`). |
 | `/loom-install` | — | Direct-symlink install path for Loom (alternative to plugin marketplace). Cross-host aware. |
+| `/loom-health` | (flags) `--quick` | Composite 0–10 quality score from 5 weighted components with trend history at `.loom/health-history.toon`. |
+| `/loom-careful` | — | PreToolUse guard hook that blocks destructive Bash commands (`rm -rf /`, `DROP TABLE`, force-push, `mkfs`, …) before they run. |
+
+The tables above are the quick index. Every surface below also gets a full section — [The idea pipeline](#the-idea-pipeline), [Quality gates](#quality-gates), [Shipping](#shipping), [Learning loop](#learning-loop), [Design](#design), [Docs & diagrams](#docs--diagrams), [Browser automation](#browser-automation), and [Guardrails & meta](#guardrails--meta).
+
+## The idea pipeline
+
+Before a roadmap exists there is an idea, and ideas arrive at different levels of clarity. Three pre-plan surfaces cover the spectrum: `/loom-think` for problems too fuzzy to scope, `/loom-spec` for one-liners that need sharpening into a ticket, and `/loom-prototype` for design questions that only throwaway code can answer. Each produces a durable artifact the planning commands consume — none of them writes production code. These expand the pre-plan lifecycle bullets in [The full lifecycle](#the-full-lifecycle-with-meta-steps).
+
+### /loom-think
+
+`/loom-think <topic>` runs an office-hours-style deep interview for genuinely fuzzy problems: one question per turn, your language carried forward verbatim. The five phases are Problem, Demand Evidence, Status Quo, Target User / Narrowest Wedge, and Synthesis (Constraints + Premises + Approaches A/B + Recommendation), with a cross-model second-opinion pass between phases 3 and 4 that sketches Approach Candidates A/B/C and leaves a `Cross-model review: PENDING` marker as a hook for a later adversarial pass (e.g. `/loom-debate`). Sparse demand evidence is flagged prominently — `Demand evidence: SPARSE` — so a downstream `/loom-roadmap init` treats the doc as a risky input.
+
+The result is a durable design doc at `.loom/thinks/{slug}-{timestamp}.md` (frontmatter: slug, datetime, branch, supersedes, `status: DRAFT`; written atomically). Docs chain per topic: a new think on the same `--branch` supersedes the previous one, resolved by frontmatter datetime, so a topic's thinking history stays traceable. Feed the doc forward with `/loom-roadmap init --from <path>` or `/loom-spec --from <path>`.
+
+Use it when you catch yourself saying "I've been thinking about..." with no crisp deliverable, or when a prior roadmap or plan stalled and needs a re-frame. Skip it for a scoped ticket (`/loom-spec`), a clear bug (`/loom-bugfix`), an area an existing roadmap already covers (`/loom-roadmap mutate`), or a specific topic that wants many voices (`/loom-roadmap explore`). Rule of thumb: think = fuzzy problem, one operator converging; explore = specific topic, many voices; spec = crystallize a chosen direction into a ticket.
+
+### /loom-spec
+
+`/loom-spec "<idea>"` turns a one-sentence idea into either a precise ROADMAP feature block or a standalone GitHub issue. Five phases: elicit (your wording stored verbatim as `originalIdea:`), sharpen (3–5 clarifying questions drawn from a six-item menu: trigger, boundary, success shape, anti-scope, prior art, blast radius), classify, draft, and an optional worktree spawn. Classification assigns exactly one class (`bug` / `feature` / `enhancement` / `refactor` / `debt`) and one target artifact — the rule is simple: if the work would produce a `PLAN-*.md`, it becomes a roadmap feature; if it is one PR of work, it becomes a GitHub issue.
+
+Flags: `--from <path>` cites the `/loom-think` doc that seeded the spec; `--worktree` spawns a branch via `wt new`; `--auto-mutate` chains a roadmap-feature draft straight into `/loom-roadmap mutate` (`--name <slug>` targets `planning/ROADMAP-<slug>.md`, `--yes` skips the confirmation for a true one-shot). `--auto-mutate` is off by default on purpose — ROADMAP structure changes are strategic decisions Loom never auto-answers (see `protocols/loom-decision-principles.md`). The drafted block is always printed to stdout regardless of the path taken.
+
+Specs that become GitHub issues close automatically on merge: `/loom-git pr merge` honors `Closes #NNN` / `Spec-Id: S-NN` markers in the PR body and runs `gh issue close --reason completed`.
+
+### /loom-prototype
+
+`/loom-prototype <name> --branch logic|ui [--adr ADR-NNNN]` scaffolds throwaway code written to answer one design question and then be deleted — deliberately no polish, no tests, no persistence. It slots between `/loom-roadmap` and `/loom-plan`: when a roadmap decision hinges on "would this even work?", a prototype answers it before production code is committed. The `logic` branch scaffolds a terminal app (`prototypes/{name}/index.ts`, run via `bun run`); the `ui` branch scaffolds `variant-a.tsx`, `variant-b.tsx`, and a `route.tsx` harness that toggles between them. Vocabulary follows `protocols/codebase-design.md`: the prototype exposes a Seam so the eventual production Module can be deep before it exists.
+
+The completion ceremony is the part that outlives the code: `/loom-prototype <name> --complete [--answer "<text>"]` writes `prototypes/{name}/answer.toon` recording what the prototype taught you, and — when `--adr ADR-NNNN` links it to a decision record — appends a `prototypeAnswer:` line to the ADR under `docs/adr/`. After that, `rm -rf prototypes/{name}/` is explicitly safe; the findings carry forward into `/loom-plan create` or `/loom-roadmap refine`.
+
+## Quality gates
+
+Six surfaces measure whether the thing you built is good: `/loom-qa` (live-site fix loop), `/loom-health` (composite score), `/loom-cso` (security), `/loom-benchmark` (perf and model comparison), `/loom-devex review` (developer experience), and `/loom-deepen` (codebase depth). They share a pattern: deterministic scripts own the measurements, history files under `.loom/` own the trend, and every finding carries a `confidence: 1-10` field.
+
+### /loom-qa
+
+`/loom-qa --tier quick|standard|exhaustive <url>` runs a live-site iterative test-fix loop: it drives the target URL through the `/loom-browser` daemon, finds a bug, spawns a fixer subagent (the same `fixer-agent` used by `/loom-code fix` and `/loom-converge`), applies the patch, and commits atomically (`qa: fix {symptom} on {page} (confidence {n})`) — then re-verifies on the live site and moves to the next bug. A bug that survives two fix attempts is marked `unresolved` and skipped. Fixes are archived to `.loom/fix-archive/{date}-{slug}.toon`, the same archive `/loom-bugfix` writes.
+
+The tiers trade time for coverage: `quick` (~5 min) walks the happy path only; `standard` (~15 min, default) adds the top five non-happy states (empty / error / loading / unauthenticated / 404); `exhaustive` (~45 min) adds full accessibility via axe-core, edge-case inputs (long strings, unicode, RTL, keyboard-only), and screenshot regression against `.loom/qa/baselines/`. `/loom-health` runs before and after the loop; the envelope reports `shipReadiness: ready` only when the after-score is at least 8 and no high-severity finding is unresolved.
+
+It requires a running browser daemon and will not cold-start one: if `.loom/browser/state.toon` shows the daemon stopped or crashed, it exits non-zero with instructions (`/loom-browser start`, or `stop && start` after a crash). Non-goals: load and performance testing belong to `/loom-benchmark perf`, security scanning to `/loom-cso`, visual design review to `/loom-design`.
+
+### /loom-health
+
+`/loom-health` computes a composite 0–10 quality score from five weighted components: typecheck 30% (`tsc --noEmit`), tests 30% (`vitest run`), lint 20% (`eslint`), dead code 10% (`knip`), and shell 10% (`shellcheck`). A component whose tool isn't installed (or doesn't apply — no `tsconfig.json`, no `.sh` files) is skipped with a `HEALTH_TOOL_MISSING` note, and the composite re-normalizes over what actually ran, so a missing tool never silently drags the score down. Output is a TOON block with the composite score plus a per-component breakdown of raw score and weighted contribution.
+
+Each full run appends a row to `.loom/health-history.toon`, which gives you the trend line. The `--quick` flag skips the two slow components (tests, dead code) and does not append to history — it exists for in-loop use, where `/loom-qa` calls it between fix iterations to check that a patch didn't regress the score. There is no hard gate in `/loom-health` itself; the ship-readiness gate that consumes its score lives in `/loom-qa`.
+
+### /loom-cso
+
+`/loom-cso daily|monthly` is a two-tier Chief Security Officer audit over the working tree and current plan, across seven lenses: secrets in code, dependency vulnerabilities (`bun audit` / `npm audit`, optional snyk), auth boundaries, input validation, LLM trust (delegated to the `code-llm-trust-review-agent`), file permissions, and CI/CD supply chain. Deterministic lenses run in `scripts/loom-cso.ts`; the three judgment lenses run in the skill and feed their counts back into the gate math.
+
+`daily` (~2 min) is the pre-PR gate: it filters findings to confidence >= 8 and exits non-zero when the score regresses against the most recent daily entry in `.loom/security-history.toon` or drops below 8/10 absolute. It is invoked automatically by `/loom-git pr` and `/loom-auto`. `monthly` (~30 min) is the deep scan: it surfaces findings down to confidence >= 2, always appends a history entry, and never blocks — run it on a schedule or before a release.
+
+Non-goals: no autofix (findings are handed to `/loom-code fix`) and no runtime dynamic analysis (fuzzing and live traffic replay belong to `/loom-qa`). Missing optional scanners degrade gracefully — the lens still reports, with confidence reduced by 2.
+
+### /loom-benchmark
+
+`/loom-benchmark` dispatches two unrelated measurements that share one shape: run, score, append to a history file that `/loom-status` renders as a trend.
+
+`/loom-benchmark models [--suite <path>] [--judge claude|gpt|gemini]` runs the same prompt suite across Claude, GPT, and Gemini and has an LLM judge score output quality. The TOON dashboard reports per-vendor average latency, tokens in/out, estimated cost, and average quality; results append to `.loom/benchmark-history.toon`. It needs at least one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` — vendors without a key are recorded as `skipped`, not failed. Per-vendor model overrides: `--model-claude`, `--model-gpt`, `--model-gemini`.
+
+`/loom-benchmark perf [--url <url>] [--baseline-ref main] [--regression-threshold 10]` measures Core Web Vitals (LCP, CLS, FID, INP) on both the baseline ref and the PR head via the `/loom-browser` daemon and reports per-metric deltas plus a verdict. Exit codes are CI-friendly: 0 = no regression, 1 = daemon unavailable or measurement failed, 2 = regression past the threshold. History appends to `.loom/perf-history.toon`. Start the daemon first with `/loom-browser start`.
+
+### /loom-devex review
+
+`/loom-devex review [--install-cmd "<cmd>"] [--hello-target "<cmd>"]` is the TTHW boomerang: at plan time, the `plan-devex-review-agent` predicts a time-to-hello-world (`predictedTTHW`); this command later re-runs the install flow end-to-end in a fresh temp dir (`mktemp -d`), measures the actual wall-clock TTHW, and reports the delta — "plan said 3 min, reality says 8". Both flags are optional and auto-detected from the README when omitted.
+
+Beyond the headline number, it scores CLI help quality, error-message quality, and config-surface complexity (each 1–10, each with a confidence rating), and emits a verdict of `on-budget` / `over-budget` / `under-budget`. Every run is archived to `planning/history/reviews/{date}-devex-audit.toon`, and the next plan-time DX review reads that archive to calibrate its next prediction — the loop is what keeps the predictions honest.
+
+### /loom-deepen
+
+`/loom-deepen [--target <path>] [--limit <N>] [--html]` is the periodic codebase-depth pass: it fans out Explore subagents over the target subtree (default: repo root), surfaces shallow Modules using the vocabulary from `protocols/codebase-design.md` (Module, Seam, Depth, Adapter, Leverage, Locality), applies the deletion test to each candidate, and emits up to `--limit` (default 10) deepening candidates with before/after diagrams per module.
+
+The canonical report is always TOON, written atomically to `.plan-execution/reports/deepen-{date}.toon`, with per-module diagrams under `.plan-execution/reports/diagrams/`. `--html` additionally renders an HTML report and tries to open it (falling back to printing the path if no opener works — never a hard failure). A partial subagent failure still emits the report with `partial: true`; the run only exits non-zero if the runner failed and zero candidates were collected.
+
+## Shipping
+
+Getting a branch merged and deployed is its own pipeline: `/loom-setup deploy` configures once, `/loom-ship` prepares the PR, `/loom-canary` deploys progressively after merge, and `/loom-landing-report` + `/loom-worktree` keep parallel branches coordinated. These expand the post-ship lifecycle bullets in [The full lifecycle](#the-full-lifecycle-with-meta-steps).
+
+### /loom-ship
+
+`/loom-ship` is the chief ship-engineer: one opinionated pre-PR pipeline for the current branch, run in order, halting on any hard failure. Step 1 rebases onto the base branch (from `.claude/orchestration.toml [worktree] baseBranch`, fallback `main`); a conflict halts with `SHIP_REBASE_CONFLICT`. Step 2 reserves a VERSION slot in the shared registry `~/.loom/version-slots.toon` (via `scripts/loom-version-slot.ts`, default `--bump patch`) and updates whichever manifest carries the version (`package.json`, `pyproject.toml`, or `VERSION`). Step 3 detects drift against base. Step 4 runs the plan-completion audit: it locates the active plan, classifies each deliverable (`DIFF-VERIFIABLE` / `CROSS-REPO` / `EXTERNAL-STATE` / `CONTENT-SHAPE`), and reconciles against the actual diff. Steps 5–6 assemble the PR body — summary, plan-completion ledger, test plan, optional doc-debt section (via `/loom-docs release --dry-run` when available), version — and open the PR via `gh pr create`. Step 7 suggests `/loom-retro` when five or more merges (or a completed milestone) have landed since the last retro.
+
+Deliberate non-goals: it does not run tests, lint, or security scans (use `/loom-test`, your linter, and `/loom-cso daily` — the latter fires automatically on `/loom-git pr`), it does not deploy (`/loom-canary` does, post-merge), and it never mutates native deploy config files. If `gh` is missing or unauthenticated it halts with `SHIP_GH_MISSING` and prints the assembled body for manual paste. Use `/loom-git pr` instead when you want a bare PR without the ship ceremony.
+
+### /loom-canary
+
+`/loom-canary` deploys the current commit progressively through the target configured in `CLAUDE.md`, wrapping the native CLI (`fly` / `vercel` / `wrangler` / `netlify` / `railway` / `render`) and gating each phase on a health probe: 10% traffic requires three consecutive HTTP 2xx over 30s, 50% requires five over 60s plus an error-rate delta under 1% where the platform exposes it, and 100% requires ten over 120s. Each phase has a hard 5-minute wall clock; a stalled probe counts as failure. Targets that can't split traffic natively fall back to a single-phase deploy with a `CANARY_NO_SPLIT` warning — the probe still gates promotion.
+
+Rollback is the primary correctness property: any health-check failure triggers the target's native rollback (`fly releases rollback`, `vercel rollback`, `wrangler rollback`, …), records `rolledBack: true` in the append-only `.loom/canary-history.toon`, emits `CANARY_ROLLED_BACK`, and exits non-zero. That history file is what `/loom-landing-report` reads to show per-workspace deploy status.
+
+Prerequisites: a `## Deploy Configuration` block in `CLAUDE.md` with a populated `healthCheckUrl` (missing either halts with `CANARY_NO_CONFIG` / `CANARY_NO_HEALTHCHECK`), and the native deploy CLI installed and authenticated. Run `/loom-setup deploy` once to write the block. It never provisions infrastructure and never edits native deploy config files.
+
+### /loom-landing-report
+
+`/loom-landing-report` is the read-only multi-workspace dashboard for parallel-branch work. It enumerates sibling worktrees (`../*` and `~/.worktrees/*`), cross-references `~/.loom/version-slots.toon` (slots reserved by `/loom-ship`), open PRs via `gh pr list`, and each workspace's `.loom/canary-history.toon`, then prints one TOON table: `workspaces[N]{workspace,branch,versionSlot,lastCommit,prNumber,prState,deployed,stale}`.
+
+A workspace is `stale` when it has no commits in 24 hours and no matching open PR — the signal that a parallel branch has been abandoned mid-flight. The `deployed` column reads `yes` (canary reached 100% for that slot's version), `partial` (rolled back or stopped mid-phase), `no`, or `-` (the project doesn't deploy via `/loom-canary`). The command never modifies any registry; to refresh the slot registry itself, run `bunx tsx scripts/loom-version-slot.ts scan` first.
+
+### /loom-worktree
+
+`/loom-worktree scan|preflight|leases|release <id>` coordinates parallel worktrees before they collide at merge time. `scan` refreshes the lease registry at `~/.loom/leases/{repo}.toon` and prints file-ownership overlap findings across sibling worktrees; `preflight` is the same scan but exits non-zero on overlap (exit 1), which is how it serves as a gate; `leases` prints the current registry; `release <id>` marks a lease released. The same logic is callable directly as `bunx tsx scripts/loom-worktree-scan.ts`.
+
+Everything here is advisory — it detects and warns, it does not block edits or auto-rebase. The one place it runs automatically is a PreToolUse preflight hook on `/loom-git pr`, which emits non-blocking stderr warnings when the branch you're about to PR overlaps a sibling worktree's files. Disable that hook with `LOOM_WORKTREE_PREFLIGHT_DISABLE=1`. For the cross-workspace overview (branches, slots, staleness), use `/loom-landing-report`.
+
+### /loom-setup deploy
+
+`/loom-setup deploy` is the one-time configuration step that makes `/loom-ship` and `/loom-canary` work without arguments. It inspects the repo for deploy signals in priority order — `fly.toml`, `vercel.json` / `.vercel/`, `wrangler.toml` / `wrangler.jsonc`, `netlify.toml` / `.netlify/`, `railway.json`, `render.yaml`, bare `Dockerfile` — derives the canonical deploy command, and appends a `## Deploy Configuration` block to `CLAUDE.md` (format per `protocols/loom-ship-config.schema.toon`).
+
+Its read-only guarantee matters: it never creates, modifies, or deletes any native deploy config file. The only write target is the `## Deploy Configuration` block in `CLAUDE.md`. Run it once per project; re-run it if the deploy target changes.
+
+## Learning loop
+
+The post-ship end of the lifecycle closes the loop: `/loom-retro` extracts what a milestone taught you, `/loom-learn` makes that corpus searchable, and the feedback-loop discipline makes sure the next bug arrives with a reproducible red signal. This is Loom's judgment layer — the part that makes run N+1 smarter than run N.
+
+### /loom-retro
+
+`/loom-retro [--since <ref>] [--plan <path>]` is the retrospective ceremony. Phase 1 gathers activity read-only — `git log`, closed PRs via `gh pr list`, planning artifacts, execution state — over a window defaulting to "everything since the last retro" (the newest entry in `.loom/learnings.toon`; 14 days on first run). Phase 2 is a structured interview: three questions per plan or milestone (what worked, what didn't, what to change), with your words carried verbatim. Phases 3–4 append structured rows to `.loom/learnings.toon` (with a 1–10 confidence score per the rubric: 9–10 = repeated across three or more signals, 7–8 = observed twice, 5–6 = single observation, 1–4 = hunch) and anti-pattern rows to `.loom/regressions.toon` (optionally with a `detectionRegex` downstream reviewers can grep for). Both files are append-only and written atomically.
+
+Phase 5 suggests ROADMAP mutations when two or more retros share a theme — suggests, never applies. Roadmap changes are strategic decisions, so the operator runs `/loom-roadmap mutate` if they concur. `/loom-ship` nudges you toward a retro after five merges or a completed milestone.
+
+### /loom-learn
+
+`/loom-learn list|search|prune|export` is the management UI over the learnings corpus that `/loom-retro` populates. `list [--tag <tag>] [--limit <N>]` shows entries newest-first; `search "<keyword>"` full-text-searches problem, resolution, and tags; `prune --min-confidence <N>` deletes rows below a confidence threshold (writing a safety backup to `.loom/learnings.toon.bak` first — it is the only destructive subcommand); `export --format=toon|md|jsonl [--out <path>]` emits the corpus for use elsewhere.
+
+The corpus also surfaces itself: when a prompt contains phrases like "didn't we", "before", "again", "recurring", or "seen this", the skill auto-runs a search over the prompt text and prepends the top three matches — so prior lessons resurface at exactly the moment you half-remember them.
+
+### The feedback-loop gate
+
+Learnings only compound if bugs arrive with reproducible evidence, so `/loom-bugfix` (Gate 1) and `/loom-converge` (Gate 0) halt until a verified-red `loop.toon` exists — a tight, deterministic, agent-runnable red signal. When the obvious failing test isn't achievable, escalate down the 10-rung ladder: failing test → curl → CLI + fixture diff → headless browser → trace replay → throwaway harness → fuzz → bisection → differential → HITL bash. Construct one interactively with `/loom-converge --construct-loop`; the escape hatch `--override-loop-gate "<reason>"` proceeds without the gate but logs the reason prominently. See `protocols/feedback-loop.schema.md`.
+
+## Design
+
+The design trio under `/loom-design` covers brand definition, mockup-to-code, and multi-variant exploration. Each subcommand produces a durable artifact the next one consumes: `consultation` writes the premise, `html` renders against it, and `shotgun` fans out variants through the `html` pipeline while accumulating taste memory.
+
+### /loom-design consultation
+
+`/loom-design consultation` is the ground-up brand kickoff, run before any UI exists. It first reads `.loom/learnings.toon` filtered to `domain: design` and surfaces prior cross-project design decisions, then walks a fixed five-phase interview: audience and tone, aesthetic direction (a prose mood board), typography pairing, color system (primary / secondary / accents / semantic plus a neutral ramp), and motion principles (easing, duration bands, when to use motion at all). It can delegate to `/loom-design html` mid-interview to render a font-preview or color-swatch page.
+
+The output is a durable premise document at `.loom/design/{slug}-{timestamp}.md`, one H2 per phase plus a provenance footer, written atomically. Later `html` and `shotgun` runs read the most recent premise and honor its typography and color decisions — the consultation is how a project stops relitigating its brand on every screen.
+
+### /loom-design html
+
+`/loom-design html` ships production HTML/CSS from a mockup — either a prose description or a path to a mockup image (image analysis happens in dialogue; the agent doesn't silently guess). If a premise exists under `.loom/design/`, it honors that typography and color system. Output is `index.html` + `styles.css` under `docs/design/{slug}/`, validated for structural HTML parse, CSS lint, and contrast.
+
+Two rule sets constrain the output. The Pretext-native rules keep layouts alive rather than pixel-frozen: rem/em units, flexbox/grid, computed heights, `text-wrap: balance`/`pretty`, semantic HTML5, tokenized colors. The anti-AI-slop guards ban the defaults that mark generated UI: gradient overuse, marketing-prose comments, stock palettes, placeholder text. Use it for a single known mockup; for exploring multiple directions, use `shotgun`.
+
+### /loom-design shotgun
+
+`/loom-design shotgun [--n <count>]` generates N UI variants (default 4) of one target route on deliberately distinct axes — defaults: minimalist, dense, brutalist, editorial — each rendered through the `html` pipeline so every variant inherits the Pretext and anti-slop rules. Variants render side-by-side via the `/loom-browser` daemon when it's running; otherwise each variant is written to `.loom/design/shotgun/{slug}/variant-*.html` and the paths are printed.
+
+You pick a winner, and the choice is appended to `.loom/design/preferences.toon` (winning axis, rejected axes, `capturedAt` timestamp). Future shotgun runs read those preferences as a soft bias for axis selection — with decay: preferences weight down after 90 days and drop out after 180, so the system develops taste without ossifying around last year's picks.
+
+## Docs & diagrams
+
+Three surfaces keep documentation in lockstep with code: `/loom-docs generate` cold-starts a docs tree, `/loom-docs release` syncs docs to shipped diffs (and gates the ship when they drift), and `/loom-diagram` produces editable diagrams whose staleness is machine-detectable.
+
+### /loom-docs generate
+
+`/loom-docs generate [--force] [--only tutorial|how-to|reference|explanation]` scaffolds a complete Diataxis-shaped docs tree for a project with no docs (or normalizes ad-hoc ones): `docs/tutorial/getting-started.md`, `docs/how-to/README.md` (recipe index), `docs/reference/README.md` (directory index), and `docs/explanation/architecture.md`. Stubs are seeded from real codebase context — README, `package.json`, top-level directories, `CLAUDE.md` / `CONTEXT.md` — rather than left blank.
+
+Every generated file carries `diataxis:` frontmatter naming its quadrant, which `/loom-docs release` later enforces. The command is idempotent: it refuses to overwrite existing files unless `--force` is passed, and `--only <quadrant>` regenerates a single quadrant. Exit codes: 0 = written, 1 = target exists without `--force`, 2 = codebase context unreadable.
+
+### /loom-docs release
+
+`/loom-docs release [--base <ref>] [--pr <number>] [--plan <doc-debt-plan>] [--dry-run]` is the post-ship doc sync. Seven phases: read the diff (read-only against source), classify each change (`new-feature` / `breaking` / `fix` / `docs-only` / `refactor`, biased toward the more severe bucket — a renamed CLI flag is `breaking`), check README parity for every new or breaking public surface, extract CHANGELOG entries and apply the sell-test rubric (names the user benefit, scannable in under 3 seconds, no marketing prose, emoji stripped), detect diagram drift, emit a `DocSyncReport`, and optionally render a `## Doc Debt` section into the PR body via `gh pr edit`.
+
+README parity is where the doc-debt gate bites: a new user-facing surface missing from the README produces a `DOC_DEBT_UNRESOLVED` finding and a proposed patch — a full section per surface, not a one-line table row — and the command exits non-zero unless you supply `--plan` (an acknowledged doc-debt plan) or `--dry-run`. CHANGELOG sell-test failures and diagram drift are warnings, except on breaking changes where drift blocks. `/loom-ship` invokes `--dry-run` to inline doc-debt findings in the PR body without being gated itself.
+
+### /loom-diagram
+
+`/loom-diagram (--prose "<text>" | --mermaid <path> | --mermaid-inline "<src>") --out <path>` turns English or mermaid into an excalidraw triplet sharing one base name: the `.md` source (frontmatter plus the prose or mermaid fence), an editable `.excalidraw` JSON, and a rendered `.svg` (plus `.png` when a rasterizer is available). Default output root is `docs/diagrams/<slug>`.
+
+Every triplet is registered in `.loom/diagrams/index.toon` with a truncated SHA-256 of its source — that hash is what `/loom-docs release` compares against the diff to flag stale diagrams. Missing toolchain pieces degrade rather than block: no `@excalidraw/mermaid-to-excalidraw` skips the `.excalidraw` (with an install hint), no `mmdc` skips the `.svg`; the `.md` source is always written. `--no-svg` / `--no-excalidraw` skip steps explicitly.
+
+## Browser automation
+
+Loom's browser surfaces run through one persistent daemon rather than per-command browser launches, so authenticated sessions, cookies, and open tabs survive across QA loops, perf runs, and design renders.
+
+### /loom-browser
+
+`/loom-browser start|stop|status|exec "<command>"` manages a persistent Chromium daemon at `.loom/browser/`. `start` boots Chromium (detection order: `$CHROME_PATH`, then platform-standard Chrome / Chromium / Brave / Edge paths), writes `.loom/browser/state.toon`, attaches the prompt-injection defense hook, and loads any cookies from `.loom/browser/cookies/*.toon`. `status` reports `stopped` / `running` / `crashed`; `exec` runs one command against the live daemon. With no browser binary found it degrades to stub mode, logging commands to `.loom/browser/queue.toon` for manual replay.
+
+Commands are tiered: READ operations (screenshots, DOM queries, accessibility snapshots, network-log dumps) are idempotent and parallelizable; WRITE operations (click, type, navigate, submit, upload) are side-effecting and sequenced; META operations (start/stop, config, cookie import) are exclusive. Downstream agents reference page elements by accessibility-tree `{role, name, index}` tuples rather than CSS selectors, which keeps automation stable across style refactors. A page-text hook fires on every load as the prompt-injection defense seam (wired to the LLM-trust reviewer).
+
+The daemon is the foundation the other browser-facing surfaces stand on: `/loom-qa`, `/loom-benchmark perf`, `/loom-design shotgun`, and `/loom-devex review` all consume it — and `/loom-qa` deliberately refuses to cold-start it, so `start` the daemon first.
+
+### /loom-setup browser-cookies
+
+`/loom-setup browser-cookies` imports real session cookies from your local Chrome / Chromium / Brave / Edge profile into per-domain files at `.loom/browser/cookies/{domain}.toon`, so the headless daemon can drive authenticated pages during live-site QA. The domain list comes from `.loom/browser/cookie-domains.toon` (e.g. `domains[2]: example.com, api.example.com`); the import runs via the `chrome-cookies-secure` package (`bun add -d chrome-cookies-secure`; macOS may prompt for keychain access).
+
+Run it once per project after configuring the domain list, and again whenever `/loom-browser start` reports stale cookies or you've signed in as a new test user locally. The cookie files carry expiry tracking and are gitignored — treat them as session-authentication material and never commit them.
+
+## Guardrails & meta
+
+Two remaining surfaces don't fit a lifecycle stage: `/loom-careful` guards every Bash call, and `/loom-skillify` turns transcripts into tested tooling. (The other meta surfaces have their own sections: [`/loom-install`](#direct-install-power-user) for the direct-symlink channel and [`/loom-update`](#update-and-uninstall) for runtime upgrades.)
+
+### /loom-careful
+
+`/loom-careful` is not a workflow command — it documents and manages the `loom-careful` PreToolUse hook (`hooks/loom-careful.ts`) that intercepts Bash commands before Claude Code runs them and denies the destructive ones: `rm -rf` against `/`, `~`, `.`, or `*`; destructive SQL DDL (`DROP TABLE`, `DROP DATABASE`, `TRUNCATE TABLE`); `git push --force` / `git reset --hard`; `chmod -R 777 .`; raw-device writes (`dd of=/dev/sda`); and filesystem formatters (`mkfs`). A blocked call surfaces to the agent as `CAREFUL_BLOCKED` with the reason.
+
+When a legitimately destructive command must run, the escape hatches are graduated: `LOOM_CAREFUL_OVERRIDE=1 <command>` for one command, `export LOOM_CAREFUL_OVERRIDE=1` for the session, or remove the hook's `PreToolUse` entry from `~/.claude/settings.json` (or unregister via `/loom-library` if kit-installed) to disable it globally. Unlike Loom's per-project enforcement hooks, this one guards the agent session itself — it pairs with, rather than replaces, the 17 per-project hooks described under [Hook enforcement](#hook-enforcement-per-project).
+
+### /loom-skillify
+
+`/loom-skillify --slug <kebab> [--from <path>] [--dry-run]` is retrospective codification — the backward-direction pair to `/loom-agent create` and `/loom-skill create`. Instead of scaffolding a capability you're about to build, it walks back through a session transcript you already ran (default: the last 40 turns of `.claude/session-history/latest.jsonl`, or `--from <path>`), extracts the tool-call sequence that worked, and distills it into a minimal reproducible script: `scripts/skillified/{slug}.ts` (Bun shebang, all inputs pushed into the fixture, operator decisions surfaced as `TODO_HUMAN_DECISION_KEY` entries), a companion Vitest suite, and a TOON fixture with inputs and expected outputs.
+
+The test is the gate: after writing the three files atomically, it runs `bunx vitest run scripts/skillified/{slug}.test.ts`, and only on a pass does it register the script under `library.infrastructure:` in `skills/library.yaml`. A failing test leaves the files unregistered and prompts you to refine (`SKILLIFY_TEST_FAIL`). `--dry-run` plans the three files without writing or testing. Once registered, a hint suggests promoting the flow into a full skill via `/loom-skill create`.
 
 ## Extending Loom
 
@@ -488,7 +703,7 @@ The curl install also stages inert hook templates under `~/.claude/templates/hoo
 Loom uses a **two-tier install model**:
 
 1. **User-global tier (`~/.claude/`)** — slash commands, agents, statusline, update-checker, and inert hook templates. Installed once by the curl installer.
-2. **Per-project tier (`<repo>/hooks/` + `<repo>/.claude/settings.json`)** — the 14 enforcement hooks (file-ownership, contract-lock, context-budget, deploy-guard, quality-gate, typecheck-on-write, wiki guards, plus ambient monitors). Installed per-project, opt-in.
+2. **Per-project tier (`<repo>/hooks/` + `<repo>/.claude/settings.json`)** — the 17 enforcement hooks (file-ownership, contract-lock, context-budget, deploy-guard, quality-gate, typecheck-on-write, wiki guards, plus ambient monitors; full table in [`docs/hooks.md`](docs/hooks.md)). Installed per-project, opt-in.
 
 Claude Code hooks reference `$CLAUDE_PROJECT_DIR/hooks/...`, so the user-global tier alone cannot wire enforcement. The per-project tier is bootstrapped during these commands:
 
@@ -1246,7 +1461,7 @@ Invoke directly or as flags on any command:
 | **Strategy & UX** | strategy-agent, ux-agent | review pipelines |
 | **Roadmap** | roadmap-builder, scope-feasibility, questioner | `/loom-roadmap init` |
 | **Dual-track Planning** | plan-builder, criteria-planner, interpretation-reviewer, feature-coverage, phasing, parallelization, agentic-workflow, context-budget-reviewer, plan-critic | `/loom-plan create`, `/loom-plan review` |
-| **Plan Reviewers (M-04)** | plan-ceo-review (11-section CEO lens + 4 modes), plan-eng-review (7 passes + anti-skip clauses citing named regressions), plan-design-review (7 passes with 0–10 + prescribe-to-10), plan-devex-review (8 passes emitting predictedTTHW for the `/loom-devex:review` boomerang) | `/loom-plan review` |
+| **Plan Reviewers (M-04)** | plan-ceo-review (11-section CEO lens + 4 modes), plan-eng-review (7 passes + anti-skip clauses citing named regressions), plan-design-review (7 passes with 0–10 + prescribe-to-10), plan-devex-review (8 passes emitting predictedTTHW for the `/loom-devex review` boomerang) | `/loom-plan review` |
 | **Execution** | contracts, implementer, api-route-creator, api-connector, wiring, verification | `/loom-plan execute` |
 | **Convergence** | convergence-planner, target-parser, harness-builder, criteria-harness-builder, delta-analyzer, convergence-driver | `/loom-converge` |
 | **Testing** | acceptance-criteria, unit-test, integration-test, e2e-test-writer, e2e-runner, e2e-test, qa-review | `/loom-plan test`, `/loom-converge --criteria` |
@@ -1274,7 +1489,7 @@ Available as direct commands (`/loom-debate`) or flags on any command (`--debate
 
 ## Hooks (Deterministic Enforcement)
 
-Thirteen Claude Code hooks enforce Loom invariants at the tool-call level — file ownership, contract locks, context budgets, deploy guards, wiki integrity. Fail-open on missing state, fail-closed on schema-version mismatches. For the severity convention (which event type to slot a hook into when authoring a kit), see [Install → Hook enforcement](#hook-enforcement-per-project) above.
+Eighteen Claude Code hooks enforce Loom invariants at the tool-call level — file ownership, contract locks, context budgets, deploy guards, wiki integrity. Fail-open on missing state, fail-closed on schema-version mismatches. For the severity convention (which event type to slot a hook into when authoring a kit), see [Install → Hook enforcement](#hook-enforcement-per-project) above.
 
 **Full hook reference, infra scripts, and registration:** see [`docs/hooks.md`](docs/hooks.md).
 
@@ -1361,9 +1576,7 @@ Reference material kept out of the main README to keep it scannable:
 
 ## Status
 
-Loom is **alpha (`v0.0.x`)** — the core pipeline (planning, execution, convergence, code review, change lifecycle) is stable and exercised on real work. The distribution layer is still settling: install is curl-only, signed tarballs and a Homebrew formula land in v0.1.0. Schemas can evolve with migrations; `/loom-upgrade` handles per-project migration when new versions ship.
-
-See [`planning/plans/PLAN-oss-launch.md`](planning/plans/PLAN-oss-launch.md) for v0.1.0 scope.
+Loom is **alpha (`v0.0.x`)** — the core pipeline (planning, execution, convergence, code review, change lifecycle) is stable and exercised on real work. The distribution layer is still settling: the plugin marketplace and curl paths both work today (plugin is the default; see [Quickstart](#quickstart)), while signed tarballs and a Homebrew formula land in v0.1.0. Schemas can evolve with migrations; `/loom-upgrade` handles per-project migration when new versions ship.
 
 ## Support
 
@@ -1373,9 +1586,11 @@ Loom is open-source under Apache 2.0 and maintained by [Launchstack Dev](https:/
 
 ## Acknowledgments
 
-Loom's judgment layer — learnings, regressions, decision principles, confidence-calibrated findings, retrospectives, the ship-engineer cluster, the browser daemon foundation, and the direct-symlink distribution path — was adapted from Garry Tan's [gstack](https://github.com/garrytan/gstack). Every idea is re-authored as a Loom-native resource (agent / prompt / protocol / skill / infrastructure) rather than copied verbatim, per the M-13 gstack adoption locked decision (`planning/ROADMAP-gstack-adoption.md`). The 36 features across 13 milestones landed in commit `050ff24`; browsing `planning/ROADMAP-gstack-adoption.md` shows the one-to-one mapping from gstack idea to Loom resource. gstack itself is a rigorous, opinionated methodology worth reading directly — we recommend it to anyone building agentic tooling on Claude Code.
+Loom's judgment layer — learnings, regressions, decision principles, confidence-calibrated findings, retrospectives, the ship-engineer cluster, the browser daemon foundation, and the direct-symlink distribution path — was adapted from Garry Tan's [gstack](https://github.com/garrytan/gstack) (MIT License). Every idea is re-authored as a Loom-native resource (agent / prompt / protocol / skill / infrastructure) rather than copied verbatim, per locked decision C-01 ("Adopt, don't fork") in `planning/ROADMAP-gstack-adoption.md`. The 36 features across 13 milestones landed in PR [#31](https://github.com/launchstack-dev/loom-ai/pull/31); browsing `planning/ROADMAP-gstack-adoption.md` shows the one-to-one mapping from gstack idea to Loom resource. gstack itself is a rigorous, opinionated methodology worth reading directly — we recommend it to anyone building agentic tooling on Claude Code.
 
 Several of Loom's core patterns — including the codebase-design vocabulary (Module/Seam/Adapter), the feedback-loop ladder, the no-op test framing for skill authoring, the horizontal-slice anti-pattern for TDD, the throwaway-prototype branch discipline, and the grilling discipline with a 12-question cap — were adapted from educational content by Matt Pocock. Full attribution, MIT-license source references, and a description of how each pattern was adapted are recorded in [`NOTICE`](NOTICE) at the root of this repository.
+
+Loom's on-disk data format is [TOON](https://github.com/toon-format/toon) (Token-Oriented Object Notation), an open MIT-licensed specification by Johann Schopplich — Loom implements the grammar independently and uses the upstream `@toon-format/toon` package for programmatic encode/decode. The documentation quadrant enforced by `/loom-docs generate` is the [Diátaxis](https://diataxis.fr) framework by Daniele Procida.
 
 The wiki system and behavioral-guidelines draw from Andrej Karpathy's observations on LLM failure patterns. The change-proposal lifecycle is inspired by OpenSpec; Loom departs from it by treating scenarios as enforcement gates rather than documentation. The parallel-orchestration shape is in the tradition of the get-shit-done (GSD) pattern of turning agentic runs into a pipeline. TDD discipline (red-green-refactor, tracer bullets, tight feedback loop) is in the Superpowers tradition. The convergence loop is a sophisticated cousin of Ralph's endless-refinement pattern with typed findings, snapshots, and a driver that halts instead of spinning. See [docs/design-philosophy.md](docs/design-philosophy.md) for the fuller lineage.
 

@@ -365,21 +365,36 @@ function renderTOON(composite: number, results: ComponentResult[]): {
   return { stdout, historyRow: row, metrics };
 }
 
-export function main(): void {
+export function main(argv: string[] = process.argv.slice(2)): void {
+  // --quick: in-loop mode for /loom-qa and other tight fix→verify cycles.
+  // Skips the two slow components (tests, dead-code); the composite
+  // re-normalizes over what ran, same as a missing tool. Quick runs do NOT
+  // append to .loom/health-history.toon — the history is the daily/full
+  // trend line, and a qa loop would flood it with near-duplicate rows.
+  const quick = argv.includes("--quick");
+  const skippedQuick = (tool: string, weight: number): ComponentResult => ({
+    tool,
+    rawScore: NaN,
+    weight,
+    skipped: true,
+    note: "skipped (--quick mode)",
+  });
   const results: ComponentResult[] = [
     runTypecheck(),
-    runTests(),
+    quick ? skippedQuick("tests", 0.3) : runTests(),
     runLint(),
-    runDeadCode(),
+    quick ? skippedQuick("dead-code", 0.1) : runDeadCode(),
     runShellcheck(),
   ];
   const composite = computeComposite(results);
   const rendered = renderTOON(composite, results);
   process.stdout.write(rendered.stdout);
-  try {
-    atomicAppendHistory(rendered.historyRow);
-  } catch (e) {
-    process.stderr.write(`# health-history write failed (non-fatal): ${(e as Error).message}\n`);
+  if (!quick) {
+    try {
+      atomicAppendHistory(rendered.historyRow);
+    } catch (e) {
+      process.stderr.write(`# health-history write failed (non-fatal): ${(e as Error).message}\n`);
+    }
   }
 }
 

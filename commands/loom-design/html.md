@@ -2,7 +2,7 @@
 description: Ship production HTML/CSS from a prose or image mockup with Pretext-native rules and anti-AI-slop guards. Emits to docs/design/{slug}/
 ---
 
-# /loom-design:html
+# /loom-design html
 
 Runs the M-13 F-23 mockup-to-HTML pipeline.
 

@@ -1,0 +1,59 @@
+title: Loom vs gstack — Comparative Review Baseline Scorecard
+subject: https://github.com/garrytan/gstack
+subjectLicense: MIT
+reviewedProject: loom-ai
+methodology: 4-agent comparative review across seven quality dimensions
+analyzedDate: 2026-07-01
+status: baseline
+purpose: Preserve the reproducible baseline that motivated ROADMAP-gstack-adoption (the 36-feature idea-adoption initiative) and ROADMAP-exceed-gstack (the defect-closure and exceed initiative). This is the reference the F-25 acceptance gate re-runs against.
+
+provenance:
+  producedBy: 4 parallel review agents scoring the same rubric over both codebases
+  groundTruth: gstack fetched via `gh api repos/garrytan/gstack` during gstack-adoption Phase 4-bis (planning/history/changelog.md:694)
+  citedIn[2]: planning/ROADMAP-exceed-gstack.md:16 (dimension summary), planning/history/changelog.md:700-703 (creation + acceptance gate)
+  note: This file reconstructs the baseline from the surviving planning-doc record. Four dimensions carry explicit integer scores in the source; three are recorded there qualitatively (leads / tie) with no integer preserved — those are marked `n/r` (not recorded) rather than invented. The overall figures are approximate (~) as stated in the source and do not cleanly reconcile to integer sub-scores, which is expected for a qualitative-summary review.
+
+# Seven quality dimensions. loomBaseline/gstackBaseline are the recorded baseline
+# scores (0-10). `n/r` = integer not recorded in surviving docs; status is the
+# source's qualitative verdict. delta = loom minus gstack where both are numeric.
+dimensions[7]{dimension,loomBaseline,gstackBaseline,delta,verdict,evidence}:
+  prompt-assets,n/r,n/r,positive,loom-leads,Loom's agent/prompt/protocol/skill catalog is broader and contract-driven
+  architecture,n/r,n/r,zero,tie,Comparable structural quality; both well-factored
+  docs,n/r,n/r,zero,tie,Comparable at baseline — later a Loom exceed target via generated drift-proof docs
+  code-quality,6,8,-2,gstack-leads,15 verified defects incl silent-no-op hook + two shell-injection sites + 49 typecheck errors
+  tests,6,9,-3,gstack-leads,No CI ran the vitest suite; ~20% tautological/prompt-grep tests; 8 PR-31 files untested
+  extensibility,7,8,-1,gstack-leads,Shared-core primitives duplicated (>=5 CSV splitters; atomicWrite copied 3x)
+  ops-polish,7,9,-2,gstack-leads,Only tag v0.0.1; install.sh fails open on integrity downgrade; tag-namespace pollution
+
+overall:
+  loomBaseline: ~7.1
+  gstackBaseline: ~8.3
+  gap: ~1.2
+  summary: Loom leads on prompt-assets, ties on architecture and docs, trails on code-quality, tests, extensibility, and ops-polish.
+
+# The 15 verified defects that ground the four trailing dimensions. Each maps to a
+# shipped fix feature in ROADMAP-exceed-gstack (see that file for full detail + acceptance).
+verifiedDefects[15]{id,dimension,summary,fixFeature}:
+  D-01,code-quality,agent-result-validator.ts calls runHook(main) against a runHook(name handler) signature — silent no-op since merge and unregistered,F-03
+  D-02,code-quality,Two shell-injection sites — loom-health.ts:238 and loom-version-slot.ts:147 interpolate into execSync,F-04
+  D-03,code-quality,version-slot records unrelated repositories' worktrees into the slot registry (cross-repo contamination),F-05
+  D-04,code-quality,49 typecheck errors under the hooks tsconfig block a green PR-tier typecheck gate,F-06
+  D-05,tests,No CI runs the vitest suite — 8 workflows exist but only install-command-coverage runs 1 file,F-01
+  D-06,tests,Eight PR-31 files (~2.9k LOC) untested; two call main() with no entry guard so they are un-importable,F-11
+  D-07,tests,~20% of tests are tautological or prompt-grep (reimplement the code they assert or assert self-constructed strings),F-12
+  D-08,extensibility,Divergent shared-core primitives — >=5 CSV splitters + >=4 TOON serializers + atomicWrite copied 3x,F-08
+  D-09,code-quality,CLAUDE.md carries a committed worktree-context block injecting false hard rules into every session on main,F-09
+  D-10,extensibility,Hook-registration drift across settings.json vs hooks.json vs loom-hooks-manifest.ts,F-10
+  D-11,code-quality,agent-result confidence field warns instead of blocking though the schema says it MUST be rejected,F-07
+  D-12,docs,README hook-count drift (fourteen vs thirteen) + four undocumented shipped commands + TOON-convention violations,F-18
+  D-13,ops-polish,Only tag across 207 commits is v0.0.1; 17 plan-exec-* tags pollute the v* namespace,F-15
+  D-14,ops-polish,install.sh fails open on integrity downgrade — unfetchable checksums WARN and continue,F-17
+  D-15,tests,vitest fileParallelism:false workaround masks ~39 load-sensitive failures and forces a serial 222s suite,F-14
+
+acceptanceGate:
+  definedIn: ROADMAP-exceed-gstack F-25 (C-09)
+  rule: Re-run the same 4-agent comparative review with the same rubric. Acceptance passes only when every dimension >= its gstack score AND overall > 8.3.
+  entity: ScorecardResult{dimension,loomScore,gstackScore,delta}
+  antiSubjectivity: Reuse the exact baseline rubric and agents; anchor each dimension to repo-derivable evidence so scores are defensible not vibes (ROADMAP-exceed-gstack:955).
+
+unifyingPrinciple: Adopt then exceed. gstack's ideas were re-authored as Loom-native resources (no code copied — locked decision C-01); this scorecard is the falsifiable yardstick for whether the exceed half actually landed.

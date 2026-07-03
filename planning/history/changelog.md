@@ -1,3 +1,12 @@
+## 2026-07-02 -- ROADMAP-exceed-gstack: M-10 browser subsystem added (direct Edit)
+
+- Added milestone **M-10: Working browser subsystem** (depends on M-01; independently shippable; does not gate the M-09 scorecard) and constraint **C-14** (make the browser subsystem real, re-authored not forked).
+- Motivation: audit found `/loom-browser` ships the M-11 architecture (daemon, tiered schema, a11y refs, cookie import, qa/canary/benchmark skills) but the driver is stubbed — `scripts/loom-browser-daemon.ts` `execCmd` queues commands instead of driving Chromium. `/loom-qa`, `/loom-canary`, `/loom-benchmark` describe loops that cannot execute.
+- Features: **F-27** (P1) real Playwright driver behind the existing `/loom-browser exec` interface + gstack's zero-token plain-text CLI protocol + cookie decrypt-import from installed Chrome/Chromium/Brave/Edge/Arc profiles; **F-28** (P1) a11y refs with fast-fail staleness + diff-aware QA page selection + auto-generated attributed regression tests; **F-29** (P2) optional hardening (injection defense, stealth, multi-agent shared browser) — deferrable, non-blocking.
+- Entities added: `BrowserCommand`, `QaRegressionTest` (+1 relationship). Frontmatter: totalFeatures 26→29, totalMilestones 9→10. Risk row added for the re-authoring lift.
+- Attribution: gstack is MIT; adopted patterns re-authored Loom-native per C-01. NOTICE gstack-section extension is a ship-time deliverable of F-27, deliberately NOT applied at plan time (crediting unbuilt work would be inaccurate).
+- Mutation performed via direct Edit (per operator authorization); scope is a milestone + 3 features + constraint + entities, beyond `/loom-roadmap mutate`'s single-feature append.
+
 ## 2026-06-13 -- Wave 4 executed (convergence-generalization, --auto) — M-02 closed contract-level
 
 - **Wave 4:** Phase 9 → Phase 10 serial-pair. Phase 10 deps Phase 9 because Step 5 cites the harness path Phase 9 creates.

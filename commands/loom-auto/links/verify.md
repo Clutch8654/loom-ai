@@ -148,9 +148,14 @@ missingDiagnoseCount    = (only relevant for FIX-LINK output; read from stage-co
 # Kit gates (if any)
 gateFailCount  = stage-context/execute.toon → kit gate fails with failAction == halt
 gateWarnCount  = stage-context/execute.toon → kit gate warns or fails with failAction == warn
+
+# Health trend (advisory unless regression ≥ 2.0)
+healthBefore   = .loom/health-history.toon → newest entry BEFORE this pipeline run started (else null)
+healthAfter    = run `bunx tsx scripts/loom-health.ts` now; read loomHealthScore (else null)
+healthDelta    = healthAfter - healthBefore (null when either side is null)
 ```
 
-If any of these inputs cannot be read, default conservatively (treat missing as failure) and log in `notes`.
+If any of these inputs cannot be read, default conservatively (treat missing as failure) and log in `notes` — EXCEPT the health inputs, which are advisory: when `.loom/health-history.toon` is absent or the health script is unavailable, set them null and continue (do not fail the gate on missing telemetry).
 
 ### Step 4: Apply Decision Matrix
 
@@ -161,7 +166,8 @@ This matrix is the same as `loom-auto.md` Step 6's quality gate — codified her
 | 1 | `gateFailCount > 0` AND any kit gate `failAction == halt` | **ESCALATE** (kit gate blocked) |
 | 2 | `outerIteration > 1` AND same structural failure pattern as previous iteration | **REVISE-ROADMAP** if iterations remain, else **ESCALATE** |
 | 3 | `convergeStatus` ∈ {stalled, regression, budget_exhausted, max_iterations} | **FIX-AND-RECONVERGE** if `fixCycleCount < 2`, else **REVISE-PLAN** |
-| 4 | `criticalCount == 0` AND `testPassRate == 1.0` AND `typecheckPass` AND `convergeStatus == converged` AND `unitGatePass` AND `integrationGatePass` AND `e2eGatePass` | **PROCEED** |
+| 3b | `healthDelta != null` AND `healthDelta <= -2.0` | **FIX-AND-RECHECK** if `fixCycleCount < 2`, else **REVISE-PLAN** — the pipeline made the codebase materially less healthy; record `healthBefore/healthAfter` in `notes` |
+| 4 | `criticalCount == 0` AND `testPassRate == 1.0` AND `typecheckPass` AND `convergeStatus == converged` AND `unitGatePass` AND `integrationGatePass` AND `e2eGatePass` | **PROCEED** (include `healthDelta` in `notes` when non-null — advisory trend, not a gate) |
 | 5 | `fixCycleCount >= 2` | **REVISE-PLAN** if iterations remain, else **ESCALATE** |
 | 6 | `criticalCount <= 3` AND `testPassRate >= 0.8` | **FIX-AND-RECHECK** |
 | 7 | `criticalCount > 3` OR `testPassRate < 0.8` OR systemic typecheck failure | **REVISE-PLAN** if iterations remain, else **ESCALATE** |

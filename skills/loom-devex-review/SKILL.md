@@ -3,9 +3,9 @@ name: loom-devex-review
 description: "Live DX audit — measures actual TTHW (time-to-hello-world) and compares against plan-devex-review-agent's predictedTTHW from Phase 4. Boomerang: 'plan said 3 min, reality says 8'."
 ---
 
-# /loom-devex:review — Live TTHW Boomerang (M-07 F-21)
+# /loom-devex review — Live TTHW Boomerang (M-07 F-21)
 
-`/loom-devex:review` closes the loop between the planning-time DX prediction
+`/loom-devex review` closes the loop between the planning-time DX prediction
 (from `agents/plan-devex-review-agent.md`, shipped by Phase 4 F-12) and the
 lived install experience. It re-runs the install-and-hello-world flow in a
 fresh temp directory, measures wall time, and reports a delta the plan

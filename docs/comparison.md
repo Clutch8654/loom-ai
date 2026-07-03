@@ -23,9 +23,13 @@ The projects Loom most resembles or borrows patterns from. **Loom is not a compe
 
 Loom does not redistribute these projects — it adopts shapes:
 
+- **gstack (Garry Tan, MIT)** — the largest single influence: the judgment layer (learnings/regressions registries, confidence-calibrated findings, decision principles), retrospective ceremony, planning-review lenses (CEO/eng/design/DevEx), code-review lenses, build-time QA and design clusters, ship-engineer cluster, browser daemon, and direct-symlink install path. 36 features across 13 milestones re-authored as Loom-native resources with no code copied (locked decision C-01, `planning/ROADMAP-gstack-adoption.md`); full milestone-by-milestone attribution in [`NOTICE`](../NOTICE). The comparative-review baseline that scoped this work is preserved in [`research/loom-vs-gstack-scorecard.toon`](../research/loom-vs-gstack-scorecard.toon).
+- **Matt Pocock's skills (MIT)** — six patterns including the codebase-design vocabulary, feedback-loop ladder, and grilling discipline; per-pattern attribution in [`NOTICE`](../NOTICE).
 - **OpenSpec** — the `init → review → approve → run → archive` change-proposal shape (planning/archive/PLAN-spec-upgrades.md, Upgrade B). Loom departs by making scenarios enforcement gates rather than documentation.
 - **Superpowers** — strict red-green TDD gate, diagnose-before-fix, hard verification gate in `AgentResult` (ROADMAP C-06 / F-07). Loom does not adopt Superpowers' orchestration, planning, or dispatch.
 - **BMAD** — change-management *shape*, but Loom is explicitly tool-driven (validation gates only), not role-driven (no human approval queues).
+- **TOON (Johann Schopplich, MIT)** — the on-disk data format is the external [toon-format](https://github.com/toon-format/toon) specification, implemented independently in `lib/toon.ts`.
+- **Diátaxis (Daniele Procida)** — the tutorial/how-to/reference/explanation quadrant enforced by `/loom-docs generate` is the [Diátaxis](https://diataxis.fr) framework, applied as a methodology.
 
 ## Not in the same category
 

@@ -2,7 +2,7 @@
 description: "Live TTHW boomerang — measures actual install-to-hello-world time in a fresh temp dir and reports delta vs plan-devex-review-agent's predictedTTHW."
 ---
 
-# /loom-devex:review
+# /loom-devex review
 
 Live DX audit. Re-runs the install flow end-to-end in `$(mktemp -d)`,
 measures wall time, scores CLI help / error messages / config surface, and
@@ -12,7 +12,7 @@ emits a boomerang comparison against the latest
 ## Usage
 
 ```
-/loom-devex:review [--install-cmd "<cmd>"] [--hello-target "<cmd>"]
+/loom-devex review [--install-cmd "<cmd>"] [--hello-target "<cmd>"]
 ```
 
 Both flags are optional; the skill auto-detects from README when omitted.

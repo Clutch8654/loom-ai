@@ -7,7 +7,7 @@ description: Persistent Chromium daemon at .loom/browser/ with tiered READ/WRITE
 
 `/loom-browser` gives Loom a long-lived headless (or headed) Chromium session
 that downstream commands share instead of each cold-starting their own browser.
-It is the substrate that `/loom-qa` (M-07), `/loom-design:*` (M-13), and
+It is the substrate that `/loom-qa` (M-07), `/loom-design (consultation|html|shotgun)` (M-13), and
 `/loom-benchmark` (M-08 F-27) build on.
 
 ## Subcommands
@@ -73,7 +73,7 @@ operations are in flight.
 
 - start / stop / restart
 - Config change (viewport, user-agent)
-- Cookie import (see `/loom-setup:browser-cookies`)
+- Cookie import (see `/loom-setup browser-cookies`)
 - Extension load
 
 ## Accessibility-tree refs
@@ -136,9 +136,9 @@ can still emit useful plans in CI environments without a browser.
 ## Downstream consumers
 
 - **M-07 `/loom-qa`** — live-site iterative test/fix loop
-- **M-07 `/loom-devex:review`** — live DX audit with real TTHW measurement
+- **M-07 `/loom-devex review`** — live DX audit with real TTHW measurement
 - **M-07 `/loom-cso`** — two-tier live security review
-- **M-13 `/loom-design:*`** — HTML → design consultation → shotgun screenshot compare
+- **M-13 `/loom-design (consultation|html|shotgun)`** — HTML → design consultation → shotgun screenshot compare
 - **M-08 F-27 `/loom-benchmark`** — comparative live-site benchmark harness
 
 Each of these commands may only issue tier-appropriate operations and MUST

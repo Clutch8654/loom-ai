@@ -9,7 +9,7 @@ Run this at the end of a milestone, sprint, or notable body of work to codify wh
 
 ## Inputs
 
-- **Window** (optional): `--since <ref>` (git ref or ISO date). Defaults to the last 14 days.
+- **Window** (optional): `--since <ref>` (git ref or ISO date). Default: the newest entry timestamp in `.loom/learnings.toon` when the file exists (i.e. "everything since the last retro"), otherwise the last 14 days.
 - **Scope** (optional): `--plan <path>` to focus on one plan; otherwise scans all recently modified `planning/plans/PLAN-*.md`.
 
 ## 5-Phase Workflow
@@ -78,10 +78,10 @@ Cross-tabulate this retro against the last 2 retros (if any). When ≥2 retros s
 Recommended ROADMAP mutation:
   Feature: F-NN <name>
   Rationale: <cite the recurring learning IDs>
-  Suggested action: <one sentence for /loom-roadmap:mutate>
+  Suggested action: <one sentence for /loom-roadmap mutate>
 ```
 
-Do NOT auto-mutate the ROADMAP; the operator invokes `/loom-roadmap:mutate` if they concur. This is per `protocols/loom-decision-principles.md`: roadmap changes are user-challenge, never mechanical.
+Do NOT auto-mutate the ROADMAP; the operator invokes `/loom-roadmap mutate` if they concur. This is per `protocols/loom-decision-principles.md`: roadmap changes are user-challenge, never mechanical.
 
 ## Output Summary
 

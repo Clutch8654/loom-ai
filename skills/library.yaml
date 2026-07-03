@@ -101,6 +101,10 @@ library:
       description: "Natural-language routing skill for /loom bugfix — triggers on bug reports, error descriptions, broken behavior"
       source: skills/loom-bugfix-routing.md
 
+    - name: loom-git-routing
+      description: "Natural-language routing skill for /loom-git — triggers on commit/push/PR/merge/cleanup phrasing, extracts subcommand + flags"
+      source: skills/loom-git-routing.md
+
     # Wiki protocols
     - name: wiki-page-schema
       description: Schema for individual wiki pages — TOON frontmatter format, categories, cross-references, staleness model
@@ -206,12 +210,40 @@ library:
       source: protocols/version-slot.schema.toon
 
     - name: learnings-schema
-      description: "Learnings registry schema at .loom/learnings.toon. Defines learnings[]{id,capturedAt,category,summary,context,appliesTo,confidence} consumed by plan-review agents (CEO/eng/design/devex) at preamble to inject prior lessons into review passes. Shipped by M-04 (gstack adoption Phase 4)."
+      description: "Learnings registry schema at .loom/learnings.toon. Defines learnings[N]{id,key,description,confidence,sourcePlan,sourceDate,domain,tags} consumed by plan-review agents (CEO/eng/design/devex) at preamble to inject prior lessons into review passes, and by /loom-learn + scripts/loom-learnings-search.ts. Shipped by M-04 (gstack adoption Phase 4)."
       source: protocols/learnings.schema.toon
 
     - name: regressions-schema
       description: "Regressions registry schema at .loom/regressions.toon. Defines regressions[]{id,capturedAt,summary,rootCause,detection,preventionRule} consumed by plan-eng-review-agent to enforce anti-skip clauses citing named regressions. Shipped by M-04 (gstack adoption Phase 4)."
       source: protocols/regressions.schema.toon
+
+    - name: exit-codes
+      description: "Canonical cross-skill exit-code convention and UPPER_SNAKE error-code registry. Reserves 0 success / 1 gate-failure / 2 usage-or-config / 3+ skill-specific, catalogs every named error code with owning surface and severity, records legacy divergences, and requires new skills to register their codes here. Supersedes the error table in PLAN-gstack-adoption.md."
+      source: protocols/exit-codes.md
+
+    - name: perf-history-schema
+      description: "Perf trend-log schema at .loom/perf-history.toon. Defines runs[]{runId,timestamp,prRef,LCP,CLS,FID,INP,verdict} appended by /loom-benchmark perf and read by /loom-status for the per-PR Core Web Vitals trend line. Append-only, atomic writes."
+      source: protocols/perf-history.schema.toon
+
+    - name: benchmark-history-schema
+      description: "Cross-vendor model benchmark schemas: .loom/benchmark-history.toon runs[]{runId,timestamp,vendorsRun,avgQualityByVendor,estCostUsdByVendor} (append-only, pipe-separated intra-cell lists) and the optional .loom/benchmark-suite.toon prompts[]{id,prompt,rubric} input. Written by /loom-benchmark models; read by /loom-status and retro reports."
+      source: protocols/benchmark-history.schema.toon
+
+    - name: canary-history-schema
+      description: "Canary deploy history schema at .loom/canary-history.toon. Defines runs[]{canaryId,target,version,startedAt,finishedAt,phasesCompleted,rolledBack,healthCheckUrl,notes} appended by /loom-canary; read by /loom-landing-report for the cross-workspace deploy summary. Encodes the rollback invariant: one gate failure => rolledBack: true."
+      source: protocols/canary-history.schema.toon
+
+    - name: security-history-schema
+      description: "Security trend schema at .loom/security-history.toon. Defines entries[]{timestamp,mode,score,confidenceFloor,7 per-lens counts,gitSha} appended by scripts/loom-cso.ts and read by the /loom-cso fast gate (block on regression or score < 8) and the CSO retro. Mirrors .loom/health-history.toon."
+      source: protocols/security-history.schema.toon
+
+    - name: design-preferences-schema
+      description: "Taste-memory schema at .loom/design/preferences.toon. Defines preferences[]{slug,capturedAt,winnerVariant,winnerAxis,rejectedAxes} appended by /loom-design shotgun, plus the normative time-decay math: full weight <= 90 days, 0.5^((ageDays-90)/30) to 180 days, archived (weight 0, excluded from generation prompt) beyond 180 days."
+      source: protocols/design-preferences.schema.toon
+
+    - name: diagram-index-schema
+      description: "Diagram triplet registry schema at .loom/diagrams/index.toon. Defines diagrams[]{slug,path,source,generatedAt,shaShort} appended by /loom-diagram; shaShort (truncated SHA-256 of the .md source) is the anchor /loom-docs release uses for DIAGRAM_DRIFT_DETECTED drift detection."
+      source: protocols/diagram-index.schema.toon
 
   # In v4, skills = Claude Code native skills (new, initialized empty at v3→v4 migration)
   skills:
@@ -297,7 +329,7 @@ library:
       source: skills/loom-ship/SKILL.md
 
     - name: loom-canary
-      description: "Progressive deploy skill — three-phase rollout (10%/50%/100%) with health-check gates between phases and immediate rollback on any gate failure. Reads deploy config from CLAUDE.md ## Deploy Configuration block populated by /loom-setup:deploy; wraps target-native CLI (fly/vercel/wrangler/netlify/railway/render). Appends every run to .loom/canary-history.toon. Shipped by M-10 (gstack adoption Phase 11 F-31)."
+      description: "Progressive deploy skill — three-phase rollout (10%/50%/100%) with health-check gates between phases and immediate rollback on any gate failure. Reads deploy config from CLAUDE.md ## Deploy Configuration block populated by /loom-setup deploy; wraps target-native CLI (fly/vercel/wrangler/netlify/railway/render). Appends every run to .loom/canary-history.toon. Shipped by M-10 (gstack adoption Phase 11 F-31)."
       source: skills/loom-canary/SKILL.md
 
     - name: loom-landing-report
@@ -309,7 +341,7 @@ library:
       source: skills/loom-setup-deploy/SKILL.md
 
     - name: loom-design-consultation
-      description: "Ground-up brand kickoff — 5-phase interview (audience/tone → aesthetic direction → typography pairing → color system → motion principles) writing a durable premise artifact to .loom/design/{slug}-{ISO-timestamp}.md. Reads .loom/learnings.toon (domain: design) for prior cross-project decisions. Optional font-preview render delegated to /loom-design:html. Shipped by M-13 (gstack adoption Phase 13 F-22)."
+      description: "Ground-up brand kickoff — 5-phase interview (audience/tone → aesthetic direction → typography pairing → color system → motion principles) writing a durable premise artifact to .loom/design/{slug}-{ISO-timestamp}.md. Reads .loom/learnings.toon (domain: design) for prior cross-project decisions. Optional font-preview render delegated to /loom-design html. Shipped by M-13 (gstack adoption Phase 13 F-22)."
       source: skills/loom-design-consultation/SKILL.md
 
     - name: loom-design-html
@@ -319,6 +351,26 @@ library:
     - name: loom-design-shotgun
       description: "Parallel UI variant board — generates N variants (default 4) on distinct axes (minimalist/dense/brutalist/editorial), renders side-by-side via /loom-browser daemon (fallback to .loom/design/shotgun/{slug}/variant-{n}.html), captures user preference with capturedAt ISO-8601 timestamp to .loom/design/preferences.toon, time-decays old preferences (weight-down at 90 d, drop-out at 180 d) so taste memory adapts without ossifying. Shipped by M-13 (gstack adoption Phase 13 F-24)."
       source: skills/loom-design-shotgun/SKILL.md
+
+    - name: loom-benchmark-models
+      description: "Side-by-side comparison of Claude+GPT+Gemini on same prompt with LLM judge scoring quality; dashboard reports latency, tokens, cost, and quality per vendor. Appends to .loom/benchmark-history.toon. Shipped by M-08 (gstack adoption Phase 9 F-25)."
+      source: skills/loom-benchmark-models/SKILL.md
+
+    - name: loom-learn
+      description: "Review/search/prune/export learnings from .loom/learnings.toon (from M-01 F-04). Proactively surfaces top 3 prior learnings when the user prompt contains 'didn't we', 'before', 'again', 'recurring'. Shipped by M-08 (gstack adoption Phase 9 F-26)."
+      source: skills/loom-learn/SKILL.md
+
+    - name: loom-benchmark
+      description: "Perf regression via /loom-browser daemon — Core Web Vitals baseline/PR-diff with LCP/CLS/FID/INP per PR; appends to .loom/perf-history.toon. Shipped by M-08 (gstack adoption Phase 9 F-27)."
+      source: skills/loom-benchmark/SKILL.md
+
+    - name: loom-docs-generate
+      description: "Cold-start docs via Diataxis quadrant (tutorial/how-to/reference/explanation) — emits 4 stub docs under docs/ with diataxis: frontmatter tags. Shipped by M-08 (gstack adoption Phase 9 F-28)."
+      source: skills/loom-docs-generate/SKILL.md
+
+    - name: loom-diagram
+      description: "English or mermaid → excalidraw triplet (source .md + editable .excalidraw + rendered .svg/.png). Registers each triplet in .loom/diagrams/index.toon for drift detection by /loom-docs release. Shipped by M-08 (gstack adoption Phase 9 F-29)."
+      source: skills/loom-diagram/SKILL.md
 
   infrastructure:
     - name: statusline-renderer
@@ -349,8 +401,12 @@ library:
       source: hooks/loom-careful.ts
 
     - name: loom-health
-      description: CLI that runs typecheck (30%), tests (30%), lint (20%), dead-code (10%), and shellcheck (10%) and prints a composite 0-10 quality score as TOON, appending a HealthScoreHistory row to .loom/health-history.toon. Missing tools emit HEALTH_TOOL_MISSING and drop from the re-normalised composite.
+      description: CLI that runs typecheck (30%), tests (30%), lint (20%), dead-code (10%), and shellcheck (10%) and prints a composite 0-10 quality score as TOON, appending a HealthScoreHistory row to .loom/health-history.toon. --quick skips tests + dead-code and does not append history (in-loop mode for /loom-qa). Missing tools emit HEALTH_TOOL_MISSING and drop from the re-normalised composite.
       source: scripts/loom-health.ts
+
+    - name: loom-cso-gate
+      description: "Deterministic fast-gate runtime for /loom-cso — gate math (block on regression vs last daily entry or score < 8), atomic append to .loom/security-history.toon, and the four scriptable lenses (secrets regex, dep audit, file perms, CI/CD supply chain). Model-driven lens counts injected via --auth-gaps/--input-validation-gaps/--llm-trust-issues flags. Exit 0 pass, 1 block/warn (daily), 2 usage."
+      source: scripts/loom-cso.ts
 
     - name: loom-browser-daemon
       description: "Persistent Chromium daemon runtime for M-11 F-33. Subcommands start|stop|status|exec. Writes .loom/browser/state.toon per protocols/browser-state.schema.toon. Detects Chrome/Chromium/Brave/Edge binary; falls back to stub mode (queue-only, no hard fail) when no binary is present. Prompt-injection defense hook is a no-op in M-11 and is wired to code-llm-trust-review-agent in M-05 F-15."
@@ -359,26 +415,6 @@ library:
     - name: loom-import-cookies
       description: "Chrome cookie import runtime for M-11 F-34. Detects cookie store on macOS/Linux/Windows for Chrome/Chromium/Brave/Edge, reads domain list from .loom/browser/cookie-domains.toon, decrypts cookies via chrome-cookies-secure (best-effort — prints install hint if missing), and writes per-domain files to .loom/browser/cookies/{domain}.toon with expiresAt per cookie."
       source: scripts/loom-import-cookies.ts
-
-    - name: loom-benchmark-models
-      description: "Side-by-side comparison of Claude+GPT+Gemini on same prompt with LLM judge scoring quality; dashboard reports latency, tokens, cost, and quality per vendor. Appends to .loom/benchmark-history.toon. Shipped by M-08 (gstack adoption Phase 9 F-25)."
-      source: skills/loom-benchmark-models/SKILL.md
-
-    - name: loom-learn
-      description: "Review/search/prune/export learnings from .loom/learnings.toon (from M-01 F-04). Proactively surfaces top 3 prior learnings when the user prompt contains 'didn't we', 'before', 'again', 'recurring'. Shipped by M-08 (gstack adoption Phase 9 F-26)."
-      source: skills/loom-learn/SKILL.md
-
-    - name: loom-benchmark
-      description: "Perf regression via /loom-browser daemon — Core Web Vitals baseline/PR-diff with LCP/CLS/FID/INP per PR; appends to .loom/perf-history.toon. Shipped by M-08 (gstack adoption Phase 9 F-27)."
-      source: skills/loom-benchmark/SKILL.md
-
-    - name: loom-docs-generate
-      description: "Cold-start docs via Diataxis quadrant (tutorial/how-to/reference/explanation) — emits 4 stub docs under docs/ with diataxis: frontmatter tags. Shipped by M-08 (gstack adoption Phase 9 F-28)."
-      source: skills/loom-docs-generate/SKILL.md
-
-    - name: loom-diagram
-      description: "English or mermaid → excalidraw triplet (source .md + editable .excalidraw + rendered .svg/.png). Registers each triplet in .loom/diagrams/index.toon for drift detection by /loom-docs:release. Shipped by M-08 (gstack adoption Phase 9 F-29)."
-      source: skills/loom-diagram/SKILL.md
 
     - name: loom-worktree-scan
       description: "CLI utility that scans sibling worktrees at ../ and $HOME/.worktrees, derives file-ownership from PLAN.md or git diff --name-only base...HEAD, and writes an advisory lease registry to ~/.loom/leases/{repo}.toon per protocols/worktree-lease.schema.toon. Subcommands - scan, preflight (exit 1 on overlap), leases, release <id>. Shipped by M-09 (gstack adoption Phase 10 F-01)."
@@ -577,7 +613,7 @@ library:
       kit: plan-review
 
     - name: plan-devex-review-agent
-      description: "DevEx plan review — 8 passes with DX Hall of Fame reference (install DX, TTHW prediction, CLI ergonomics, error quality, doc-first vs code-first, config surface, upgrade path, uninstall/rollback). Emits predictedTTHW for /loom-devex:review boomerang. Findings carry confidence 1..10."
+      description: "DevEx plan review — 8 passes with DX Hall of Fame reference (install DX, TTHW prediction, CLI ergonomics, error quality, doc-first vs code-first, config surface, upgrade path, uninstall/rollback). Emits predictedTTHW for /loom-devex review boomerang. Findings carry confidence 1..10."
       source: agents/plan-devex-review-agent.md
       requires: [protocol:agent-result-schema, protocol:learnings-schema]
       kit: plan-review
@@ -831,7 +867,7 @@ library:
       source: commands/loom-spec.md
 
     - name: loom-docs
-      description: "Doc lifecycle dispatcher — subcommands for post-ship doc sync (release) with future room for /loom-docs:generate under M-08"
+      description: "Doc lifecycle dispatcher — subcommands for post-ship doc sync (release) with future room for /loom-docs generate under M-08"
       source: commands/loom-docs.md
 
     - name: loom-docs-release
@@ -863,7 +899,7 @@ library:
       source: commands/loom-qa.md
 
     - name: loom-devex
-      description: "DX lifecycle dispatcher — subcommands for live DX audits (review) with future room for /loom-devex:trace. Shipped by M-07 (gstack adoption Phase 8)."
+      description: "DX lifecycle dispatcher — subcommands for live DX audits (review) with future room for /loom-devex trace. Shipped by M-07 (gstack adoption Phase 8)."
       source: commands/loom-devex.md
 
     - name: loom-devex-review
@@ -890,6 +926,22 @@ library:
       description: "Cold-start Diataxis docs subcommand — generates docs/tutorial, docs/how-to, docs/reference, docs/explanation with diataxis: frontmatter. Shipped by M-08 (gstack adoption Phase 9 F-28)."
       source: commands/loom-docs/generate.md
 
+    - name: loom-retro
+      description: "Retrospective ceremony command — gathers git/PR/plan activity, runs the structured interview, appends learnings and regressions to .loom/learnings.toon and .loom/regressions.toon. Shipped by M-01 (gstack adoption Phase 1 F-04)."
+      source: commands/loom-retro.md
+
+    - name: loom-prototype
+      description: "Deliberate throwaway-code phase between /loom-roadmap and /loom-plan — two branches: logic (terminal app) or ui (parallel UI variants on one route)."
+      source: commands/loom-prototype.md
+
+    - name: loom-deepen
+      description: "Periodic codebase deepening report — fan-out exploration surfaces shallow modules, applies the deletion test, emits TOON candidates with before/after diagrams. Opt-in HTML render via --html."
+      source: commands/loom-deepen.md
+
+    - name: loom-update
+      description: "Channel-aware updater for system-owned items (infrastructure, prompts, hook templates) — the safe upgrade path that /loom-library sync defers to."
+      source: commands/loom-update.md
+
     - name: loom-diagram
       description: "English or mermaid → excalidraw triplet (source .md + editable .excalidraw + rendered .svg). Registers each triplet in .loom/diagrams/index.toon. Shipped by M-08 (gstack adoption Phase 9 F-29)."
       source: commands/loom-diagram.md
@@ -899,7 +951,7 @@ library:
       source: commands/loom-worktree.md
 
     - name: loom-ship
-      description: "One-shot pre-PR pipeline — rebase onto base, reserve next free VERSION slot, drift detection, plan-completion audit (DIFF-VERIFIABLE / CROSS-REPO / EXTERNAL-STATE / CONTENT-SHAPE classifier, cap 50), assemble PR body with ledger + test plan + optional doc-debt from /loom-docs:release, gh pr create. Halts on rebase conflict, unresolved drift, or missing gh. Shipped by M-10 (gstack adoption Phase 11 F-30)."
+      description: "One-shot pre-PR pipeline — rebase onto base, reserve next free VERSION slot, drift detection, plan-completion audit (DIFF-VERIFIABLE / CROSS-REPO / EXTERNAL-STATE / CONTENT-SHAPE classifier, cap 50), assemble PR body with ledger + test plan + optional doc-debt from /loom-docs release, gh pr create. Halts on rebase conflict, unresolved drift, or missing gh. Shipped by M-10 (gstack adoption Phase 11 F-30)."
       source: commands/loom-ship.md
 
     - name: loom-canary
@@ -1010,4 +1062,18 @@ kits:
       - type: prompt
         name: loom-design-shotgun
     command: loom-design.md
+
+  - name: plan-review
+    description: "Extended planning-review lenses that fan out inside /loom-plan review — CEO (vision/business/scope), engineering (architecture/phasing/contracts), design (IA/journey/states/a11y), and DevEx (TTHW prediction boomerang). Shipped by M-04 (gstack adoption Phase 4)."
+    version: 0.1.0
+    minLoomVersion: 4
+    includes:
+      - type: agent
+        name: plan-ceo-review-agent
+      - type: agent
+        name: plan-eng-review-agent
+      - type: agent
+        name: plan-design-review-agent
+      - type: agent
+        name: plan-devex-review-agent
 

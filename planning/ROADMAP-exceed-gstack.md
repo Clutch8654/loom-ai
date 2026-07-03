@@ -5,15 +5,15 @@ status: approved
 created: 2026-07-01
 lastReviewed: 2026-07-01
 targetDate: null
-totalFeatures: 26
-totalMilestones: 9
+totalFeatures: 29
+totalMilestones: 10
 ---
 
 # Roadmap: Exceed gstack
 
 ## Vision
 
-Loom-ai and Garry Tan's gstack (github.com/garrytan/gstack) were subjected to a completed 4-agent comparative review across seven quality dimensions. Loom leads on prompt-assets and ties on architecture and docs, but trails on code quality (6 vs 8), tests (6 vs 9), extensibility (7 vs 8), and ops polish (7 vs 9) — overall ~7.1 vs ~8.3. This initiative closes and then reverses those gaps: fix 15 verified defects, harden the test and release spines, generate drift-proof docs, add a free-by-default eval tier ladder, and upgrade every gstack-derived skill past its upstream. Success is not self-declared — it is confirmed by re-running the same 4-agent review and requiring every dimension to meet or beat gstack with an overall score above 8.3. The work sequences foundation-first: CI gates and a shared core library land before any defect fix, and defect fixes land before the exceed milestones.
+Loom-ai and Garry Tan's gstack (github.com/garrytan/gstack, MIT) were subjected to a completed 4-agent comparative review across seven quality dimensions. Loom leads on prompt-assets and ties on architecture and docs, but trails on code quality (6 vs 8), tests (6 vs 9), extensibility (7 vs 8), and ops polish (7 vs 9) — overall ~7.1 vs ~8.3. The baseline is preserved in `research/loom-vs-gstack-scorecard.toon`. This initiative closes and then reverses those gaps: fix 15 verified defects, harden the test and release spines, generate drift-proof docs, add a free-by-default eval tier ladder, and upgrade every gstack-derived skill past its upstream. Success is not self-declared — it is confirmed by re-running the same 4-agent review and requiring every dimension to meet or beat gstack with an overall score above 8.3. The work sequences foundation-first: CI gates and a shared core library land before any defect fix, and defect fixes land before the exceed milestones.
 
 ## Success Metrics
 
@@ -105,6 +105,12 @@ Loom-ai and Garry Tan's gstack (github.com/garrytan/gstack) were subjected to a 
 **Decision:** Each gstack-derived skill (loom-design*, loom-think→loom-cso/loom-spec, loom-careful, loom-health, loom-ship, loom-retro, loom-qa, loom-canary, loom-devex-review, loom-benchmark*, loom-worktree, loom-browser, loom-skillify, loom-learn) gets: preamble-by-reference (C-06), behavioral tests for its backing scripts/hooks, wired enforcement where its spec claims enforcement, and at least one capability its gstack upstream lacks (documented per-skill in the feature's acceptance criteria).
 **Rationale:** The initiative goal is to exceed, not match; every ported skill must demonstrably surpass its upstream on a named axis.
 **Alternatives considered:** Match parity with gstack skills — rejected: parity does not move the scorecard past gstack.
+**Impact:** high
+
+### C-14: Make the browser subsystem real, re-authored not forked
+**Decision:** Loom's M-11 (gstack-adoption) shipped the browser *architecture* — `/loom-browser` daemon, tiered READ/WRITE/META schema, accessibility-tree refs, cookie import, and the `/loom-qa` / `/loom-canary` / `/loom-benchmark` skills that depend on it — but the driver is stubbed: `scripts/loom-browser-daemon.ts` `execCmd` queues commands instead of driving Chromium ("without a bundled CDP client we log to queue for a downstream client to pick up… follow-on"). Complete the subsystem behind the *existing* `/loom-browser exec` interface with a real Playwright-managed Chromium driver, adopting gstack's proven design where it is stronger — the zero-token plain-text CLI protocol, accessibility-tree element refs with fast-fail staleness detection, decrypt-from-installed-profile cookie import, and diff-aware find→fix→verify QA with auto-generated regression tests. Per C-01, re-author every pattern as Loom-native (TOON state, our daemon interface, our skill contracts); do not fork gstack code. Extend the gstack section of `NOTICE` with the specific browser patterns adopted **on ship**, not at plan time.
+**Rationale:** A stubbed subsystem is a latent gap the 7-dimension scorecard does not directly measure, yet it silently blocks `/loom-qa`, `/loom-canary`, and `/loom-benchmark` from running at all. gstack's zero-token browser I/O (0 context tokens per command vs ~30–40k for a Chrome-MCP session) is also directly on-thesis for Loom's small-context-window orchestration, making it the highest-leverage pattern to adopt.
+**Alternatives considered:** (1) Wrap the chrome-devtools MCP server — rejected: reintroduces the per-command token overhead Loom's positioning argues against, and adds an external dependency. (2) Leave the browser skills as documented-but-inert — rejected: they are cited as working capabilities in the README and skill catalog.
 **Impact:** high
 
 ## Tech Stack
@@ -794,7 +800,7 @@ automatable: true
 
 **Priority:** P0
 **Milestone:** M-09
-**Description:** Implement the final-acceptance half of C-09. Re-run the same 4-agent comparative review that produced the baseline (loom ~7.1 vs gstack ~8.3). Record every dimension's new score into a `ScorecardResult` and gate acceptance on every dimension being ≥ its gstack score with overall > 8.3. If any dimension falls short, the initiative is not complete and the gap feeds back into the responsible milestone.
+**Description:** Implement the final-acceptance half of C-09. Re-run the same 4-agent comparative review that produced the baseline (loom ~7.1 vs gstack ~8.3), preserved in `research/loom-vs-gstack-scorecard.toon` (seven dimensions, 15-defect evidence trail, and the exact rubric to reuse). Record every dimension's new score into a `ScorecardResult` and gate acceptance on every dimension being ≥ its gstack score with overall > 8.3. If any dimension falls short, the initiative is not complete and the gap feeds back into the responsible milestone.
 
 **Entities involved:** ScorecardResult
 
@@ -850,6 +856,83 @@ tags[1]: happy-path
 automatable: true
 ```
 
+### F-27: Real browser driver behind `/loom-browser exec` + zero-token protocol
+
+**Priority:** P1
+**Milestone:** M-10
+**Description:** Replace the queue-only stub in `scripts/loom-browser-daemon.ts` (`execCmd` currently appends to a queue and returns) with a real Playwright-managed Chromium driver that executes commands against the running daemon per the existing tiered READ/WRITE/META schema (`protocols/browser-state.schema.toon`). Adopt gstack's zero-token plain-text CLI protocol: `/loom-browser exec` emits plain text to stdout — no JSON schema, no protocol framing — so a browsing session costs ~0 context tokens versus the ~30–40k a Chrome-MCP session burns. Authenticated sessions load per-domain cookies from `.loom/browser/cookies/*.toon`, and `/loom-setup browser-cookies` is upgraded to decrypt-and-import from installed Chrome/Chromium/Brave/Edge/Arc profiles via an interactive picker with sensitive-value redaction (gstack parity; today Loom imports Chrome/Chromium/Brave/Edge only). This unblocks `/loom-qa`, `/loom-canary`, and `/loom-benchmark`, which currently describe loops that cannot execute.
+
+**Entities involved:** BrowserCommand
+
+**Key behaviors:**
+- `/loom-browser exec` drives Chromium via Playwright and returns plain-text stdout (no JSON framing, ~0 context tokens per command).
+- READ commands are idempotent and cacheable; WRITE commands are side-effecting; META commands manage the daemon — matching the existing tier table.
+- `/loom-setup browser-cookies` decrypts and imports cookies from installed Chrome/Chromium/Brave/Edge/Arc profiles with an interactive domain picker and sensitive-value redaction.
+
+**Convergence targets:**
+- A READ command (e.g. `accessibility`) against a live daemon returns real page data as plain text, not a queued placeholder.
+- A cookie import from an installed browser profile writes `.loom/browser/cookies/{domain}.toon` and a subsequent authenticated `goto` reaches a logged-in page.
+
+**Scenarios:**
+
+```toon
+id: S-01
+title: exec drives the browser and returns plain-text output
+given[1]: The /loom-browser daemon is running with a page loaded
+when: A READ exec command (accessibility snapshot) is issued
+whenTriggerType: user-action
+then[2]: The command MUST return real page content as plain text, The output MUST NOT be a queued placeholder
+tags[1]: happy-path
+automatable: true
+```
+
+### F-28: Robust refs, diff-aware QA, and auto-generated regression tests
+
+**Priority:** P1
+**Milestone:** M-10
+**Description:** Build the QA-strength layer on the F-27 driver. Address elements by accessibility-tree refs (role + name + index) with fast-fail staleness detection — a count-check that fails in a few ms when the DOM has changed rather than hanging on a selector timeout. Make `/loom-qa` diff-aware: read `git diff <base>` to select the affected pages/routes and test those first. For every fix the loop lands, auto-generate a regression test that traces back to the QA finding (`QaRegressionTest.qaReportRef`) so the exact scenario that broke is permanently guarded — extending the fix-archive discipline `/loom-qa` already writes. Capture console, network, and dialog streams to `.loom/browser/` buffers readable mid-loop.
+
+**Entities involved:** QaRegressionTest, BrowserCommand
+
+**Key behaviors:**
+- Element refs resolve via the accessibility tree and fail fast (~ms) on staleness instead of timing out.
+- `/loom-qa` selects pages from `git diff` and tests changed routes first; a full-sweep mode remains available.
+- Each landed fix emits a `QaRegressionTest` linked to its QA finding.
+
+**Convergence targets:**
+- A stale ref fails within a bounded few-ms budget, not a multi-second timeout.
+- A `/loom-qa` fix run produces a runnable regression test whose `qaReportRef` resolves to the originating finding.
+
+**Scenarios:**
+
+```toon
+id: S-01
+title: a fixed bug yields an attributed regression test
+given[1]: /loom-qa found and fixed a bug on a changed route
+when: The fix is committed
+whenTriggerType: system-event
+then[2]: A QaRegressionTest MUST be generated, Its qaReportRef MUST resolve to the QA finding
+tags[1]: happy-path
+automatable: true
+```
+
+### F-29: Optional browser hardening (deferred, non-blocking)
+
+**Priority:** P2
+**Milestone:** M-10
+**Description:** The heavy, optional-value gstack browser capabilities, explicitly deferrable without blocking the milestone: in-browser prompt-injection defense (a lightweight classifier plus canary tokens — Loom's existing `injectionDefenseEnabled` flag is a placeholder today), anti-bot stealth (mask `navigator.webdriver`, restore `window.chrome.*`, plain-Chrome UA), and multi-agent shared-browser access with a restricted command allowlist for remote agents. Each is independently shippable; none gates F-27/F-28 or the M-09 scorecard. Scope here is to evaluate cost/value per item and ship only what clears the bar — the 22MB/721MB ML classifiers in particular may not.
+
+**Entities involved:** BrowserCommand
+
+**Key behaviors:**
+- Prompt-injection defense, when enabled, screens fetched page content before it reaches the agent; a kill switch disables it.
+- Stealth mode, when enabled, presents a plain-Chrome fingerprint.
+- Remote agents sharing the browser are restricted to a READ-biased allowlist that excludes cookie and eval commands.
+
+**Convergence targets:**
+- With injection defense off (kill switch), browser I/O behaves exactly as F-27.
+- A remote-agent session cannot issue an excluded command (e.g. cookie export).
+
 ## Data Model (Conceptual)
 
 ### Entities
@@ -868,6 +951,8 @@ automatable: true
 | EvalTierResult | tier, evalId, outcome, judgedScore | Result record for a T1/T2/T3 eval run |
 | SkillUpgradeMatrix | skill, preambleRef, testsPresent, enforcementWired, beyondUpstream | Per-skill upgrade tracking against C-13's four requirements |
 | ScorecardResult | dimension, loomScore, gstackScore, delta | A dimension score from the re-run 4-agent comparative review |
+| BrowserCommand | verb, tier, refKind, drives | A single `/loom-browser exec` command — tier is READ/WRITE/META, refKind is a11y-ref/css/coord |
+| QaRegressionTest | id, qaReportRef, scenario, generatedFrom | An auto-generated regression test tracing back to the QA finding that produced it |
 
 ### Relationships
 
@@ -879,6 +964,7 @@ automatable: true
 | ReleaseVersion | InstallManifest | 1:N | A release produces install artifacts with integrity records |
 | SkillUpgradeMatrix | EvalTierResult | 1:N | Upgraded skills are exercised by eval-tier runs |
 | ScorecardResult | MetricsSnapshot | N:1 | Scorecard dimensions are summarized into the final metrics snapshot |
+| QaRegressionTest | BrowserCommand | N:1 | A regression test replays the browser commands that reproduced its finding |
 | DocsGenerationManifest | ReleaseVersion | N:1 | Generated docs are refreshed at release boundaries |
 | TautologicalTestAudit | MetricsSnapshot | N:1 | Audit outcomes feed the tautological-test-count metric |
 
@@ -947,6 +1033,13 @@ automatable: true
 **Acceptance:** The 4-agent comparative review is re-run and every dimension meets or beats gstack with overall > 8.3, and the final measured changelog and metrics snapshot record repo-derived values for all seven success metrics.
 **Effort:** M
 
+### M-10: Working browser subsystem
+
+**Features:** F-27, F-28, F-29
+**Depends on:** M-01
+**Acceptance:** `/loom-browser exec` drives real Chromium via Playwright behind the existing tiered interface with a zero-token plain-text protocol; cookie import decrypts from installed browser profiles; `/loom-qa` runs diff-aware and emits attributed regression tests on the live driver; and `/loom-canary` / `/loom-benchmark` execute against real pages instead of a queued stub. Optional hardening (F-29) is evaluated per-item and does not gate the milestone. Independently shippable; strengthens the functional dimensions but does not block the M-09 scorecard.
+**Effort:** L
+
 ## Risks & Mitigations
 
 | Risk | Severity | Mitigation |
@@ -955,6 +1048,7 @@ automatable: true
 | Scorecard subjectivity — the 4-agent re-run may score dimensions inconsistently vs the baseline | high | Reuse the exact baseline rubric and agents; anchor each dimension to repo-derivable evidence (C-09) so scores are defensible, not vibes |
 | Scope creep on skill upgrades — C-13 lists ~15 skills, each with four requirements | high | Batch into F-23/F-24 with an explicit `SkillUpgradeMatrix`; the beyond-upstream capability must be named per skill, and P2 batch (F-24) can slip without blocking the scorecard |
 | Single-maintainer bandwidth across 9 milestones | medium | Foundation-first sequencing (C-10) front-loads leverage; milestones are independently shippable so partial progress still improves dimensions |
+| Browser subsystem (M-10) is a large re-authoring lift — Playwright driver, protocol, cookie decrypt, QA loop | high | Phase it: F-27 driver+protocol unblocks the dependent skills first; F-28 adds QA strength; F-29 optional hardening can slip entirely. Re-author against the existing schema/skill contracts so scope stays bounded to the driver, not a redesign |
 | Dedup migration (F-08) introduces regressions in primitives used everywhere | medium | Land the shared lib (F-02) with property/round-trip tests first; strangler-migrate callers behind the `no-restricted-import` lint; rely on the M-04 test gate |
 | Release-tooling activation (F-16) mishandles the 17 `plan-exec-*` tags | medium | Move tags to `refs/exec/*` rather than hard-delete where possible; dry-run the release workflow before enabling on `main` |
 

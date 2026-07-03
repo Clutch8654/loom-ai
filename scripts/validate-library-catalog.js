@@ -337,6 +337,46 @@ function main() {
       }
     }
 
+    // 7. Skill bodies must live in library.skills. A `skills/*/SKILL.md` source
+    //    filed under any other section installs to the wrong target (or aborts
+    //    on the missing infrastructure `target:` field), so the skill silently
+    //    never activates for curl-channel users. Caught in the field: five M-08
+    //    skills misfiled under library.infrastructure (gstack remediation G1).
+    for (const section of sections) {
+      if (section === "skills") continue;
+      const entries = library[section];
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) {
+        if (typeof entry.source === "string" && /^skills\/[^/]+\/SKILL\.md$/.test(entry.source)) {
+          errors.push(
+            `library.${section}[name=${entry.name}] source '${entry.source}' is a skill body — move this entry to library.skills (SKILL.md sources install to ~/.claude/skills/<name>/SKILL.md and must be typed 'skill')`
+          );
+        }
+      }
+    }
+
+    // 8. Every on-disk skills/<dir>/SKILL.md must be registered in
+    //    library.skills — an unregistered skill is invisible to /loom-library
+    //    and never reaches downstream installs.
+    const registeredSkillSources = new Set(
+      (Array.isArray(library.skills) ? library.skills : [])
+        .map((e) => e.source)
+        .filter((s) => typeof s === "string")
+    );
+    const skillsDir = path.join(REPO_ROOT, "skills");
+    if (fs.existsSync(skillsDir)) {
+      for (const dirent of fs.readdirSync(skillsDir, { withFileTypes: true })) {
+        if (!dirent.isDirectory()) continue;
+        const rel = `skills/${dirent.name}/SKILL.md`;
+        if (!fs.existsSync(path.join(REPO_ROOT, rel))) continue;
+        if (!registeredSkillSources.has(rel)) {
+          errors.push(
+            `on-disk skill '${rel}' is not registered under library.skills — add a catalog entry or the skill never ships`
+          );
+        }
+      }
+    }
+
     for (const section of sections) {
       const entries = library[section];
       if (!Array.isArray(entries)) continue;

@@ -1,6 +1,6 @@
 # Hooks (Deterministic Enforcement)
 
-Thirteen Claude Code hooks enforce Loom invariants at the tool-call level. Fail-open on missing state, fail-closed on schema-version mismatches.
+Eighteen Claude Code hooks enforce Loom invariants at the tool-call level (the canonical registration manifest is `scripts/lib/loom-hooks-manifest.ts`). Fail-open on missing state, fail-closed on schema-version mismatches.
 
 | Hook | Event | What it does |
 |------|-------|-------------|
@@ -11,18 +11,22 @@ Thirteen Claude Code hooks enforce Loom invariants at the tool-call level. Fail-
 | `checkpoint-trigger` | (various) | Triggers stage-summary checkpoints at thresholds |
 | `context-monitor` | (various) | Streams context state into the statusline |
 | `deploy-guard` | PreToolUse (Bash) | Blocks destructive bash commands without explicit confirmation |
+| `loom-careful` | PreToolUse (Bash) | Session-level destructive-command guard (`rm -rf /`, `DROP TABLE`, force-push…); override with `LOOM_CAREFUL_OVERRIDE=1` |
+| `preflight-worktree-scan` | PreToolUse (Bash) | Cross-worktree ownership scan on `/loom-git pr`; warns on sibling-worktree overlap |
 | `quality-gate` | Stop | Prevents premature pipeline stops |
 | `typecheck-on-write` | PostToolUse (Write/Edit on .ts) | Runs `tsc` after TS writes, feeds errors back |
+| `agent-result-validator` | PostToolUse (Write/Edit) | Scans AgentResult envelopes for findings missing `confidence: 1-10` |
+| `status-updater` | PostToolUse | Writes `status.toon` timestamps and ambient state |
 | `wiki-write-guard` | PreToolUse | Enforces wiki page format + cross-ref integrity |
 | `wiki-impact-warner` | PreToolUse | Warns when code edits affect contract-page-tracked domains |
 | `wiki-session-status` | SessionStart | Loads wiki context summary on session start |
 | `wiki-commit-ledger` | PostToolUse | Records wiki-affecting commits for drift detection |
+| `loom-migration` | SessionStart | Detects old-format Loom artifacts and nudges `/loom-upgrade` |
 
-Plus three infrastructure scripts:
+Plus two infrastructure scripts:
 
 - `statusline-renderer.cjs` — pipeline + test metrics + convergence segments
 - `loom-update-checker.cjs` — background catalog version check (4h throttle)
-- `status-updater.ts` — writes `status.toon` timestamps and ambient state on `SubagentStop`
 
 Plus one test harness: `context-budget-test.ts`.
 

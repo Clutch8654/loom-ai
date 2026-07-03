@@ -1,0 +1,33 @@
+# Diagram Index Schema
+#
+# Path: .loom/diagrams/index.toon
+# Producer: /loom-diagram (skills/loom-diagram/SKILL.md) — appends one row
+#           per generated triplet (<slug>.md + <slug>.excalidraw + <slug>.svg)
+# Consumers:
+#   - /loom-docs release (skills/loom-docs-release) — drift detection: if the
+#     SHA of the .md source differs from the recorded shaShort but the
+#     rendered .excalidraw / .svg files predate the last edit, the release
+#     gate reports DIAGRAM_DRIFT_DETECTED (see protocols/exit-codes.md)
+#
+# Rules:
+#   - Append-only registry of generated diagram triplets
+#   - Writes are atomic: write to {path}.tmp then fs.renameSync
+#   - path is the triplet base path WITHOUT extension; the three artifacts
+#     live at {path}.md, {path}.excalidraw, {path}.svg (plus .png when a
+#     rasterizer is available)
+#   - schemaVersion bumped on any breaking field change
+#
+# Field descriptions:
+#   slug         string  diagram identifier derived from the input file
+#                        basename or the first noun-phrase of --prose
+#   path         string  triplet base path relative to the repo root, e.g.
+#                        docs/diagrams/login-flow
+#   source       enum    invocation mode the .md source holds: prose | mermaid
+#   generatedAt  string  ISO 8601 timestamp of triplet generation
+#   shaShort     string  truncated SHA-256 of the .md source at generation
+#                        time — the drift-detection anchor
+
+schemaVersion: 1
+
+diagrams[N]{slug,path,source,generatedAt,shaShort}:
+  login-flow,docs/diagrams/login-flow,mermaid,2026-06-30T17:50:00Z,a1b2c3d

@@ -2,7 +2,7 @@
 description: "Cold-start Diataxis docs — generates docs/tutorial, docs/how-to, docs/reference, docs/explanation with proper frontmatter."
 ---
 
-# /loom-docs:generate
+# /loom-docs generate
 
 Scaffolds a complete Diataxis-shaped `docs/` tree for a project that has no
 docs yet (or wants to normalize existing docs to the framework).
@@ -24,7 +24,7 @@ frontmatter.
 ## Usage
 
 ```
-/loom-docs:generate [--force] [--only tutorial|how-to|reference|explanation]
+/loom-docs generate [--force] [--only tutorial|how-to|reference|explanation]
 ```
 
 ## Idempotency

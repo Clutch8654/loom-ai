@@ -80,10 +80,12 @@ hard failure (see per-step semantics).
      table (`item | class | verified | note`).
   3. **Test Plan** — checkbox list read from PLAN.md → "Verification" section
      (or generated from acceptance criteria when absent).
-  4. **Doc Debt** — invoke `/loom-docs:release` in dry-run mode if it is
-     registered in this project. If it emits `DOC_DEBT` findings, embed them.
-     If /loom-docs:release is not registered, omit the section (no fake
-     "None" line — silence is meaningful).
+  4. **Doc Debt** — invoke `/loom-docs release --dry-run` if it is
+     registered in this project (`--dry-run` runs every phase, writes
+     nothing, always exits 0 — this step consumes findings, it is not gated
+     by them). If it emits `DOC_DEBT` findings, embed them. If /loom-docs
+     release is not registered, omit the section (no fake "None" line —
+     silence is meaningful).
   5. **Version** — the reserved semver + a link to
      `~/.loom/version-slots.toon`.
 
@@ -95,6 +97,22 @@ hard failure (see per-step semantics).
 - On `gh` auth failure or missing `gh`: halt with `SHIP_GH_MISSING`
   (confidence: 10, severity: blocker) and print the assembled body so the
   user can paste it manually.
+
+### Step 7 — Suggest the retro
+
+After the PR is created, count merges since the newest entry in
+`.loom/learnings.toon` (a missing file counts as "never retro'd"). If ≥ 5
+merges or ≥ 1 completed milestone have landed since then, append to the
+final envelope:
+
+```
+Next: /loom-retro
+```
+
+A suggestion line, not an auto-invocation — the retro interview needs the
+operator present. It exists because ship→retro is the link that closes the
+build→learn loop; without the nudge, retros only happen when someone
+remembers.
 
 ## Non-goals
 

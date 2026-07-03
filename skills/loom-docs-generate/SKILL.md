@@ -3,10 +3,12 @@ name: loom-docs-generate
 description: "Cold-start docs via Diataxis quadrant (tutorial/how-to/reference/explanation). Enforces the 4 doc types with structure."
 ---
 
-# /loom-docs:generate — Diataxis Cold-Start Doc Scaffolding (M-08 F-28)
+# /loom-docs generate — Diataxis Cold-Start Doc Scaffolding (M-08 F-28)
 
 Generates a **complete Diataxis-shaped `docs/` tree** for a project that has
 no docs yet (or wants to normalize existing ad-hoc docs to the framework).
+The quadrant structure is the [Diátaxis](https://diataxis.fr) documentation
+framework by Daniele Procida, applied here as a methodology (see `NOTICE`).
 The four Diataxis quadrants are:
 
 | Quadrant | Purpose | Generated file |
@@ -38,7 +40,7 @@ title: Getting Started with <project>
 ```
 
 Valid `diataxis:` values are exactly one of: `tutorial`, `how-to`,
-`reference`, `explanation`. Downstream tools (`/loom-docs:release`) enforce
+`reference`, `explanation`. Downstream tools (`/loom-docs release`) enforce
 this tag when validating.
 
 ### `docs/tutorial/getting-started.md`
@@ -79,14 +81,14 @@ Prose explanation seeded from `CLAUDE.md` architecture sections. Structure:
 
 ## Idempotency
 
-If any target file exists, `/loom-docs:generate` refuses to overwrite by
+If any target file exists, `/loom-docs generate` refuses to overwrite by
 default. Pass `--force` to overwrite. Pass `--only <quadrant>` to regenerate
 just one quadrant.
 
 ## CLI
 
 ```
-/loom-docs:generate [--force] [--only tutorial|how-to|reference|explanation]
+/loom-docs generate [--force] [--only tutorial|how-to|reference|explanation]
 ```
 
 ## Output envelope

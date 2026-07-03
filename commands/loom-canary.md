@@ -11,7 +11,7 @@ any gate failure triggers immediate rollback.
 ## Prerequisites
 
 - CLAUDE.md contains a `## Deploy Configuration` block populated by
-  `/loom-setup:deploy`. Halt with `CANARY_NO_CONFIG` when missing.
+  `/loom-setup deploy`. Halt with `CANARY_NO_CONFIG` when missing.
 - `healthCheckUrl` is populated in that block. Halt with
   `CANARY_NO_HEALTHCHECK` when empty.
 - Target-native deploy CLI is installed and authenticated

@@ -1,0 +1,49 @@
+# Model Benchmark History + Suite Schema
+#
+# Paths:
+#   .loom/benchmark-history.toon  — append-only run log (this file's primary
+#                                   subject)
+#   .loom/benchmark-suite.toon    — optional prompt suite input
+# Producer: /loom-benchmark models (skills/loom-benchmark-models/SKILL.md)
+#           appends one row per run to benchmark-history.toon;
+#           benchmark-suite.toon is user-authored (a small default set is
+#           synthesized when absent)
+# Consumers:
+#   - /loom-status — trends quality and cost over time
+#   - retro reports (/loom-retro)
+#
+# Rules:
+#   - benchmark-history.toon is append-only; rows are never rewritten
+#   - Writes are atomic: write to {path}.tmp then fs.renameSync
+#   - Pipe (|) is the intra-cell list separator because commas are the TOON
+#     column separator
+#   - Skipped vendors (missing API key) are recorded in the run's dashboard
+#     output, not in the history row's vendorsRun list
+#   - schemaVersion bumped on any breaking field change
+
+schemaVersion: 1
+
+# --- .loom/benchmark-suite.toon -------------------------------------------
+# Field descriptions:
+#   id      string  prompt identifier (P1, P2, ...)
+#   prompt  string  the prompt text sent to every vendor
+#   rubric  string  judge rubric axes, +-separated (default: "clarity,
+#                   correctness, concision" when omitted)
+
+prompts[N]{id,prompt,rubric}:
+  P1,Explain quicksort in 3 sentences,clarity+correctness
+  P2,Write a python function to reverse a linked list,correctness+idiom
+
+# --- .loom/benchmark-history.toon -----------------------------------------
+# Field descriptions:
+#   runId                string  run identifier: "bench-{YYYY-MM-DD}-{HHmm}"
+#   timestamp            string  ISO 8601 timestamp of the run
+#   vendorsRun           string  pipe-separated vendor list, e.g.
+#                                "claude|gpt|gemini"
+#   avgQualityByVendor   string  pipe-separated "{vendor}:{avgScore 0-10}"
+#                                pairs; scores are null when no judge vendor
+#                                was available
+#   estCostUsdByVendor   string  pipe-separated "{vendor}:{estCostUsd}" pairs
+
+runs[N]{runId,timestamp,vendorsRun,avgQualityByVendor,estCostUsdByVendor}:
+  bench-2026-06-30-1730,2026-06-30T17:30:00Z,"claude|gpt|gemini","claude:8.5|gpt:7.5|gemini:7.0","claude:0.023|gpt:0.004|gemini:0.011"

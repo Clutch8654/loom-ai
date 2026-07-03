@@ -3,9 +3,9 @@ name: loom-design-shotgun
 description: "Parallel UI variants — generate N design candidates, render side-by-side, capture preference, decay old preferences so system doesn't ossify."
 ---
 
-# /loom-design:shotgun — Parallel UI Variant Board (M-13 F-24)
+# /loom-design shotgun — Parallel UI Variant Board (M-13 F-24)
 
-`/loom-design:shotgun` fires off N distinct visual approaches to the
+`/loom-design shotgun` fires off N distinct visual approaches to the
 same UI target in parallel, renders them side-by-side, captures the
 user's preference, and folds that preference back into a
 time-decaying **taste memory** so future sessions bias toward what the
@@ -50,6 +50,9 @@ command — the fallback is a first-class code path.
 When the user selects a preferred variant, append a record to
 `.loom/design/preferences.toon`. The write is atomic (`.tmp` + rename).
 
+Schema: `protocols/design-preferences.schema.toon` (includes the
+normative time-decay math below).
+
 Every preference record includes a `capturedAt` ISO-8601 timestamp —
 this is a hard acceptance criterion for F-24. The record also carries
 the slug, the winning variant number, the axis label of the winner, and
@@ -71,7 +74,7 @@ evolves; the system must not ossify.
 
 ## Session bias
 
-At the start of a new `/loom-design:shotgun` invocation, read
+At the start of a new `/loom-design shotgun` invocation, read
 `.loom/design/preferences.toon`, apply the decay, and use the
 surviving weighted preferences to bias variant generation. The bias is
 a **soft** input to the axis-selection step — the generator still MUST

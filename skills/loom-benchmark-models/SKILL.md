@@ -83,6 +83,8 @@ verdict: claude_best_quality gpt_best_cost
 
 ## History file schema
 
+Schema: `protocols/benchmark-history.schema.toon` (covers both the history log and `.loom/benchmark-suite.toon`)
+
 `.loom/benchmark-history.toon` is an append-only log:
 
 ```toon

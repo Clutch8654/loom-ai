@@ -4,8 +4,8 @@ description: Persistent Chromium daemon — start, stop, status, exec with tiere
 
 # /loom-browser
 
-Persistent Chromium daemon (M-11 F-33) shared by `/loom-qa`, `/loom-devex:review`,
-`/loom-cso`, `/loom-design:*`, and `/loom-benchmark`.
+Persistent Chromium daemon (M-11 F-33) shared by `/loom-qa`, `/loom-devex review`,
+`/loom-cso`, `/loom-design (consultation|html|shotgun)`, and `/loom-benchmark`.
 
 ## Subcommands
 

@@ -49,6 +49,8 @@ filtered to `confidence >= 8`; `monthly` keeps everything down to `confidence
 
 ## Trend tracking — `.loom/security-history.toon`
 
+Schema: `protocols/security-history.schema.toon`
+
 Append-only history file. Schema mirrors `.loom/health-history.toon`:
 
 ```
@@ -72,6 +74,26 @@ either:
 2. The new `score` is below 8/10 in absolute terms.
 
 Otherwise it exits 0 and appends the new entry.
+
+## Script/skill split
+
+`scripts/loom-cso.ts` owns everything deterministic: gate math, the atomic
+history append, and the four scriptable lenses (secrets regex sweep, dep
+audit, file perms, CI/CD supply chain). The three model-driven lenses (auth
+boundaries, input validation, LLM trust via
+`agents/code-llm-trust-review-agent.md`) are run by this skill, and their
+finding counts are injected into the script invocation:
+
+```bash
+bunx tsx scripts/loom-cso.ts daily \
+  --auth-gaps 0 --input-validation-gaps 1 --llm-trust-issues 0
+```
+
+Run standalone (e.g. from CI), the flags default to 0 and the gate covers
+only the scriptable lenses — weaker but still deterministic. The skill MUST
+pass the real counts when it drives the full seven-lens review. Before
+spawning the LLM-trust agent, resolve its model per the standard mandate
+(profile **review** tier → frontmatter → inherit).
 
 ## Output envelope
 

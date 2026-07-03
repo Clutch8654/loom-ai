@@ -3,7 +3,7 @@ name: loom-docs-release
 description: Post-ship doc sync — diff-driven README/CHANGELOG/ARCH updates + diagram drift detection + CHANGELOG sell-test rubric. Surfaces doc-debt in PR body.
 ---
 
-# /loom-docs:release — Post-Ship Doc Sync
+# /loom-docs release — Post-Ship Doc Sync
 
 Run this after a milestone lands (or as part of `/loom-ship`) to keep README, CHANGELOG, and architecture docs in lockstep with shipped code. The skill is diff-driven: it reads what actually changed and challenges the docs to keep pace. Non-zero exit when doc-debt is detected without a documented remediation plan.
 
@@ -12,6 +12,7 @@ Run this after a milestone lands (or as part of `/loom-ship`) to keep README, CH
 - `--base <ref>` — base git ref (default: `main` or last release tag).
 - `--head <ref>` — head ref (default: `HEAD`).
 - `--pr <number>` — optional PR context; when supplied, the doc-debt list is rendered into the PR body.
+- `--dry-run` — report-only mode: run every phase but write NOTHING (no README/CHANGELOG/ARCH edits, no report file). Emit the DocSyncReport to stdout and exit 0 even with open doc-debt. `/loom-ship` invokes this mode to collect doc-debt findings for the PR body without being gated.
 
 ## Workflow
 

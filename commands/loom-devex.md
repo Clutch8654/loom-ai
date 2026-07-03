@@ -1,5 +1,5 @@
 ---
-description: "DX lifecycle dispatcher — subcommands for live DX audits (review) with future room for /loom-devex:trace."
+description: "DX lifecycle dispatcher — subcommands for live DX audits (review) with future room for /loom-devex trace."
 ---
 
 # /loom-devex
