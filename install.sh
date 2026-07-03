@@ -12,6 +12,10 @@ set -euo pipefail
 # ── Exit codes ──
 # 0 — success
 # 1 — generic failure (network, missing files, MANIFEST_INVALID)
+# 3 — CHECKSUM_UNVERIFIABLE (checksums.sha256 unfetchable, a per-file entry is
+#     missing, no hasher on PATH, or a checksum mismatched). Fail-closed
+#     (defect 14): the installer aborts and the EXIT trap rolls back every
+#     partially-installed path — never warn-and-continue.
 # 9 — INSTALL_CONFLICT_PLUGIN_AND_CURL (Loom already installed as a plugin)
 
 # ── Pre-flight: refuse to install over a plugin install ──
@@ -37,7 +41,22 @@ BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 CLAUDE_DIR="${HOME}/.claude"
 CACHE_DIR="${HOME}/.cache/loom"
 CHECKSUMS_URL="${BASE}/checksums.sha256"
-VERIFY_INTEGRITY=true
+
+# ── Fail-closed rollback state (defect 14) ──
+# INSTALLED_PATHS records every artifact this run writes to disk (populated by
+# fetch_file after each successful atomic rename). VERIFIED_ENTRIES records the
+# src|sha|dst triple for every file whose checksum verified, and seeds the
+# install manifest. INSTALL_SUCCEEDED flips true only after the manifest is
+# committed; until then, any exit triggers the EXIT trap to remove every
+# recorded path. Declared here (before any fetch) so the trap and set -u never
+# see them unbound. Note: macOS ships bash 3.2 where "${arr[@]}" on an empty
+# array under `set -u` errors — every expansion below is length-guarded.
+INSTALLED_PATHS=()
+VERIFIED_ENTRIES=()
+INSTALL_SUCCEEDED=false
+STATE_TMP=""
+PRESERVED_TMP=""
+MANIFEST_PATH="${HOME}/.loom/install-manifest.toon"
 
 # Files to fetch: source_path -> target_path
 declare -a INFRA_FILES=(
@@ -233,18 +252,43 @@ fetch_file() {
   local tmp
   tmp=$(mktemp "${dst}.XXXXXX")
 
-  # Try curl first (works for public repos), fall back to gh api (works for private repos)
-  if ! curl --max-filesize 10485760 --max-time 15 --max-redirs 5 -sfSL "${url}" -o "${tmp}" 2>/dev/null; then
-    if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
-      if ! gh api "repos/${REPO}/contents/${src}" --jq '.content' 2>/dev/null | base64 -d > "${tmp}" 2>/dev/null; then
-        echo "  FAIL ${src} (fetch failed via curl and gh)"
+  # Offline source override (test harness). When LOOM_INSTALL_SRC_DIR is set,
+  # copy from that local tree instead of hitting the network. This lets the
+  # tests/install suite drive install.sh end-to-end in a sandbox HOME with
+  # fixture files + a fixture checksums.sha256 and no GitHub round-trip. A
+  # missing source file is a real fetch failure (returns 1), which is exactly
+  # how the "checksums.sha256 unfetchable" case is simulated.
+  if [ -n "${LOOM_INSTALL_SRC_DIR:-}" ]; then
+    if [ ! -f "${LOOM_INSTALL_SRC_DIR}/${src}" ]; then
+      echo "  FAIL ${src} (not present in LOOM_INSTALL_SRC_DIR)"
+      rm -f "${tmp}"
+      return 1
+    fi
+    cp "${LOOM_INSTALL_SRC_DIR}/${src}" "${tmp}"
+  else
+    # Try curl first (public repos) with 3 bounded attempts + 1s/2s/4s backoff
+    # (network-fetch mitigation), then fall back to gh api (private repos).
+    local attempt=1 backoff=1 fetched=false
+    while [ "${attempt}" -le 3 ]; do
+      if curl --max-filesize 10485760 --max-time 15 --max-redirs 5 -sfSL "${url}" -o "${tmp}" 2>/dev/null; then
+        fetched=true
+        break
+      fi
+      if [ "${attempt}" -lt 3 ]; then sleep "${backoff}"; backoff=$((backoff * 2)); fi
+      attempt=$((attempt + 1))
+    done
+    if [ "${fetched}" != "true" ]; then
+      if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+        if ! gh api "repos/${REPO}/contents/${src}" --jq '.content' 2>/dev/null | base64 -d > "${tmp}" 2>/dev/null; then
+          echo "  FAIL ${src} (fetch failed via curl and gh)"
+          rm -f "${tmp}"
+          return 1
+        fi
+      else
+        echo "  FAIL ${src} (fetch failed — for private repos, install gh: https://cli.github.com/)"
         rm -f "${tmp}"
         return 1
       fi
-    else
-      echo "  FAIL ${src} (fetch failed — for private repos, install gh: https://cli.github.com/)"
-      rm -f "${tmp}"
-      return 1
     fi
   fi
 
@@ -255,8 +299,43 @@ fetch_file() {
   fi
 
   mv "${tmp}" "${dst}"
+  # Record for fail-closed rollback: every artifact on disk is removable if a
+  # later step aborts before the manifest is committed.
+  INSTALLED_PATHS+=("${dst}")
   return 0
 }
+
+# ── Fail-closed rollback trap (defect 14) ──
+# One EXIT handler owns BOTH staging-tmpfile cleanup and partial-install
+# rollback. It must be the sole EXIT trap — bash keeps only the most recently
+# installed one — so the state-building block below no longer installs its own.
+# On success INSTALL_SUCCEEDED is true and we keep everything; otherwise we
+# remove every recorded artifact (and the in-progress manifest) so a crashed
+# install leaves nothing behind. Residual paths that resist removal are named
+# under ROLLBACK_FAILED rather than silently ignored.
+_loom_rollback() {
+  local rc=$?
+  rm -f "${STATE_TMP:-}" "${PRESERVED_TMP:-}" 2>/dev/null || true
+  if [ "${INSTALL_SUCCEEDED}" = "true" ]; then
+    return 0
+  fi
+  rm -f "${MANIFEST_PATH:-}" 2>/dev/null || true
+  if [ "${#INSTALLED_PATHS[@]}" -gt 0 ]; then
+    echo "" >&2
+    echo "ROLLBACK: install aborted (exit ${rc}) — removing ${#INSTALLED_PATHS[@]} partial artifact(s)..." >&2
+    local residual=()
+    local p
+    for p in "${INSTALLED_PATHS[@]}"; do
+      rm -f "${p}" 2>/dev/null || residual+=("${p}")
+    done
+    if [ "${#residual[@]}" -gt 0 ]; then
+      echo "ROLLBACK_FAILED: could not remove: ${residual[*]}" >&2
+    else
+      echo "ROLLBACK: complete — no partial artifacts remain." >&2
+    fi
+  fi
+}
+trap _loom_rollback EXIT
 
 # ── Optional tarball sha256 verification (forward-compatible) ──
 # When invoked with LOOM_RELEASE_TARBALL pointing at a downloaded release
@@ -293,15 +372,19 @@ echo "Fetching integrity manifest..."
 if fetch_file "checksums.sha256" "${CHECKSUMS_FILE}"; then
   echo "  OK   checksums.sha256"
 else
-  echo "  WARN No checksums.sha256 found — skipping integrity verification"
-  VERIFY_INTEGRITY=false
+  # Fail-closed (defect 14): an unfetchable integrity manifest means we cannot
+  # verify anything we are about to install, so we abort BEFORE fetching any
+  # artifact. Nothing is on disk yet (checksums is fetched first), so the
+  # rollback trap has nothing to remove — the installer installs nothing.
+  echo "CHECKSUM_UNVERIFIABLE: could not fetch checksums.sha256 — aborting (fail-closed)." >&2
+  echo "  There is no integrity bypass; a verifiable checksums.sha256 is required." >&2
+  exit 3
 fi
 
 # ── Helper: verify SHA256 checksum of a downloaded file ──
 verify_checksum() {
   local src="$1"
   local dst="$2"
-  if [ "${VERIFY_INTEGRITY}" != "true" ]; then return 0; fi
   local expected
   # Defensive `head -n 1`: if checksums.sha256 ever contains duplicate path
   # entries (e.g. a future installer that manually appends and forgets to
@@ -316,8 +399,11 @@ verify_checksum() {
   # to survive `set -euo pipefail`. (Gemini #28 round-2 MEDIUM.)
   expected=$(awk -v src="${src}" '$2 == src {print $1; exit}' "${CHECKSUMS_FILE}" 2>/dev/null)
   if [ -z "${expected}" ]; then
-    echo "  WARN ${src} (no checksum in manifest — skipped)"
-    return 0
+    # Fail-closed (defect 14): a fetched file with no entry in checksums.sha256
+    # is unverifiable. Aborting here (rather than warn-and-skip) trips the EXIT
+    # trap, which rolls back this file and every prior one.
+    echo "CHECKSUM_UNVERIFIABLE: ${src} (no checksum entry in checksums.sha256) — aborting." >&2
+    exit 3
   fi
   local actual
   # Portable SHA-256: BSD/macOS ship `shasum` (Perl), GNU/Alpine ship
@@ -339,17 +425,20 @@ verify_checksum() {
     # with `actual` empty and surface as "checksum mismatch" instead of
     # the real "no hasher" cause. Same silent-failure-smokescreen pattern
     # that hid the original Alpine shasum-missing bug. (Gemini #28 round-6.)
-    echo "  FAIL ${src} (neither sha256sum nor shasum found on PATH — cannot verify integrity)"
-    rm -f "${dst}"
-    return 1
+    # Fail-closed: no hasher means we cannot verify. Abort (trips rollback).
+    echo "CHECKSUM_UNVERIFIABLE: ${src} (neither sha256sum nor shasum on PATH — cannot verify integrity) — aborting." >&2
+    exit 3
   fi
   if [ "${actual}" != "${expected}" ]; then
-    echo "  FAIL ${src} (checksum mismatch)"
-    echo "       expected: ${expected}"
-    echo "       got:      ${actual}"
-    rm -f "${dst}"
-    return 1
+    # Fail-closed: a mismatch is a tampered/corrupt artifact. Abort and let the
+    # EXIT trap roll back every partially-installed path (defect 14).
+    echo "CHECKSUM_UNVERIFIABLE: ${src} (checksum mismatch)" >&2
+    echo "       expected: ${expected}" >&2
+    echo "       got:      ${actual}" >&2
+    exit 3
   fi
+  # Verified: record src|sha|dst for the install manifest (written on success).
+  VERIFIED_ENTRIES+=("${src}|${expected}|${dst}")
   return 0
 }
 
@@ -432,20 +521,12 @@ echo "Building install state..."
 STATE_FILE="${CLAUDE_DIR}/skills/library/install-state.toon"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Cleanup function: idempotent rm -f on both tmpfiles. Installed as an EXIT
-# trap BEFORE the mktemp calls — if the second mktemp fails after the first
-# succeeded, the EXIT handler still fires and cleans up the leaked tmpfile.
-# The cleanup uses `${STATE_TMP:-}` parameter-default expansion so `rm -f ""`
-# is a safe no-op while the vars are still unset.
-#
-# We do NOT issue `trap - EXIT` on the success path — leaving the trap
-# installed is safe (rm -f is idempotent) and avoids clearing any other EXIT
-# handler that future code in install.sh may install before this block runs.
-_loom_cleanup_install_state() {
-  rm -f "${STATE_TMP:-}" "${PRESERVED_TMP:-}"
-}
-trap _loom_cleanup_install_state EXIT
-
+# Staging tmpfiles for the atomic install-state write. Their cleanup is owned
+# by the single _loom_rollback EXIT trap installed near the top (which also
+# rolls back partial artifacts) — a second `trap ... EXIT` here would silently
+# override it and defeat fail-closed rollback, so we deliberately do NOT install
+# one. STATE_TMP/PRESERVED_TMP were pre-declared empty so the trap's
+# `${STATE_TMP:-}` expansion is a safe no-op until these mktemp calls run.
 STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX") || { echo "ERROR: mktemp failed for state tmpfile" >&2; exit 1; }
 PRESERVED_TMP=$(mktemp "${STATE_FILE}.preserved.XXXXXX") || { echo "ERROR: mktemp failed for preserved tmpfile" >&2; exit 1; }
 
@@ -556,6 +637,40 @@ if [ "${PRESERVED_COUNT}" -gt 0 ]; then
 else
   echo "  OK   install-state.toon"
 fi
+
+# ── Write install manifest (fail-closed integrity record, defect 14) ──
+# Every artifact reached this point with a verified checksum. Committing the
+# manifest (atomic rename) with verified: true is the single success barrier:
+# it flips INSTALL_SUCCEEDED, which disarms the rollback trap. A crash before
+# this line leaves no manifest and the trap removes every artifact, so a
+# half-finished install is always detectable (no verified manifest on disk).
+# Shape: InstallManifest in lib/types.ts / protocols/agent-result contracts.
+echo ""
+echo "Writing install manifest..."
+mkdir -p "$(dirname "${MANIFEST_PATH}")"
+RELEASE_VERSION="v0.0.0"
+if [ -f "${CLAUDE_DIR}/.claude-plugin/plugin.json" ]; then
+  # Read the shipped plugin version; the manifest's `release` field is v+semver.
+  _pv=$(grep -E '"version"[[:space:]]*:' "${CLAUDE_DIR}/.claude-plugin/plugin.json" | head -n1 \
+    | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+  [ -n "${_pv}" ] && RELEASE_VERSION="v${_pv}"
+fi
+MANIFEST_TMP=$(mktemp "${MANIFEST_PATH}.XXXXXX") || { echo "ERROR: mktemp failed for manifest tmpfile" >&2; exit 1; }
+{
+  echo "release: ${RELEASE_VERSION}"
+  echo "installedAt: ${NOW}"
+  echo "verified: true"
+  echo "artifacts[${#VERIFIED_ENTRIES[@]}]{artifact,checksum,installedPath}:"
+  if [ "${#VERIFIED_ENTRIES[@]}" -gt 0 ]; then
+    for _e in "${VERIFIED_ENTRIES[@]}"; do
+      _a_src="${_e%%|*}"; _rest="${_e#*|}"; _a_sha="${_rest%%|*}"; _a_dst="${_rest##*|}"
+      echo "  ${_a_src},${_a_sha},${_a_dst}"
+    done
+  fi
+} > "${MANIFEST_TMP}"
+mv "${MANIFEST_TMP}" "${MANIFEST_PATH}"
+INSTALL_SUCCEEDED=true
+echo "  OK   install-manifest.toon (verified ${#VERIFIED_ENTRIES[@]} artifact(s))"
 
 # ── Runtime detection ──
 # Loom hooks are .ts files dispatched through hooks/run-hook.sh, which prefers

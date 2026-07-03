@@ -1,3 +1,29 @@
+<!-- Release versioning (C-04, F-15): milestone closes emit `## vX.Y.Z` sections
+     via `bun scripts/loom-release.ts --milestone M-NN`, which derives the semver
+     bump from conventional commits since the last `v*` tag. The version-gate CI
+     check (.github/workflows/version-gate.yml → scripts/ci/version-gate.ts) fails
+     a release-worthy change that reaches a milestone boundary without a bump
+     (CG-001) and enforces the semver-only `v*` tag namespace. Metric values are
+     pinned from planning/reports/metrics-snapshot.toon at release close (F-26);
+     until then they read `<pending>`. Schema: protocols/release-versioning.schema.md.
+     Dated `## YYYY-MM-DD` sections below predate this convention and are retained. -->
+
+## v0.0.1 — M-00 baseline (2026-06-13)
+
+<!-- loom:release:v0.0.1 -->
+- Milestone: M-00
+- Commit range: `(root)..v0.0.1`
+- Status: released
+
+Metrics (pre-registered; repo-derived values pinned at release close per F-26):
+- typecheck-errors: <pending>
+- test-source-ratio: <pending>
+- tautological-tests: <pending>
+- defects-closed: <pending>
+- ci-gates-green: <pending>
+- meta-tests-firing: <pending>
+- scorecard-overall: <pending>
+
 ## 2026-07-02 -- ROADMAP-exceed-gstack: M-10 browser subsystem added (direct Edit)
 
 - Added milestone **M-10: Working browser subsystem** (depends on M-01; independently shippable; does not gate the M-09 scorecard) and constraint **C-14** (make the browser subsystem real, re-authored not forked).

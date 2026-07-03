@@ -1,0 +1,82 @@
+# version-gate — milestone-boundary semver gate (F-15, contract C-04, CG-001).
+#
+# Enforces two rules from protocols/release-versioning.schema.md:
+#   1. The v* tag namespace is semver-only (TAG_NAMESPACE_POLLUTED, always).
+#   2. A release-worthy change reaching a milestone boundary without a version
+#      bump fails the gate (VERSION_GATE_FAILED).
+#
+# The milestone boundary is signalled either by a `workflow_dispatch` input or
+# by an `M-NN` token in the PR title (how a release PR is opened). Ordinary
+# feature PRs carry no milestone token, so only the namespace check runs and
+# they are never blocked for lacking a bump.
+#
+# The check name `version-gate` is the branch-protection interface — renaming
+# it is a breaking change (see protocols/ci-gates.contract.md).
+
+name: version-gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: "Milestone being closed (M-NN); empty runs namespace check only"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: version-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version-gate:
+    name: version-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history + tags so the gate can walk commits since the last v* tag.
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Resolve milestone
+        id: milestone
+        env:
+          DISPATCH_MS: ${{ github.event.inputs.milestone }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -u
+          ms="${DISPATCH_MS:-}"
+          if [ -z "${ms}" ] && [ -n "${PR_TITLE:-}" ]; then
+            ms=$(printf '%s' "${PR_TITLE}" | grep -oE 'M-[0-9]{2}' | head -n1 || true)
+          fi
+          echo "value=${ms}" >> "${GITHUB_OUTPUT}"
+          if [ -n "${ms}" ]; then
+            echo "Milestone boundary: ${ms} — enforcing bump policy."
+          else
+            echo "No milestone token — running namespace check only."
+          fi
+
+      - name: Run version gate
+        env:
+          MS: ${{ steps.milestone.outputs.value }}
+        run: |
+          set -u
+          if [ -n "${MS}" ]; then
+            bun scripts/ci/version-gate.ts --milestone "${MS}"
+          else
+            bun scripts/ci/version-gate.ts
+          fi
