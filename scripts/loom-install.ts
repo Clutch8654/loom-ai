@@ -88,7 +88,11 @@ function canonicalCheckoutRoot(root: string): string {
     const absCommon = path.resolve(root, commonDir);
     if (path.basename(absCommon) !== ".git") return root; // bare or unusual layout — leave as-is
     const mainRoot = path.dirname(absCommon);
-    if (path.resolve(mainRoot) !== path.resolve(root)) {
+    // Normalize drive-letter casing on Windows (path.resolve does not), so
+    // C:\ vs c:\ from different tools doesn't false-trigger the re-anchor.
+    const norm = (p: string): string =>
+      process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p);
+    if (norm(mainRoot) !== norm(root)) {
       process.stderr.write(
         `warning: running from a linked worktree (${root}); anchoring install symlinks to the main checkout at ${mainRoot} so they survive worktree removal.\n`,
       );

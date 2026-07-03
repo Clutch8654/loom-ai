@@ -43,7 +43,8 @@ export interface DanglingSkillSymlinksDeps {
   existsSync?: (p: string) => boolean;
 }
 
-const WORKTREE_SEGMENT = /\/\.worktrees\/|\/\.claude\/worktrees\//;
+// Match both POSIX (/) and Windows (\) path separators.
+const WORKTREE_SEGMENT = /[\\/]\.worktrees[\\/]|[\\/]\.claude[\\/]worktrees[\\/]/;
 
 interface LinkReport {
   link: string;
@@ -56,12 +57,11 @@ export function scanSkillSymlinks(deps: Required<DanglingSkillSymlinksDeps>): Li
   if (!existsSync(skillsDir)) return [];
 
   const candidates: string[] = [];
-  let entries: string[];
-  try {
-    entries = readdir(skillsDir);
-  } catch {
-    return [];
-  }
+  // A readdir failure here means the dir EXISTS but is unreadable — a real
+  // error. Let it propagate so run() reports `warn` ("health unknown"), rather
+  // than swallowing it to [] which run() would render as a healthy PASS — the
+  // exact silent-dark class this check exists to catch.
+  const entries = readdir(skillsDir);
   for (const name of entries) {
     const entryPath = nodePath.join(skillsDir, name);
     // Catalog link is `library/library.yaml`; skills are `<name>/SKILL.md`.
@@ -114,12 +114,32 @@ export default class DanglingSkillSymlinksCheck implements Check {
 
   async run(_state: InstallState): Promise<HealthCheck> {
     void _state;
-    const reports = scanSkillSymlinks(this.deps);
+    let reports: LinkReport[];
+    try {
+      reports = scanSkillSymlinks(this.deps);
+    } catch (err) {
+      return {
+        id: this.id,
+        category: this.category,
+        status: "warn",
+        message: `Could not enumerate ${this.deps.skillsDir} (${(err as Error).message}); skill-symlink health is unknown — treat as a potential silent-dark condition, not a pass.`,
+        remediation: "Check permissions on the skills directory, then re-run /loom-doctor.",
+      };
+    }
     const dangling = reports.filter((r) => r.dangling);
     const atRisk = reports.filter((r) => !r.dangling);
 
+    // A link is `<name>/SKILL.md` (file) or a directory-level `<name>` symlink
+    // (e.g. the `loom` dir link install creates) — pick the name-bearing segment.
+    const skillName = (p: string): string => {
+      const base = nodePath.basename(p);
+      return base === "SKILL.md" || base === "library.yaml"
+        ? nodePath.basename(nodePath.dirname(p))
+        : base;
+    };
+
     if (dangling.length > 0) {
-      const names = dangling.map((r) => nodePath.basename(nodePath.dirname(r.link))).join(", ");
+      const names = dangling.map((r) => skillName(r.link)).join(", ");
       return {
         id: this.id,
         category: this.category,

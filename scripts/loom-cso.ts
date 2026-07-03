@@ -25,7 +25,7 @@
  * Conventions: TOON stdout, atomic history writes (.tmp + rename).
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -54,6 +54,13 @@ interface Finding {
   suggestedFix: string;
 }
 
+interface Note {
+  lens: string;
+  note: string;
+}
+
+// Static, non-interpolated commands only (bun/npm audit). stderr is piped
+// (not inherited), so no shell redirect is needed.
 function tryRun(cmd: string): { code: number; stdout: string } {
   try {
     const stdout = execSync(cmd, {
@@ -68,13 +75,33 @@ function tryRun(cmd: string): { code: number; stdout: string } {
   }
 }
 
+// git invocations go through execFileSync (argv array, no shell) so no
+// repo-derived value (branch names, refs) is ever shell-parsed.
+function tryGit(args: string[]): { code: number; stdout: string } {
+  try {
+    const stdout = execFileSync("git", args, {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+      cwd: REPO_ROOT,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    return { code: 0, stdout };
+  } catch (err: any) {
+    return { code: err?.status ?? 1, stdout: String(err?.stdout ?? "") };
+  }
+}
+
 // ---------------------------------------------------------------- lens 1
 const SECRET_PATTERNS: Array<{ re: RegExp; label: string }> = [
-  { re: /AKIA[0-9A-Z]{16}/, label: "AWS access key" },
+  { re: /AKIA[0-9A-Z]{16}/, label: "AWS access key id" },
+  { re: /ASIA[0-9A-Z]{16}/, label: "AWS temporary access key id" },
+  { re: /aws.{0,20}(secret|SECRET).{0,20}['"= ][A-Za-z0-9/+]{40}/, label: "AWS secret access key" },
   { re: /ghp_[A-Za-z0-9]{36,}/, label: "GitHub personal access token" },
   { re: /gho_[A-Za-z0-9]{36,}/, label: "GitHub OAuth token" },
   { re: /sk_live_[A-Za-z0-9]{20,}/, label: "Stripe live secret key" },
-  { re: /sk-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/, label: "OpenAI API key" },
+  { re: /sk-proj-[A-Za-z0-9_-]{20,}/, label: "OpenAI project key" },
+  { re: /sk-svcacct-[A-Za-z0-9_-]{20,}/, label: "OpenAI service-account key" },
+  { re: /sk-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/, label: "OpenAI API key (legacy)" },
   { re: /sk-ant-[A-Za-z0-9-]{20,}/, label: "Anthropic API key" },
   { re: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/, label: "private key PEM block" },
   { re: /AIza[0-9A-Za-z_-]{35}/, label: "Google API key" },
@@ -84,14 +111,25 @@ const SECRET_SCAN_EXCLUDE = /(^|\/)(node_modules|dist|\.git|fixtures|test-fixtur
 const TEXT_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|json|ya?ml|toml|toon|md|sh|env|txt|py|rb|go|rs)$/i;
 
 function changedFiles(): string[] {
-  const base = tryRun("git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main 2>/dev/null || echo HEAD~1");
-  const ref = base.stdout.trim().split("\n").pop() ?? "HEAD~1";
-  const out = tryRun(`git diff --name-only --diff-filter=ACMR ${ref} -- .`);
+  // Resolve a base ref without a shell fallback chain.
+  let ref = "HEAD~1";
+  for (const cand of [
+    ["merge-base", "HEAD", "origin/main"],
+    ["merge-base", "HEAD", "main"],
+  ]) {
+    const r = tryGit(cand);
+    const sha = r.code === 0 ? r.stdout.trim() : "";
+    if (sha) {
+      ref = sha;
+      break;
+    }
+  }
+  const out = tryGit(["diff", "--name-only", "--diff-filter=ACMR", ref, "--", "."]);
   return out.stdout.split("\n").filter(Boolean);
 }
 
 function trackedFiles(): string[] {
-  return tryRun("git ls-files").stdout.split("\n").filter(Boolean);
+  return tryGit(["ls-files"]).stdout.split("\n").filter(Boolean);
 }
 
 function scanSecrets(mode: Mode, findings: Finding[]): number {
@@ -130,21 +168,27 @@ function scanSecrets(mode: Mode, findings: Finding[]): number {
 }
 
 // ---------------------------------------------------------------- lens 2
-function scanDeps(findings: Finding[], notes: string[]): number {
+function scanDeps(findings: Finding[], notes: Note[], skippedLenses: string[]): number {
   // bun audit exists from bun 1.2.15; fall back to npm audit --json.
-  const bun = tryRun("bun audit --json 2>/dev/null");
+  const bun = tryRun("bun audit --json");
   let vulnCount = -1;
   if (bun.stdout.trim()) {
     try {
       const parsed = JSON.parse(bun.stdout);
-      const advisories = parsed?.advisories ?? parsed?.vulnerabilities ?? {};
-      vulnCount = Array.isArray(advisories) ? advisories.length : Object.keys(advisories).length;
+      // Only trust a recognized shape; an unknown format must NOT read as
+      // "0 vulnerabilities" (that would mask real vulns as clean).
+      const advisories = parsed?.advisories ?? parsed?.vulnerabilities;
+      if (advisories !== undefined) {
+        vulnCount = Array.isArray(advisories) ? advisories.length : Object.keys(advisories).length;
+      } else {
+        notes.push({ lens: "dep-vulns", note: "bun audit output shape unrecognized — ignoring" });
+      }
     } catch {
       /* fall through */
     }
   }
   if (vulnCount < 0) {
-    const npm = tryRun("npm audit --json --audit-level=moderate 2>/dev/null");
+    const npm = tryRun("npm audit --json --audit-level=moderate");
     if (npm.stdout.trim()) {
       try {
         const parsed = JSON.parse(npm.stdout);
@@ -158,7 +202,15 @@ function scanDeps(findings: Finding[], notes: string[]): number {
     }
   }
   if (vulnCount < 0) {
-    notes.push("dep-vulns,audit tool unavailable — lens skipped (confidence reduced per SKILL contract)");
+    // Not checked ≠ clean — but only degrade the gate when there are deps
+    // that SHOULD have been audited. A repo with no package.json has nothing
+    // to audit, so the lens is legitimately N/A, not a coverage gap.
+    if (fs.existsSync(path.join(REPO_ROOT, "package.json"))) {
+      notes.push({ lens: "dep-vulns", note: "audit tool unavailable — lens skipped (gate degraded to warn)" });
+      skippedLenses.push("dep-vulns");
+    } else {
+      notes.push({ lens: "dep-vulns", note: "no package.json — dependency audit not applicable" });
+    }
     return 0;
   }
   if (vulnCount > 0) {
@@ -200,9 +252,11 @@ function scanFilePerms(findings: Finding[]): number {
     }
   }
   // .env-family files that git does NOT ignore (i.e. would be committed).
-  const envCandidates = tryRun("git ls-files --cached --others --exclude-standard | grep -E '(^|/)\\.env(\\.|$)' || true")
+  // Filter in JS rather than piping to grep (portable; no shell).
+  const envCandidates = tryGit(["ls-files", "--cached", "--others", "--exclude-standard"])
     .stdout.split("\n")
     .filter(Boolean)
+    .filter((f) => /(^|\/)\.env(\.|$)/.test(f))
     .filter((f) => !/\.env\.(example|sample|template)$/.test(f));
   for (const f of envCandidates) {
     count++;
@@ -224,14 +278,27 @@ function scanCicd(findings: Finding[]): number {
   const wfDir = path.join(REPO_ROOT, ".github", "workflows");
   if (!fs.existsSync(wfDir)) return 0;
   let count = 0;
-  for (const name of fs.readdirSync(wfDir)) {
+  let names: string[];
+  try {
+    names = fs.readdirSync(wfDir);
+  } catch {
+    return count;
+  }
+  for (const name of names) {
     if (!/\.ya?ml$/.test(name)) continue;
     const rel = path.join(".github", "workflows", name);
-    const content = fs.readFileSync(path.join(wfDir, name), "utf-8");
+    let content: string;
+    try {
+      content = fs.readFileSync(path.join(wfDir, name), "utf-8");
+    } catch {
+      continue; // unreadable file — skip, don't crash the scan
+    }
     const lines = content.split("\n");
-    let hasPermissions = /^permissions:/m.test(content);
+    // Match permissions: at any indentation (top-level OR job-level).
+    const hasPermissions = /^\s*permissions:/m.test(content);
     for (let i = 0; i < lines.length; i++) {
-      const uses = /^\s*(?:-\s+)?uses:\s*([^\s#]+)/.exec(lines[i]);
+      const line = lines[i];
+      const uses = /^\s*(?:-\s+)?uses:\s*([^\s#]+)/.exec(line);
       if (uses) {
         const ref = uses[1];
         // local actions (./) and docker:// refs are out of scope
@@ -251,7 +318,14 @@ function scanCicd(findings: Finding[]): number {
           }
         }
       }
-      if (/^\s*run:.*\bnpm install\b(?!-)/.test(lines[i])) {
+      // `npm install` on any script line — covers multi-line `run: |` blocks
+      // where the command lands on a later line. Exclude comments and the
+      // name/description keys (which may quote the phrase).
+      if (
+        /\bnpm install\b(?!-)/.test(line) &&
+        !/^\s*#/.test(line) &&
+        !/^\s*(?:name|desc|description):/.test(line)
+      ) {
         count++;
         findings.push({
           lens: "cicd",
@@ -296,6 +370,23 @@ export function computeScore(c: LensCounts): number {
 
 const HISTORY_HEADER =
   "entries[0]{timestamp,mode,score,confidenceFloor,secretsCount,depVulnCount,authGaps,inputValidationGaps,llmTrustIssues,filePermIssues,cicdIssues,gitSha}:";
+
+/**
+ * Pure gate decision. `block` = regression vs the last daily entry; `warn` =
+ * below the 8/10 floor OR a scriptable lens was skipped ("not checked" ≠
+ * "clean"). Monthly never gates. Exported for unit testing.
+ */
+export function decideGate(
+  mode: Mode,
+  score: number,
+  previous: number | null,
+  degraded: boolean,
+): "pass" | "block" | "warn" {
+  if (mode !== "daily") return "pass";
+  if (previous !== null && score < previous) return "block";
+  if (score < 8 || degraded) return "warn";
+  return "pass";
+}
 
 export function lastDailyScore(historyContent: string): number | null {
   const rows = historyContent.split("\n").filter((l) => /^ {2}\S/.test(l));
@@ -343,10 +434,11 @@ export function main(argv: string[] = process.argv.slice(2)): number {
   }
 
   const findings: Finding[] = [];
-  const notes: string[] = [];
+  const notes: Note[] = [];
+  const skippedLenses: string[] = [];
   const counts: LensCounts = {
     secretsCount: scanSecrets(mode, findings),
-    depVulnCount: scanDeps(findings, notes),
+    depVulnCount: scanDeps(findings, notes, skippedLenses),
     authGaps: intFlag(argv, "--auth-gaps"),
     inputValidationGaps: intFlag(argv, "--input-validation-gaps"),
     llmTrustIssues: intFlag(argv, "--llm-trust-issues"),
@@ -358,19 +450,18 @@ export function main(argv: string[] = process.argv.slice(2)): number {
   const confidenceFloor = mode === "daily" ? 8 : 2;
   const visibleFindings = findings.filter((f) => f.confidence >= confidenceFloor);
 
-  const history = fs.existsSync(HISTORY_PATH) ? fs.readFileSync(HISTORY_PATH, "utf-8") : "";
+  let history = "";
+  try {
+    if (fs.existsSync(HISTORY_PATH)) history = fs.readFileSync(HISTORY_PATH, "utf-8");
+  } catch {
+    // Unreadable history degrades to "no prior score", never aborts the gate.
+    history = "";
+  }
   const previous = lastDailyScore(history);
 
-  // Gate: block = regression vs last daily entry; warn = below the 8/10
-  // absolute floor without regressing. Both exit non-zero in daily mode per
-  // the SKILL's fast-gate contract; only `pass` exits 0.
-  let gateResult: "pass" | "block" | "warn" = "pass";
-  if (mode === "daily") {
-    if (previous !== null && score < previous) gateResult = "block";
-    else if (score < 8) gateResult = "warn";
-  }
+  const gateResult = decideGate(mode, score, previous, skippedLenses.length > 0);
 
-  const gitSha = tryRun("git rev-parse --short HEAD").stdout.trim() || "unknown";
+  const gitSha = tryGit(["rev-parse", "--short", "HEAD"]).stdout.trim() || "unknown";
   const timestamp = new Date().toISOString();
   const row = `  ${timestamp},${mode},${score},${confidenceFloor},${counts.secretsCount},${counts.depVulnCount},${counts.authGaps},${counts.inputValidationGaps},${counts.llmTrustIssues},${counts.filePermIssues},${counts.cicdIssues},${gitSha}\n`;
   try {
@@ -379,8 +470,13 @@ export function main(argv: string[] = process.argv.slice(2)): number {
     process.stderr.write(`# security-history write failed (non-fatal): ${(e as Error).message}\n`);
   }
 
+  // Every TOON cell must escape the column separator, not just prose fields.
+  const esc = (s: string): string => s.replaceAll(",", ";");
   const findingRows = visibleFindings
-    .map((f) => `  ${f.lens},${f.severity},${f.confidence},${f.file},${f.line},${f.description.replaceAll(",", ";")},${f.suggestedFix.replaceAll(",", ";")}`)
+    .map(
+      (f) =>
+        `  ${esc(f.lens)},${esc(f.severity)},${f.confidence},${esc(String(f.file))},${f.line},${esc(f.description)},${esc(f.suggestedFix)}`,
+    )
     .join("\n");
   process.stdout.write(
     `mode: ${mode}\n` +
@@ -390,7 +486,9 @@ export function main(argv: string[] = process.argv.slice(2)): number {
       `gateResult: ${gateResult}\n` +
       `findings[${visibleFindings.length}]{lens,severity,confidence,file,line,description,suggestedFix}:\n` +
       (findingRows ? findingRows + "\n" : "") +
-      (notes.length ? `notes[${notes.length}]{lens,note}:\n${notes.map((n) => `  ${n}`).join("\n")}\n` : ""),
+      (notes.length
+        ? `notes[${notes.length}]{lens,note}:\n${notes.map((n) => `  ${esc(n.lens)},${esc(n.note)}`).join("\n")}\n`
+        : ""),
   );
 
   return mode === "daily" && gateResult !== "pass" ? 1 : 0;

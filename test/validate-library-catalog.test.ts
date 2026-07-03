@@ -280,4 +280,63 @@ describe("validate-library-catalog.js — v4 behaviour", () => {
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("path traversal blocked");
   });
+
+  // -------------------------------------------------------------------------
+  // Check 7: a skills/*/SKILL.md source filed outside library.skills
+  // (the M-08 misfiling incident: 5 skills under library.infrastructure that
+  // could never install via the curl channel).
+  // -------------------------------------------------------------------------
+
+  it("rejects a SKILL.md source filed under library.infrastructure, exits 1", () => {
+    fs.mkdirSync(path.join(scratchDir, "skills", "foo"), { recursive: true });
+    fs.writeFileSync(path.join(scratchDir, "skills", "foo", "SKILL.md"), "# foo\n");
+    const catalog = buildCatalog({
+      infrastructure: [
+        "    - name: foo",
+        "      description: Misfiled skill body",
+        "      source: skills/foo/SKILL.md",
+      ].join("\n"),
+    });
+    const result = runValidatorInDir(catalog, scratchDir);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("move this entry to library.skills");
+  });
+
+  it("accepts the same SKILL.md source under library.skills (negative control), exits 0", () => {
+    fs.mkdirSync(path.join(scratchDir, "skills", "foo"), { recursive: true });
+    fs.writeFileSync(path.join(scratchDir, "skills", "foo", "SKILL.md"), "# foo\n");
+    const catalog = buildCatalog({
+      skills: [
+        "    - name: foo",
+        "      description: Correctly filed skill",
+        "      source: skills/foo/SKILL.md",
+      ].join("\n"),
+    });
+    const result = runValidatorInDir(catalog, scratchDir);
+    expect(result.code).toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Check 8: an on-disk skills/<dir>/SKILL.md not registered in library.skills
+  // (a skill that ships in the repo but can never be installed).
+  // -------------------------------------------------------------------------
+
+  it("rejects an on-disk skill absent from library.skills, exits 1", () => {
+    // registered skill (exists + in catalog) so check 3 passes...
+    fs.mkdirSync(path.join(scratchDir, "skills", "registered"), { recursive: true });
+    fs.writeFileSync(path.join(scratchDir, "skills", "registered", "SKILL.md"), "# reg\n");
+    // ...plus an orphan on disk that the catalog never mentions.
+    fs.mkdirSync(path.join(scratchDir, "skills", "orphan"), { recursive: true });
+    fs.writeFileSync(path.join(scratchDir, "skills", "orphan", "SKILL.md"), "# orphan\n");
+    const catalog = buildCatalog({
+      skills: [
+        "    - name: registered",
+        "      description: Registered skill",
+        "      source: skills/registered/SKILL.md",
+      ].join("\n"),
+    });
+    const result = runValidatorInDir(catalog, scratchDir);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("not registered under library.skills");
+  });
 });
