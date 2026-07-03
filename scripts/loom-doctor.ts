@@ -312,7 +312,6 @@ export async function main(deps: MainDeps = {}): Promise<number> {
 // ---------------------------------------------------------------------------
 
 const isEntry =
-  // @ts-expect-error Bun-specific import.meta.main
   import.meta.main === true ||
   import.meta.url === `file://${process.argv[1]}`;
 

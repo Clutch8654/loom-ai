@@ -38,9 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      # Error-count baseline: 49 pre-existing errors under hooks/tsconfig.json.
-      # Phase 9 (typecheck-zero) drops this to 0. Ratchet DOWN only.
-      TYPECHECK_ERROR_BASELINE: "25"
+      # Error-count baseline. Phase 9 (typecheck-zero, F-06) drove the count to
+      # 0, so the gate is now zero-tolerance: any type error fails the PR.
+      # Ratchet DOWN only — never raise this.
+      TYPECHECK_ERROR_BASELINE: "0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
