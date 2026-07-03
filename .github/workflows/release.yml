@@ -26,6 +26,14 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  # Manual dry-run only (F-16 AC5). Dispatch is ALWAYS forced dry-run in the
+  # meta step below, so it can never cut a real release from a branch ref.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Test tag for the dry-run (should end in -test)"
+        required: false
+        default: "v0.0.0-test"
 
 permissions:
   contents: write
@@ -52,14 +60,22 @@ jobs:
 
       - name: Resolve release metadata
         id: meta
+        env:
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME:-v0.0.0-test}"
+          if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
+            # Manual runs are dry-run only, regardless of the tag entered.
+            TAG="${DISPATCH_TAG:-v0.0.0-test}"
+            DRY_RUN="true"
+          else
+            TAG="${GITHUB_REF_NAME:-v0.0.0-test}"
+            DRY_RUN="false"
+            case "$TAG" in
+              *-test) DRY_RUN="true" ;;
+            esac
+          fi
           VERSION="${TAG#v}"
-          DRY_RUN="false"
-          case "$TAG" in
-            *-test) DRY_RUN="true" ;;
-          esac
           if [ "$DRY_RUN" = "true" ]; then
             TARBALL="loom-local-test.tar.gz"
           else
