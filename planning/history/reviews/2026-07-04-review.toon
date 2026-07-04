@@ -1,0 +1,43 @@
+review:
+  plan: planning/plans/PLAN-browser-e2e.md
+  roadmap: planning/ROADMAP-browser-e2e.md
+  date: 2026-07-04
+  agents: 8
+  verdict: revise
+  compositeScores: "eng 5.4/10, devex 5.4/10 (DX)"
+  blockingFindings: 2
+  summary: "Architecturally sound, foundation-first, genuinely clean file ownership. But 2 blocking engineering defects, a scope-vs-goal risk (as scoped the tests dimension likely still trails), and many concrete spec gaps that would mislead implementers. REVISE before execution."
+
+agentSummaries[8]{agent,focus,verdict,keyFindings}:
+  feature-coverage,"gstack capability coverage",revise,"P1<->P8 visual-detection contradiction (eval scores visual bugs the READ set can't see); outcome-eval under-scoped (1 fixture/2 scalars vs gstack 3-scenario/per-category); scored eval never runs in CI; adversarial/injection cluster (gstack's largest) untouched; BrowserSkill.trusted ships inert"
+  strategy,"is this the right investment + gate mechanics",proceed-with-fixes,"Right lever + reinforces differentiation + correctly sequenced. BUT success metric ('>=9 OR capability-parity equivalent') is softer than the frozen F-25 every-dimension rule -> risk of a second done-but-below-target. Defer BE-06 (untraced to any metric). Decompose sub-gaps closed vs declined."
+  ux,"developer/operator UX (no GUI)",revise,"Skip-vs-fail semantics underspecified across the 5 daemon consumers; runtime Chromium-absent path uncovered (only test path guarded); loom-browser status output undefined; no error-code->remediation table; partial-DeltaReport state undefined. A skipped e2e tier is a false-green."
+  phasing,"sequencing + dependency correctness",revise,"ROADMAP<->PLAN contradiction: P8 dep should be P1 (daemon) not P3. P5 over-declared (->P1). Undeclared F-20 eval-ladder dependency. Split P4/P8/P9 (>1 seam). Pull P7 forward. Add P1 CDP-attach + P8 eval-contract validation spikes."
+  parallelization,"wave safety + merge strategy",revise,"False-parallel waves: Waves 1/2/3 each pair dependent phases; only Wave 4 is real. Re-level by depth: Wave2={P2,P3,P7}, Wave3={P4,P5,P8}. skills/library.yaml registration UNOWNED (P0 protocols + P7 skill). feedback-loop.schema.md missing from P5 ownership."
+  agentic-workflow,"agent-executability + spec gaps (verified internals)",revise,"P1 misstates 5 internals: cdpEndpoint is a placeholder (resolve via /json/version); cookie 'loading' is a flag not real injection; injection-defense hook DOES NOT EXIST ('preserve' is wrong); tier classifier must be built from scratch; module exports nothing. e2e-story action is free-form PROSE -> P3 has no stable translation contract. Browser-skill dir convention is NEW not existing; loom-skillify writes to scripts/skillified/ not skills/. P8 needs 3 run-evals.ts registry edits + EvalTier union. P9 must respect frozen ci-gates.contract.md + additive-job pattern."
+  plan-eng,"engineering (7-pass, gstack-equivalent lens)",revise,"BLOCKING F-01: C-02 chromium.launch() vs connectOverCDP contradiction -> launch() spawns a NEW browser, defeats C-01 single-substrate. BLOCKING F-03: no P1 handling for CDP-disconnect/launch-failure/crash; stub silently returns 0. Tier enforcement needs a lockfile across CLI processes. Use playwright-core not playwright (~300MB). Split P1. qa-outcome.ts->run-evals.ts registration unowned."
+  plan-devex,"developer experience (8-pass, gstack-equivalent lens)",revise,"Composite DX 5.4; predictedTTHW ~600s (10min). Undocumented 'bunx playwright install chromium' (largest cost); SKILL state example shows Google-Chrome path that misleads. exec on dead daemon queues silently (least-surprise violation). Silent skips read as success. No phase owns a runnable hello-world quickstart. No deprecation policy for old Playwright/Chrome-MCP modes. No uninstall/purge."
+
+crossCuttingThemes[6]{theme,raisedBy,severity,resolution}:
+  T1-scope-wont-close-gap,"feature-coverage, strategy, phasing",high,"As scoped, tests likely STILL trails: metric softer than frozen gate; eval under-scoped (1 fixture, no CI run, no adversarial cluster); P1<->P8 visual contradiction. Reconcile metric vs gate; decompose sub-gaps closed-vs-declined; broaden eval OR pre-declare the residual honestly in Non-Goals."
+  T2-cdp-connect-contradiction,"plan-eng (BLOCKING), agentic-workflow",blocking,"C-02 launch() vs connectOverCDP is contradictory; cdpEndpoint is a placeholder needing /json/version resolution; use playwright-core. Pin C-02 to connectOverCDP(cdpEndpoint) + delete launch() wording."
+  T3-dependency-wave-correctness,"phasing, parallelization, plan-eng",high,"P8->P1 (not P3; ROADMAP<->PLAN contradiction); P5->P1; false-parallel waves re-leveled by depth (Wave2={P2,P3,P7}, Wave3={P4,P5,P8}); split P1/P4/P8/P9; declare F-20 eval-ladder external dep."
+  T4-unowned-wiring-seams,"parallelization, plan-eng, agentic-workflow",high,"Multiple new executables/resources have no registration owner: skills/library.yaml (P0 protocols + P7 skill), scripts/eval/run-evals.ts (qa-outcome tier), protocols/convergence-tier.schema.md runner: scalar->array, e2e-story.schema.md sessionMode enum. Assign each to an explicit owner/wiring step."
+  T5-error-skip-fail-semantics,"ux, plan-devex, plan-eng",high,"Silent skips read as green (false-green); daemon-down queues instead of erroring. Add canonical daemon-preflight contract + named error codes (CHROMIUM_ABSENT/DAEMON_NOT_RUNNING/CDP_DISCONNECTED/REF_UNRESOLVED/STEP_TIMEOUT) + error->remediation table; every skip prints why+how-to-enable."
+  T6-spec-misstatements-mislead-agents,"agentic-workflow, plan-eng",medium,"Plan asserts things that aren't true: 'preserve injection-defense hook' (no hook exists), cookie injection (flag only), browser-skill convention (new not existing), prose vs structured action grammar. Correct the misstatements + add file:line anchors so implementers don't build on false premises."
+
+prioritizedRevisions[12]{priority,item,phases}:
+  1,"Pin C-02 to chromium.connectOverCDP(cdpEndpoint); delete launch(); switch dep to playwright-core; add /json/version endpoint resolution note (BLOCKING F-01)",C-02/P1
+  2,"Add P1 failure handling: named error codes + non-zero exits for daemon-down/Chromium-absent/CDP-disconnect/crash; replace the silent queue-return-0 (BLOCKING F-03)",P0/P1
+  3,"Fix P8 dependency to P1 (reconcile ROADMAP<->PLAN); fix P5->P1; declare F-20 eval-ladder as external prerequisite",P5/P8
+  4,"Re-level waves by dependency depth (Wave2={P2,P3,P7}, Wave3={P4,P5,P8}, Wave4=P6, Wave5=P9); drop the overstated Wave2||Wave4 claim",all
+  5,"Reconcile success metric with the frozen F-25 gate: either commit tests>=9 on the identical rubric OR get explicit sign-off that capability-parity is an accepted outcome; add sub-gap closed-vs-declined decomposition",roadmap/P9
+  6,"Fix P1<->P8 visual-detection contradiction: add css/is-visible/bbox READ verbs OR drop visual bugs from ground-truth and scope eval to functional/console/a11y honestly",P1/P8
+  7,"Assign every unowned wiring seam: library.yaml (P0+P7), run-evals.ts + EvalTier union (P8), convergence-tier runner: array-migration + e2e-story sessionMode enum (P4)",P0/P4/P7/P8
+  8,"Add canonical daemon-preflight contract + error-code->remediation table to P0; every skip prints an actionable reason (P2/P8)",P0/P2/P8
+  9,"Split P1 into P1a (connectOverCDP+READ) / P1b (WRITE+META+cookie-inject+tier-lock); split P4/P8/P9 per seam count",P1/P4/P8/P9
+  10,"Define the daemon-executor action grammar (e2e-story action is free-form prose): structured verb subset for daemon mode; add to P0 as normative addendum + P3 constraint",P0/P3
+  11,"Correct spec misstatements + add file:line anchors: injection-hook (stub-not-preserve), cookie injection, tier classifier source, browser-skill NEW convention (vs scripts/skillified/), DeltaReport schema provenance",P1/P3/P7
+  12,"Broaden outcome-eval to closer to gstack's bar (>=2 more fixtures + per-category/severity scoring + actually run it in a nightly job) OR pre-declare the count/adversarial/Windows-CI residual in Non-Goals. Consider deferring BE-06 (untraced to metric).",P8/P9/roadmap
+
+positives[5]: "Foundation-first sequencing correct (P1 rightly the hard prerequisite); file ownership genuinely clean (no cross-owner collisions verified by 3 agents); C-04 pure-parser fixture determinism is genuinely CI-safe; C-05/C-06 free-by-default+nightly-live correctly reuses existing t3-judge.ts/LOOM_EVAL_LLM infra; strategy sound — reinforces Loom differentiation, not gstack mimicry"
