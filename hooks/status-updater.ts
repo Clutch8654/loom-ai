@@ -6,6 +6,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { atomicWriteText } from "../lib/index.js";
 import { runHook, allow } from "./lib/run-hook.js";
 import { findPlanExecutionDir } from "./lib/context.js";
 
@@ -21,9 +22,7 @@ runHook("status-updater", async (_input) => {
       `updatedAt: ${new Date().toISOString()}`
     );
 
-    const tmpPath = statusPath + ".tmp";
-    fs.writeFileSync(tmpPath, updated, "utf-8");
-    fs.renameSync(tmpPath, statusPath);
+    atomicWriteText(statusPath, updated);
   } catch {
     // Fail open — status update is best-effort
   }

@@ -4,8 +4,8 @@
  * Schema:        protocols/change-state.schema.md
  * Path:          .plan-execution/ephemeral/changes/{changeId}.toon
  *                (via `hooks/lib/change-paths.ts`)
- * Atomic write:  write `{path}.tmp`, then `fs.renameSync({path}.tmp, {path})`
- *                per protocols/execution-conventions.md.
+ * Atomic write:  via lib `atomicWriteText` (C-02, lib/atomic-fs.ts) — `{path}.tmp`
+ *                then atomic rename, per protocols/execution-conventions.md.
  *
  * The proposal.md is the durable, authoritative record of intent (see
  * change-proposal.schema.md). This file is the **runtime mirror**: it is
@@ -24,12 +24,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { splitCsvLine, atomicWriteText } from "../../lib/index.js";
 import {
   CHANGE_ID_PATTERN,
   changeStateDir,
   changeStatePath,
   isValidChangeId,
-  tmpPathFor,
 } from "./change-paths.js";
 
 // ---------------------------------------------------------------------------
@@ -133,8 +133,7 @@ export function readChangeState(
  *
  *  1. Ensure the parent directory exists.
  *  2. Encode to TOON.
- *  3. Write `{path}.tmp`.
- *  4. `fs.renameSync` to `{path}`.
+ *  3. Write atomically via lib `atomicWriteText` (`{path}.tmp` then rename).
  *
  * If an existing file is present, enforce `updatedAt` monotonicity: writes
  * with a timestamp older than the stored value are rejected (matches the
@@ -165,9 +164,7 @@ export function writeChangeState(
   }
 
   const body = encodeChangeStateToon(state);
-  const tmp = tmpPathFor(filePath);
-  fs.writeFileSync(tmp, body, "utf8");
-  fs.renameSync(tmp, filePath);
+  atomicWriteText(filePath, body);
 }
 
 /**
@@ -282,7 +279,7 @@ export function parseChangeStateToon(raw: string, filePath: string): ChangeState
 
     // Indented row inside an active typed-array.
     if (arrayContext !== null && line.startsWith("  ")) {
-      const cells = splitCsvRow(trimmed);
+      const cells = splitCsvLine(trimmed, { preserveQuotes: true });
       if (arrayContext.kind === "transitions") {
         if (cells.length < 5) {
           throw new Error(
@@ -458,30 +455,4 @@ function decodeCell(cell: string): string {
     return trimmed.slice(1, -1).replace(/""/g, '"');
   }
   return trimmed;
-}
-
-function splitCsvRow(row: string): string[] {
-  const out: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < row.length; i++) {
-    const ch = row[i];
-    if (ch === '"') {
-      const next = row[i + 1];
-      if (inQuotes && next === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-        current += ch;
-      }
-    } else if (ch === "," && !inQuotes) {
-      out.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
-  return out;
 }

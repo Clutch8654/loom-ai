@@ -7,6 +7,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { atomicWriteText } from "../lib/index.js";
 import { runHook, allow, block } from "./lib/run-hook.js";
 import { findPlanExecutionDir, readPipelineState } from "./lib/context.js";
 import { parseToon } from "./lib/toon-reader.js";
@@ -50,10 +51,8 @@ runHook("budget-tracker", async (input) => {
       `agentsSpawned: ${newCount}`
     );
 
-    // Atomic write
-    const tmpPath = pipelinePath + ".tmp";
-    fs.writeFileSync(tmpPath, updated, "utf-8");
-    fs.renameSync(tmpPath, pipelinePath);
+    // Atomic write via shared-core (C-02, lib/atomic-fs.ts)
+    atomicWriteText(pipelinePath, updated);
 
     if (newCount >= pipeline.maxAgents) {
       return allow(

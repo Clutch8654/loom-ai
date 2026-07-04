@@ -20,6 +20,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { splitCsvLine, atomicWriteText } from "../../lib/index.js";
 import { canonicalBodyChecksum } from "./checksum.js";
 
 /** A Scenario block as it will appear in `## Scenarios`. */
@@ -189,7 +190,7 @@ export function writeContractPage(
     input,
   });
 
-  atomicWriteFile(pageFile, fullPage);
+  atomicWriteText(pageFile, fullPage);
 
   return {
     pageFile,
@@ -282,7 +283,7 @@ export function upsertContractWikiIndexEntries(
   }
   out.push(``);
 
-  atomicWriteFile(indexFile, out.join("\n"));
+  atomicWriteText(indexFile, out.join("\n"));
 
   return { indexFile, wikiVersion: nextWikiVersion, pageCount };
 }
@@ -510,13 +511,6 @@ function composeFullPage(args: {
   return `${frontmatterLines.join("\n")}\n\n${body}`;
 }
 
-/** Atomically write `content` to `target` via a `.tmp` then `rename`. */
-function atomicWriteFile(target: string, content: string): void {
-  const tmp = `${target}.tmp`;
-  fs.writeFileSync(tmp, content, "utf8");
-  fs.renameSync(tmp, target);
-}
-
 interface ParsedIndexLight {
   schemaVersion: number | null;
   projectName: string | null;
@@ -575,7 +569,7 @@ function parseIndexLight(raw: string): ParsedIndexLight {
     if (!trimmed) continue;
     if (!pageColumns) continue;
 
-    const values = parseCsvRow(trimmed);
+    const values = splitCsvLine(trimmed, { preserveQuotes: true });
     const obj: Record<string, string> = {};
     for (let i = 0; i < pageColumns.length; i++) {
       obj[pageColumns[i]] = (values[i] ?? "").trim();
@@ -592,25 +586,6 @@ function parseIndexLight(raw: string): ParsedIndexLight {
     });
   }
 
-  return out;
-}
-
-function parseCsvRow(row: string): string[] {
-  const out: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (const ch of row) {
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-      current += ch;
-    } else if (ch === "," && !inQuotes) {
-      out.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
   return out;
 }
 

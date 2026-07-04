@@ -37,6 +37,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { splitCsvLine } from "../../../lib/index.js";
 import { changeDir } from "../change-paths.js";
 
 export type FindingSeverity = "blocking" | "warning" | "info";
@@ -411,33 +412,8 @@ function parseInlineList(rest: string, declared: number): string[] {
   if (declared === 0) return [];
   const trimmed = rest.trim();
   if (trimmed.length === 0) return [];
-  const cells = splitCsvRow(trimmed);
+  const cells = splitCsvLine(trimmed);
   return cells.map((c) => c.trim()).filter((c) => c.length > 0);
-}
-
-function splitCsvRow(row: string): string[] {
-  const out: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < row.length; i++) {
-    const ch = row[i];
-    if (ch === '"') {
-      const next = row[i + 1];
-      if (inQuotes && next === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      out.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
-  return out;
 }
 
 // ---------------------------------------------------------------------------

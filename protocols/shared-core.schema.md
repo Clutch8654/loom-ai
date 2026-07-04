@@ -32,6 +32,49 @@ migration:
   migratedCallers[2]: hooks/lib/toon-reader.ts, scripts/loom-change/archive.ts
 ```
 
+### Phase 11a — hooks/lib CSV callers migrated (F-08, defect 8)
+
+Local CSV splitters (`splitCsvRow` / `splitCsv` / `parseCsvRow`) under
+`hooks/lib/**` deleted and routed through `splitCsvLine`. Strip-and-collapse
+call sites use the default options; quote-preserving call sites (whose own
+`decodeCell` / `unescapeCsvCell` / `stripQuotes` un-escapes downstream) pass
+`{ preserveQuotes: true }`. `toon-reader.ts` uses `{ trim: true }` — the S-01
+escaped-`""` fix.
+
+```toon
+migration:
+  module: csv
+  phase: 11a
+  migratedCallers[6]: hooks/lib/toon-reader.ts, hooks/lib/change-state.ts, hooks/lib/scenario-parser.ts, hooks/lib/contract-page-writer.ts, hooks/lib/spec-validators/contract-page.ts, hooks/lib/spec-validators/change-proposal.ts
+```
+
+### Phase 11a — hooks/lib atomic-write callers migrated (F-08, defect 8)
+
+Local `writeFileSync(tmp)+renameSync(tmp,real)` atomic-write reimplementations
+under `hooks/lib/**` deleted and routed through `atomicWrite` / `atomicWriteText`
+(string vs Buffer). `wiki-helpers.ts` re-exports `atomicWriteText as writeAtomic`
+so its three top-level wiki-hook callers are unchanged. Injectable write seams
+(`spawn-agent.ts`, `iteration-snapshot.ts`, `dismissal-marker.ts`) keep their
+test hooks; only the DEFAULT/production impl now calls lib/. `dismissal-marker.ts`
+drives its decomposed tmp→rename path only when a test injects both write+rename
+fakes, else lib/atomicWriteText.
+
+```toon
+migration:
+  module: atomic-fs
+  phase: 11a
+  migratedCallers[9]{file,note}:
+    hooks/lib/wiki-helpers.ts,local writeAtomic → re-export lib atomicWriteText
+    hooks/lib/contract-page-writer.ts,local atomicWriteFile deleted → lib atomicWriteText
+    hooks/lib/change-state.ts,local .tmp+renameSync → lib atomicWriteText
+    hooks/lib/iteration-snapshot.ts,default WriteFileImpl (Buffer) → lib atomicWrite
+    hooks/lib/spawn-agent.ts,default WriteFileImpl (Buffer) → lib atomicWrite
+    hooks/lib/dismissal-marker.ts,default path → lib atomicWriteText; test seam retained
+    hooks/context-monitor.ts,local .tmp+renameSync → lib atomicWriteText
+    hooks/budget-tracker.ts,local .tmp+renameSync → lib atomicWriteText
+    hooks/status-updater.ts,local .tmp+renameSync → lib atomicWriteText
+```
+
 ## Export signatures (frozen)
 
 All types referenced below are exported from `lib/types.ts`.
@@ -83,4 +126,24 @@ validation[5]{field,rule,error}:
   exports,>=1 and every export typed in lib/types.ts,VALIDATION_ERROR
   bannedReimplementations,non-empty description,VALIDATION_ERROR
   exports[i],unique across all modules,VALIDATION_ERROR
+```
+
+## Migrated callers — Phase 11b (scripts/, F-08 defect 8)
+
+Strangler migration of `scripts/**` callers onto the shared core. Each listed
+file's local reimplementation was deleted and routed through `lib/index.ts`.
+
+```toon
+migration:
+  phase: 11b
+  scope: scripts/
+  migratedCallers[8]{module,file,note}:
+    csv,scripts/loom-change/archive.ts,splitCsvLine({ trim: true }) + caller-side empty-field filter
+    csv,scripts/materialize-contracts.ts,splitCsvLine({ preserveQuotes: true }) — divergent local splitCsv deleted
+    atomic-fs,scripts/loom-browser-daemon.ts,local atomicWrite → lib atomicWrite
+    atomic-fs,scripts/loom-install.ts,local atomicWrite → lib atomicWrite
+    atomic-fs,scripts/loom-version-slot.ts,local writeAtomic → lib atomicWriteText
+    atomic-fs,scripts/loom-change/init.ts,stranded atomicWriteText deleted; imports+re-exports lib atomicWriteText
+    atomic-fs,scripts/loom-change/archive.ts,atomicWriteText import moved from ./init.js to lib
+    atomic-fs,scripts/materialize-contracts.ts,local .tmp+renameSync → lib atomicWriteText
 ```

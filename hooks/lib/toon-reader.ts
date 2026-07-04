@@ -1,7 +1,14 @@
 /**
  * Minimal read-only TOON parser for hooks.
  * Handles flat key-value pairs and typed arrays. No write support needed.
+ *
+ * CSV row splitting is delegated to the shared-core `splitCsvLine` (lib/csv.ts,
+ * C-02) — the single sanctioned splitter. The former local `splitCsvRow`
+ * mishandled escaped `""` (Phase 11a, F-08 defect 8, scenario S-01); the lib
+ * splitter is the reference behavior.
  */
+
+import { splitCsvLine } from "../../lib/index.js";
 
 /** Parse flat key: value pairs from TOON content. */
 export function parseToon(content: string): Record<string, string | number | boolean | null> {
@@ -69,7 +76,7 @@ export function parseToonArray(
 
       if (!fields) break;
 
-      const values = splitCsvRow(trimmed);
+      const values = splitCsvLine(trimmed, { trim: true });
       const obj: Record<string, string | number | boolean | null> = {};
       for (let i = 0; i < fields.length; i++) {
         obj[fields[i]] = parseValue(values[i] ?? "");
@@ -120,23 +127,4 @@ function parseValue(raw: string): string | number | boolean | null {
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function splitCsvRow(row: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (const ch of row) {
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (ch === "," && !inQuotes) {
-      result.push(current.trim());
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current.trim());
-  return result;
 }

@@ -36,6 +36,7 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { atomicWrite } from "../../lib/index.js";
 import { CHECKSUM_PREFIX } from "./checksum.js";
 
 // ---------------------------------------------------------------------------
@@ -164,19 +165,13 @@ function encodeRecord(record: IterationSnapshotRecord): string {
 }
 
 /**
- * Production atomic-write implementation: write to `.tmp`, then rename.
- * The rename is atomic on POSIX filesystems for files on the same volume.
+ * Production atomic-write implementation — routes both writes through the
+ * shared-core `atomicWrite` (C-02, lib/atomic-fs.ts): write `{path}.tmp`, then
+ * atomically rename onto the target. Atomic on POSIX for same-volume files.
  */
 const defaultWriteFile: WriteFileImpl = ({ copyAbsPath, copyBytes, metaAbsPath, metaBytes }) => {
-  // 1. snapshot copy
-  const copyTmp = `${copyAbsPath}.tmp`;
-  fs.writeFileSync(copyTmp, copyBytes);
-  fs.renameSync(copyTmp, copyAbsPath);
-
-  // 2. metadata
-  const metaTmp = `${metaAbsPath}.tmp`;
-  fs.writeFileSync(metaTmp, metaBytes);
-  fs.renameSync(metaTmp, metaAbsPath);
+  atomicWrite(copyAbsPath, copyBytes); // 1. snapshot copy
+  atomicWrite(metaAbsPath, metaBytes); // 2. metadata
 };
 
 // ---------------------------------------------------------------------------
