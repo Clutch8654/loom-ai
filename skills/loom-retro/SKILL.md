@@ -5,6 +5,8 @@ description: Retrospective ceremony that reads git activity + closed PRs + plann
 
 # /loom-retro — Retrospective Ceremony
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 Run this at the end of a milestone, sprint, or notable body of work to codify what was learned. The output is durable: it lands in Loom's append-only learnings and regressions files where downstream reviewer agents pick it up.
 
 ## Inputs
@@ -96,6 +98,24 @@ retro:
   regressionsAdded: <N>
   roadmapSuggestions: <N>
 ```
+
+## Append-guard enforcement (wired + proven)
+
+The append-only and sequential-id invariants (Phase 3 / Phase 4) are enforced
+by deterministic pure functions in `skills/loom-retro/append-guard.ts`:
+`nextSequentialId(prefix, ids)` allocates the next `L-NNN` / `R-NNN`, and
+`assertAppendOnly(prior, next)` returns `RETRO_APPEND_VIOLATION` when any
+historic row is dropped, reordered, or mutated in place. The retro writer MUST
+gate every `.loom/learnings.toon` / `.loom/regressions.toon` write on
+`assertAppendOnly`. `tests/skills/workflow-batch.test.ts` exercises the
+triggering condition (a mutated historic row) and asserts the violation fires.
+
+## Beyond gstack upstream
+
+gstack has no retrospective codification loop. `/loom-retro` adds
+**append-only, sequentially-keyed learning/regression ledgers with a
+programmatic append-only guard** (`assertAppendOnly`) that downstream reviewer
+agents cite — a capability with no upstream analogue.
 
 ## Contracts Referenced
 

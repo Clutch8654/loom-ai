@@ -1,0 +1,7 @@
+# SkillUpgradeMatrix shard — see lib/types.ts (SkillUpgradeMatrix), C-13
+skill: loom-worktree
+batch: workflow
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Cross-worktree file-ownership overlap detection (computeOverlap) with a CI-visible preflight gate that exits 1 when sibling branches claim the same paths — gstack has no sibling-worktree coordination."

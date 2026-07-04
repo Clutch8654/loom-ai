@@ -5,6 +5,8 @@ description: "Progressive deploy with health-check gates + rollback. Wraps exist
 
 # /loom-canary — Progressive Deploy with Health Gates (M-10 F-31)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 `/loom-canary` runs a phased rollout of the current commit through the
 project's already-configured deploy target. It does not replace the native
 deploy CLI — it wraps it, gating each phase on a health-check probe and
@@ -88,9 +90,28 @@ cross-workspace deploy summary.
   after which `/loom-canary` treats a stalled probe as a failure and rolls
   back.
 
+## Rollback-gate enforcement (wired + proven)
+
+The health-gate → rollback decision is not left to prose. It is a deterministic
+pure function, `evaluateHealthGate(probes, threshold)` in
+`skills/loom-canary/rollback-gate.ts`, exported for tests. A single non-2xx
+probe, a timeout, or an error-rate delta at-or-above the phase threshold
+returns `decision: "rollback"` with reason code `CANARY_ROLLED_BACK` — there is
+no "mostly healthy" promotion. `tests/skills/workflow-batch.test.ts` exercises
+the triggering condition (a failing probe in an otherwise-healthy batch) and
+asserts the rollback decision fires.
+
+## Beyond gstack upstream
+
+gstack deploys in one shot with no health gating. `/loom-canary` adds a
+**deterministic per-phase health-gate that forces rollback on the first failed
+probe** — a capability, not parity — backed by `evaluateHealthGate` and proven
+in `tests/skills/workflow-batch.test.ts`.
+
 ## Contracts
 
 - `protocols/loom-ship-config.schema.toon` — deploy config format.
+- `skills/loom-canary/rollback-gate.ts` — health-gate decision function.
 - `.loom/canary-history.toon` — run history.
 - `protocols/agent-result.schema.md` — return envelope.
 

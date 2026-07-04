@@ -5,6 +5,8 @@ description: "Cross-worktree lease + preflight scan for parallel-branch coordina
 
 # /loom-worktree — Cross-Worktree Fan-in Coordination (M-09 F-01)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 `/loom-worktree` is an **advisory** preflight system that detects file-ownership
 overlap across sibling git worktrees of the same repo. It exists because
 parallel Claude Code sessions in sibling worktrees can happily touch the same
@@ -151,6 +153,14 @@ The following are **future work** — spec sketches, not shipped in M-09:
   and prints a rebase plan.
 - Optional: drive `wt rebase <branch>` for each branch in the elected order,
   running the plan's verification gate after each rebase.
+
+## Beyond gstack upstream
+
+gstack has no sibling-worktree coordination. `/loom-worktree` adds
+**cross-worktree file-ownership overlap detection** with a CI-visible
+`preflight` gate that exits `1` when two branches claim the same paths. The
+overlap engine (`computeOverlap`) is proven in
+`tests/skills/workflow-batch.test.ts`.
 
 ## Exit codes
 
