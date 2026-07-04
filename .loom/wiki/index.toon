@@ -1,11 +1,11 @@
 schemaVersion: 1
 projectName: loom-ai
 domain: code
-wikiVersion: 4
-pageCount: 40
-lastUpdated: 2026-07-01T00:00:00Z
+wikiVersion: 5
+pageCount: 42
+lastUpdated: 2026-07-04T06:00:00Z
 
-pages[40]{pageId,title,category,staleness,updatedAt}:
+pages[42]{pageId,title,category,staleness,updatedAt}:
   component-command-dispatch,Command Dispatch System,component,fresh,2026-04-25T22:00:00Z
   component-context-budget,Context Budget Hook,component,fresh,2026-04-25T22:00:00Z
   component-context-monitor,Context Monitor Hook,component,fresh,2026-04-25T22:00:00Z
@@ -16,6 +16,7 @@ pages[40]{pageId,title,category,staleness,updatedAt}:
   component-orchestration-patterns,Orchestration Patterns,component,fresh,2026-04-25T22:00:00Z
   component-roadmap-converge-driver,Roadmap Converge Driver,component,fresh,2026-06-17T00:00:00Z
   component-roadmap-converge-state,Roadmap Converge State,component,fresh,2026-06-17T00:00:00Z
+  component-eval-framework,Eval Framework (Three-Tier Ladder),component,fresh,2026-07-04T06:00:00Z
   concept-convergence,Convergence,concept,fresh,2026-06-17T00:00:00Z
   concept-execution-pipeline,Execution Pipeline,concept,fresh,2026-04-25T22:00:00Z
   concept-roadmap-convergence,Roadmap Convergence,concept,fresh,2026-06-17T00:00:00Z
@@ -35,6 +36,7 @@ pages[40]{pageId,title,category,staleness,updatedAt}:
   protocol-codebase-design,Codebase Design Vocabulary,protocol,fresh,2026-06-26T00:00:00Z
   protocol-out-of-scope,OutOfScopeEntry Schema,protocol,fresh,2026-06-26T00:00:00Z
   protocol-grilling,Grilling Discipline,protocol,fresh,2026-06-26T00:00:00Z
+  protocol-skill-preamble,Shared Skill Preamble Protocol,protocol,fresh,2026-07-04T06:00:00Z
   command-loom-which,/loom-which Decision-Tree Router,command,fresh,2026-06-26T00:00:00Z
   command-loom-deepen,/loom-deepen Deepening Report,command,fresh,2026-06-26T00:00:00Z
   command-loom-prototype,/loom-prototype Throwaway Prototype,command,fresh,2026-06-26T00:00:00Z
@@ -48,14 +50,14 @@ pages[40]{pageId,title,category,staleness,updatedAt}:
   decision-distribution-plugin-first,Distribution: Plugin-First Decision,decision,fresh,2026-07-01T00:00:00Z
 
 categories[12]{name,count}:
-  component,10
+  component,11
   concept,3
   convention,4
   decision,5
   pattern,2
   structure,2
   feature,1
-  protocol,4
+  protocol,5
   command,3
   state-machine,3
   convergence-target,1

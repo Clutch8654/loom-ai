@@ -1,0 +1,31 @@
+wave: 8
+status: complete
+completedAt: 2026-07-04T05:36:00Z
+phasesComplete[2]: 20, 21
+agentsRun[2]: w8-p20, w8-p21
+milestone: M-07 (evals) + F-22 (skill preamble foundation)
+commits[2]{sha,phase,summary}:
+  ceefeb9,20,eval tier ladder T1/T2 free + T3 opt-in (F-20+F-21)
+  df177da,21,shared skill preamble protocol resource (F-22)
+filesCreated[13]: scripts/eval/run-evals.ts, scripts/eval/tiers/t1-static.ts, scripts/eval/tiers/t2-hermetic.ts, scripts/eval/tiers/t3-judge.ts, evals/fixtures/toon-summary-parity.toon, evals/fixtures/csv-row-extraction.toon, evals/results/.gitignore, tests/eval/run-evals.test.ts, tests/eval/t3-gating.test.ts, protocols/skill-preamble.md, tests/skills/preamble-resolution.test.ts
+filesModified[3]: .github/workflows/pr-gate.yml, .github/workflows/nightly-gate.yml, skills/library.yaml
+verification: pass
+verificationDetail: "typecheck 0 (hooks/tsconfig, zero-tolerance ratchet clean); bunx vitest run tests/eval tests/skills = 22/22 pass (3 files); eslint clean on all TS (C-02 false-positive on toToon silenced with justified disable — builds ToonValue, delegates to lib serializeToon)."
+p20Detail: "Three-tier eval ladder. T1 static/in-process (grammar round-trip + csv-escape-parity), T2 hermetic replay of 2 committed TOON fixtures — both llmCalls:0. T2 missing fixture => EVAL_FIXTURE_MISSING exit1. T3 gated on LOOM_EVAL_LLM, advisory-only always exit0, main-floor comparison => EVAL_FLOOR_REGRESSION/EVAL_FLOOR_MISSING warnings via injected judge seam (no live LLM anywhere, tests mock judge). pr-gate gained standalone eval-t1 job; nightly-gate eval-t2 runs current T2 + builds main-branch floor in detached worktree (advisory regression warning). Artifacts evals/results/{runId}.toon via atomic write."
+p21Detail: "protocols/skill-preamble.md = single authoritative shared preamble (7 conventions), byte-stable canonical block between LOOM:SKILL-PREAMBLE:BEGIN/END markers, cite-by-path directive <!-- @loom-include: protocols/skill-preamble.md -->, DO-NOT-MODIFY header citing the test — mirrors _loom-init-guard. Registered as protocol `skill-preamble` under library.protocols in skills/library.yaml. resolveSkillPreamble() resolution proven behaviorally (10 tests); no runtime resolver ships this phase."
+reconciliation:
+  ownershipViolations: 0
+  exportConflicts: 0
+  crossBoundaryRequests: 0
+  wiringNeeded: false
+contractAmendments[1]{file,issue,severity}:
+  protocols/ci-gates.contract.md,"pr-tier checks[6]+requiredChecks[7] have no eval-t1 entry — pr-gate eval-t1 job is additive (visible check) but NOT branch-protection-required; to make T1 truly merge-blocking add eval-t1 to the frozen set in a follow-up owning the contract",advisory
+acceptanceNotes[6]{ac,status,note}:
+  F-20.t1-free,covered,"--tier t1 exit0 llmCalls:0, conforming EvalTierResult TOON written"
+  F-20.t2-hermetic,covered,"--tier t2 replays fixtures zero live LLM (fetch-trap test); missing fixture => EVAL_FIXTURE_MISSING exit1"
+  F-21.t3-skipped,covered,"LOOM_EVAL_LLM unset => t3 status skipped exit0; no CI runs --tier t3 (never merge-blocking)"
+  F-21.t3-floor,covered,"flag set + mock judge => judgedScore vs main floor; EVAL_FLOOR_REGRESSION warning still exit0"
+  F-20.gate-wiring,covered,"pr-gate runs T1; nightly-gate runs T2 with main-branch regression floor"
+  F-22.preamble,covered,"single-source preamble resolved by reference, no inlined copy; _loom-init-guard pattern; 10/10 tests"
+nextWave: 9
+nextWavePhases[3]: 22, 23, 24
