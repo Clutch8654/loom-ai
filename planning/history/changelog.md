@@ -8,6 +8,43 @@
      until then they read `<pending>`. Schema: protocols/release-versioning.schema.md.
      Dated `## YYYY-MM-DD` sections below predate this convention and are retained. -->
 
+## 2026-07-04 -- M-09 acceptance closed: MEASURED metrics snapshot (BELOW-TARGET)
+
+<!-- loom:measured:M-09 -->
+- Milestone: M-09 (final acceptance gate for the exceed-gstack initiative; C-04 / C-09 / C-12 close-out)
+- Snapshot: `planning/reports/metrics-snapshot.toon` (capturedAt 2026-07-01T00:00:00Z, gitRef 653e7ce13d3a4f537df564b75032e9c5233ddb7a)
+- Acceptance outcome: **BELOW-TARGET** — the M-09 gate did NOT clear the every-dimension bar.
+
+**Honest result — recorded as a fail, not a pass.** The re-run 4-agent comparative scorecard (`planning/reports/scorecard-rerun.toon`, gated by `scripts/scorecard-gate.ts`) returned overall **8.07 versus the pinned gstack floor 8.3** — below target. Five of seven dimensions clear (prompt-assets leads +2, docs +0.5, and architecture / code-quality / extensibility sit at parity), but **tests (7 < 9)** and **ops-polish (8 < 9)** trail the pinned gstack baseline. The exceed-gstack initiative closed the code-quality and extensibility gaps and leads on prompt-assets and docs, but did NOT achieve the acceptance definition of "every dimension ≥ gstack with overall > 8.3". No spin: this milestone is closed BELOW-TARGET, with loop-back to M-04 (tests) and M-05 (ops-polish).
+
+Measured success metrics (pre-registered; values embedded VERBATIM from the snapshot — every claim re-derivable via its `derivedBy` command, no telemetry per C-12):
+- typecheck-errors: 0 (target 0; PASS) — `bunx tsc --noEmit -p hooks/tsconfig.json`
+- test-source-ratio: 1.06 (target 1.4; PASS via the C-21 / IC-001 behavioral-assertion-density equivalence — computedValue 5.84 ≥ the calibrated density floor 3.0, not the raw LOC floor) — `bun scripts/metrics-snapshot.ts --metric ratio`
+- tautological-tests: 0 (target 0; PASS) — `bun scripts/audit-tests.ts --count-remaining`
+- defects-closed: 15 (target 15; PASS) — `grep -oE 'defect [0-9]+' planning/ROADMAP-exceed-gstack.md | sort -t' ' -k2 -n -u | wc -l`
+- ci-gates-green: true (target true; PASS) — deterministic PR-tier gate inputs (typecheck 0 errors + 0 tautological tests) with the `pr-gate.yml` and `nightly-gate.yml` workflows wired; a repo-state signal, not a GitHub-run query (C-12)
+- meta-tests-firing: 1 (target 1; PASS) — `bunx vitest run tests/meta`
+- scorecard-overall: 8.07 (target 8.3; **FAIL** — 8.07 does not exceed the 8.3 floor) — `grep -E '^overall:' planning/reports/scorecard-rerun.toon`
+
+Defect-closure checklist (defects-closed 15/15 — each verified defect mapped to the fix that closed it; the count is machine-derived from the roadmap, not hand-tallied):
+- defect 1 — agent-result-validator silent no-op / C-08 blocking posture (wave 2)
+- defect 2 — two shell-injection sites in loom-health + loom-version-slot, argv-hardened (wave 2)
+- defect 3 — loom-version-slot cross-repo worktree contamination, repo-scoped (wave 2)
+- defect 4 — 49 hooks-tsconfig typecheck errors driven to 0 (foundation; typecheck-errors now 0)
+- defect 5 — no CI ran the vitest suite; tiered pr-gate + nightly-gate CI landed (F-01)
+- defect 6 — 8 untested PR #31 files: entry guards added + behavioral tests backfilled (wave 5)
+- defect 7 — tautological / prompt-grep tests audited, classified, and deleted (wave 5; tautological-tests now 0)
+- defect 8 — divergent primitive duplication strangler-migrated onto the `lib/` shared core (wave 4)
+- defect 9 — stale committed "Worktree Context" block removed from CLAUDE.md (wave 4)
+- defect 10 — hook-registration drift reconciled across settings/hooks.json/manifest (wave 4)
+- defect 11 — AgentResult confidence schema blocking posture reconciled / C-07 (wave 2)
+- defect 12 — docs drift (both enumerable + non-enumerable halves) closed via generated docs + drift gate (wave 5)
+- defect 13 — release/versioning spine: semver milestone tags, version-gate CI, real changelog / C-04
+- defect 14 — install.sh fail-open integrity downgrade made fail-closed with trap-based rollback
+- defect 15 — vitest `fileParallelism:false` workaround retired + Docker-env skip guards (wave 7, Phase 19)
+
+Six of the seven metrics pass; the honest exception is `scorecard-overall` (8.07, below the 8.3 floor). This entry is the durable, re-runnable source of truth: regenerate with `bun scripts/metrics-snapshot.ts --write` and validate with `bun scripts/metrics-snapshot.ts --check` (exit 0 ⇒ report matches repo state). The changelog↔snapshot match is guarded by `tests/scripts/changelog-metrics-match.test.ts`.
+
 ## v0.0.1 — M-00 baseline (2026-06-13)
 
 <!-- loom:release:v0.0.1 -->

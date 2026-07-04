@@ -50,6 +50,7 @@ import type {
   MetricsSnapshot,
   ToonValue,
 } from "../lib/index.js";
+import { countRemaining as countTautologicalRemaining } from "./audit-tests.js";
 
 /** Report location, repo-relative. */
 export const REPORT_REL_PATH = "planning/reports/metrics-snapshot.toon";
@@ -413,11 +414,121 @@ function isAncestorOfMain(repoRoot: string, ref: string): boolean {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Snapshot build + render
+ * The other six pre-registered metrics — each DERIVED from repo state by a
+ * re-runnable, offline command (C-12: no telemetry). `derivedBy` names the
+ * canonical reproduction; the value here is machine-derived the same way, so
+ * re-running the command at the pinned gitRef yields the recorded value.
  * ──────────────────────────────────────────────────────────────────────── */
 
-const RATIO_DERIVED_BY =
-  "bun scripts/metrics-snapshot.ts --metric ratio";
+/** Repo-relative sources the non-ratio metrics derive from. */
+export const ROADMAP_REL_PATH = "planning/ROADMAP-exceed-gstack.md";
+export const SCORECARD_RERUN_REL_PATH = "planning/reports/scorecard-rerun.toon";
+export const META_TESTS_DIR = "tests/meta";
+export const REQUIRED_GATE_WORKFLOWS = [
+  ".github/workflows/pr-gate.yml",
+  ".github/workflows/nightly-gate.yml",
+] as const;
+
+/** Canonical, offline, no-telemetry reproduction commands (C-12). */
+export const TYPECHECK_DERIVED_BY = "bunx tsc --noEmit -p hooks/tsconfig.json";
+export const RATIO_DERIVED_BY = "bun scripts/metrics-snapshot.ts --metric ratio";
+export const TAUTOLOGICAL_DERIVED_BY =
+  "bun scripts/audit-tests.ts --count-remaining";
+export const DEFECTS_DERIVED_BY =
+  "grep -oE 'defect [0-9]+' planning/ROADMAP-exceed-gstack.md | sort -t' ' -k2 -n -u | wc -l";
+export const CI_GATES_DERIVED_BY =
+  'bunx tsc --noEmit -p hooks/tsconfig.json && [ "$(bun scripts/audit-tests.ts --count-remaining)" -eq 0 ] && test -f .github/workflows/pr-gate.yml && test -f .github/workflows/nightly-gate.yml';
+export const META_TESTS_DERIVED_BY = "bunx vitest run tests/meta";
+export const SCORECARD_DERIVED_BY =
+  "grep -E '^overall:' planning/reports/scorecard-rerun.toon";
+
+/**
+ * tsc is the one derivation that shells out to a heavyweight tool. It is
+ * memoized per repoRoot so a single process (e.g. the test suite calling
+ * buildSnapshot repeatedly) runs the typecheck at most once. The result is
+ * deterministic for a given working tree, which is what the snapshot needs.
+ */
+const typecheckCache = new Map<string, number>();
+
+/** Count `error TSxxxx` diagnostics from `tsc --noEmit` (0 ⇒ clean). */
+export function countTypecheckErrors(repoRoot: string): number {
+  const cached = typecheckCache.get(repoRoot);
+  if (cached !== undefined) return cached;
+  let out = "";
+  try {
+    out = execFileSync(
+      "bunx",
+      ["tsc", "--noEmit", "-p", "hooks/tsconfig.json"],
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+  } catch (err) {
+    const e = err as { stdout?: string; stderr?: string };
+    out = `${e.stdout ?? ""}${e.stderr ?? ""}`;
+  }
+  const matches = out.match(/error TS\d+/g);
+  const n = matches === null ? 0 : matches.length;
+  typecheckCache.set(repoRoot, n);
+  return n;
+}
+
+/** Tautological/prompt-grep suspects still on disk (single-source: audit-tests). */
+export function countTautologicalTests(repoRoot: string): number {
+  return countTautologicalRemaining(repoRoot);
+}
+
+/** Distinct verified defect ids enumerated in the exceed-gstack roadmap. */
+export function countDefectsClosed(repoRoot: string): number {
+  const abs = path.join(repoRoot, ROADMAP_REL_PATH);
+  if (!fs.existsSync(abs)) return 0;
+  const text = fs.readFileSync(abs, "utf8");
+  const ids = new Set<number>();
+  const re = /defect (\d+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) ids.add(Number(m[1]));
+  return ids.size;
+}
+
+/** Meta-test files present (each fires on a planted defect). */
+export function countMetaTestFiles(repoRoot: string): number {
+  const dir = path.join(repoRoot, META_TESTS_DIR);
+  if (!fs.existsSync(dir)) return 0;
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".test.ts")).length;
+}
+
+/**
+ * Repo-state signal for "CI gates green" — the deterministic, offline PR-tier
+ * gate inputs pass (typecheck 0 + 0 tautological tests) AND the blocking gate
+ * workflows are wired. NOT a GitHub-run query: C-12 forbids telemetry.
+ */
+export function deriveCiGatesGreen(repoRoot: string): boolean {
+  const typecheckClean = countTypecheckErrors(repoRoot) === 0;
+  const tautologicalClean = countTautologicalTests(repoRoot) === 0;
+  const workflowsWired = REQUIRED_GATE_WORKFLOWS.every((rel) =>
+    fs.existsSync(path.join(repoRoot, rel)),
+  );
+  return typecheckClean && tautologicalClean && workflowsWired;
+}
+
+export interface ScorecardOverall {
+  overall: number;
+  gstackOverall: number;
+}
+
+/** Read the HONEST rerun overall + pinned gstack floor from the rerun scorecard. */
+export function readScorecardOverall(repoRoot: string): ScorecardOverall {
+  const abs = path.join(repoRoot, SCORECARD_RERUN_REL_PATH);
+  const root = asObject(parseToon(fs.readFileSync(abs, "utf8")));
+  const overall = root && typeof root.overall === "number" ? root.overall : NaN;
+  const gstackOverall =
+    root && typeof root.gstackOverall === "number" ? root.gstackOverall : NaN;
+  return { overall, gstackOverall };
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Snapshot build + render
+ * ──────────────────────────────────────────────────────────────────────── */
 
 /**
  * Build the deterministic MetricsSnapshot. It carries the single
@@ -430,13 +541,66 @@ export function buildSnapshot(repoRoot: string): MetricsSnapshot {
   const densityFloor = computeDensityFloor(repoRoot);
   const rawPass = ratio.ratio >= RATIO_FLOOR;
   const equivPass = equiv.computedValue >= densityFloor.floor;
-  const row: MetricRow = {
-    metric: "test-source-ratio",
-    value: ratio.ratio,
-    target: RATIO_FLOOR,
-    derivedBy: RATIO_DERIVED_BY,
-    pass: rawPass || equivPass,
-  };
+
+  const typecheckErrors = countTypecheckErrors(repoRoot);
+  const tautological = countTautologicalTests(repoRoot);
+  const defectsClosed = countDefectsClosed(repoRoot);
+  const metaTests = countMetaTestFiles(repoRoot);
+  const ciGatesGreen = deriveCiGatesGreen(repoRoot);
+  const scorecard = readScorecardOverall(repoRoot);
+
+  const rows: MetricRow[] = [
+    {
+      metric: "typecheck-errors",
+      value: typecheckErrors,
+      target: 0,
+      derivedBy: TYPECHECK_DERIVED_BY,
+      pass: typecheckErrors <= 0,
+    },
+    {
+      metric: "test-source-ratio",
+      value: ratio.ratio,
+      target: RATIO_FLOOR,
+      derivedBy: RATIO_DERIVED_BY,
+      pass: rawPass || equivPass,
+    },
+    {
+      metric: "tautological-tests",
+      value: tautological,
+      target: 0,
+      derivedBy: TAUTOLOGICAL_DERIVED_BY,
+      pass: tautological <= 0,
+    },
+    {
+      metric: "defects-closed",
+      value: defectsClosed,
+      target: 15,
+      derivedBy: DEFECTS_DERIVED_BY,
+      pass: defectsClosed >= 15,
+    },
+    {
+      metric: "ci-gates-green",
+      value: ciGatesGreen,
+      target: true,
+      derivedBy: CI_GATES_DERIVED_BY,
+      pass: ciGatesGreen === true,
+    },
+    {
+      metric: "meta-tests-firing",
+      value: metaTests,
+      target: 1,
+      derivedBy: META_TESTS_DERIVED_BY,
+      pass: metaTests >= 1,
+    },
+    {
+      metric: "scorecard-overall",
+      value: scorecard.overall,
+      target: scorecard.gstackOverall,
+      derivedBy: SCORECARD_DERIVED_BY,
+      // Honest gate: the rerun overall must EXCEED the pinned gstack floor.
+      pass: scorecard.overall > scorecard.gstackOverall,
+    },
+  ];
   const equivalence: MetricEquivalenceBlock = {
     basis: equiv.basis,
     computedValue: equiv.computedValue,
@@ -457,7 +621,7 @@ export function buildSnapshot(repoRoot: string): MetricsSnapshot {
   return {
     capturedAt: METRICS_EPOCH,
     gitRef: resolveGitRef(repoRoot),
-    metrics: mergeMetricRows([row]),
+    metrics: mergeMetricRows(rows),
     equivalence,
   };
 }
