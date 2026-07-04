@@ -1,0 +1,6 @@
+skill: qa
+batch: review
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Health-gated fix loop — every patch must pass /loom-health --quick without regression before its atomic commit, the run emits a shipReadiness verdict from the before/after health delta, and fixes are archived to .loom/fix-archive/ for /loom-learn; gstack's live-QA loop has no health gate, ship-readiness signal, or fix archive."

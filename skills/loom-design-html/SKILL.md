@@ -84,3 +84,29 @@ Before returning, run:
 - `commands/loom-design/html.md`
 - `skills/loom-design-consultation/SKILL.md`
 - Phase 5 F-14 anti-AI-slop rules
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+Pretext-native emission with structural validation: every stylesheet is forced
+onto rem/em + flexbox/grid + computed heights and passes an HTML5 structural
+parse and contrast check before write, and the Phase 5 F-14 anti-AI-slop guards
+reject gradient overuse, marketing-prose comments, and un-customized default
+palettes. gstack ships mockup HTML with no reflow discipline or slop guards.
+
+## Backing & enforcement
+
+- **Backing:** `protocols/design-preferences.schema.toon` (premise the emitted
+  HTML honors) and the Pretext-native rule set in this body.
+- **Behavioral tests:** `tests/skills/review-batch.test.ts` asserts this skill
+  cites the shared preamble and the design-set schema is present.
+- **Enforcement:** emitted `index.html`/`styles.css` are written atomically and
+  must pass the structural-parse + contrast validation gate before return.

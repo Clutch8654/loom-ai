@@ -288,10 +288,9 @@ library:
       description: Retrospective ceremony — reads git activity, closed PRs, and planning artifacts, then appends structured learnings and regressions to .loom/. 5-phase workflow — gather activity, structured interview, extract learnings with confidence scores, extract anti-patterns, suggest ROADMAP mutations.
       source: skills/loom-retro/SKILL.md
 
-    - name: loom-think
-      description: 5-phase office-hours deep-think interview for fuzzy problems — Problem, Demand Evidence, Status Quo, Approach Candidates (cross-model review marker), Target User / Narrowest Wedge, Synthesis. Writes a durable design doc to .loom/thinks/{slug}-{ISO-timestamp}.md with a Supersedes chain, feeding /loom-roadmap init --from.
-      source: skills/loom-think/SKILL.md
-
+    # loom-think (skill) retired in P22 — split into loom-spec (crystallize a
+    # chosen direction into a ticket) which is registered below. The
+    # /loom-think prompt entry under library.prompts is unaffected.
     - name: loom-spec
       description: 5-phase interview from vague idea to precise ROADMAP feature block or GH issue — Elicit, Sharpen, Classify (bug/feature/enhancement/refactor/debt), Draft, Optional worktree spawn. Emits a SpecRecord TOON envelope; documents auto-close-on-merge for the source GH issue.
       source: skills/loom-spec/SKILL.md

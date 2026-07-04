@@ -94,3 +94,30 @@ does not force all four variants to be minimalist.
 - `skills/loom-design-html/SKILL.md`
 - `skills/loom-browser/SKILL.md`
 - `.loom/design/preferences.toon`
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+Time-decaying taste memory: captured preferences are weight-reduced past 90 days
+(`0.5 ^ ((ageDays - 90) / 30)`) and archived out of active influence at 180 days
+per `protocols/design-preferences.schema.toon`, so the variant board biases
+toward the user's evolving taste without ever locking in. gstack's shotgun
+captures a preferred variant but never decays it.
+
+## Backing & enforcement
+
+- **Backing:** `protocols/design-preferences.schema.toon` — the normative decay
+  math and the `capturedAt`-required record schema.
+- **Behavioral tests:** `tests/skills/review-batch.test.ts` asserts the schema
+  defines the decay rule and that this skill cites the shared preamble.
+- **Enforcement:** preference records are appended atomically with a required
+  `capturedAt` timestamp, and the decay is applied on every read before biasing
+  generation.

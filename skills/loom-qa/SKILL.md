@@ -128,3 +128,29 @@ confidence, and commitSha.
 - No load / performance testing (that's `/loom-benchmark`, M-08 F-27).
 - No security scanning (that's `/loom-cso`, F-19).
 - No visual design review (that's `/loom-design (consultation|html|shotgun)`, M-13).
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+Health-gated fix loop: every patch must pass `/loom-health --quick` without
+regression before its atomic commit, the run emits a `shipReadiness` verdict
+from the before/after health delta, and fixes are archived to
+`.loom/fix-archive/` for `/loom-learn`. gstack's live-QA loop has no health
+gate, ship-readiness signal, or fix archive.
+
+## Backing & enforcement
+
+- **Backing:** the `/loom-browser` daemon (`skills/loom-browser`),
+  `scripts/loom-health.ts` (the health gate), and `agents/fixer-agent.md`.
+- **Behavioral tests:** `tests/backfill/loom-browser-daemon.test.ts` covers the
+  daemon dependency; `tests/backfill/loom-health.test.ts` covers the health gate.
+- **Enforcement:** `/loom-qa` refuses to run without a live `/loom-browser`
+  daemon (exit non-zero), demonstrated by `tests/backfill/loom-browser-daemon.test.ts`.
