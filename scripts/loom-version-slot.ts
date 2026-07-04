@@ -32,7 +32,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { execFileSync } from "node:child_process";
-import { atomicWriteText } from "../lib/index.js";
+import { atomicWriteText, isMain } from "../lib/index.js";
 
 interface Slot {
   repo: string;
@@ -445,4 +445,9 @@ function main() {
   process.exit(1);
 }
 
-main();
+// Guard the entry call so importing this module (e.g. from a backfill test)
+// runs no side effects — only invoke main() when this file is the process
+// entry point. isMain works under bun, plain node, and node+tsx.
+if (isMain(import.meta)) {
+  main();
+}

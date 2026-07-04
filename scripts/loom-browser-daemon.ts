@@ -15,7 +15,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { spawn } from "node:child_process";
-import { atomicWrite } from "../lib/index.js";
+import { atomicWrite, isMain } from "../lib/index.js";
 
 const BROWSER_DIR = path.join(process.cwd(), ".loom", "browser");
 const STATE_FILE = path.join(BROWSER_DIR, "state.toon");
@@ -310,4 +310,9 @@ function main(argv: string[]): number {
   }
 }
 
-process.exit(main(process.argv));
+// Guard the entry call so importing this module (e.g. from a backfill test)
+// runs no side effects — only invoke main() when this file is the process
+// entry point. isMain works under bun, plain node, and node+tsx.
+if (isMain(import.meta)) {
+  process.exit(main(process.argv));
+}
