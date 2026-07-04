@@ -1,45 +1,23 @@
 wave: 4
-phase: 4
 status: complete
-completedAt: 2026-06-18
-agent: implementer-agent
-
-filesCreated[5]:
-  scripts/roadmap-converge/slug.ts
-  scripts/roadmap-converge/archetype-detector.ts
-  agents/roadmap-archetype-detector.md
-  test/roadmap-converge/slug.test.ts
-  test/roadmap-converge/archetype-detector.test.ts
-
-filesModified[2]:
-  scripts/roadmap-converge/driver.ts
-  commands/loom-roadmap/sign-off.md
-
-testsPassingTotal: 136
-testsPassingNew: 43
-exportsAdded: 8
-
-verification:
-  bun_test: pass (136/136)
-  sign_off_purity_grep: pass
-
-summary: |
-  Wave 4 ships multi-roadmap routing (slug derivation + collision detection),
-  --roadmap <path> plumbing across all three commands, and cold-start
-  archetype detection wired into driver.ts via the Phase 1 hook seam.
-  Non-interactive stdin auto-selects highest-confidence archetype with stderr
-  advisory. archetype-detector agent registered at model: haiku, returns
-  standard AgentResult with {archetype, confidence} in data.
-
-keyDecisions[4]:
-  Slug registry is in-process Map; tests call clearSlugRegistry() between runs to avoid cross-test bleed
-  archetype-detector.ts exports archetypeDetectionHook as production default; tests pass noopArchetypeDetectionHook explicitly for determinism
-  UX-26 advisory line format frozen verbatim: '[roadmap-converge] non-interactive stdin: auto-selected archetype <name> (confidence N). Override with --archetype <name>.'
-  Stage context path execute-archetype.toon disambiguates from Phase 1 execute.toon (AW-14)
-
-nextStageHints[3]:
-  Phase 5 (integrator) inherits driver.ts; will add stall detection + pass-cap halt to the same orchestration loop
-  Phase 6 (/loom-resume integration) wires resume-delegate.ts and consumes slug-derived state paths
-  The slug registry will need clearing or cross-process coordination for any future parallel-roadmap workflows
-
-crossBoundaryRequests[0]:
+completedAt: 2026-07-04T02:20:56Z
+phasesComplete[4]: 11a, 11b, 12, 13
+agentsRun[4]: w4-p11a, w4-p11b, w4-p12, w4-p13
+defectsClosed[3]: 8 (primitive duplication dedup), 9 (stale committed worktree block), 10 (hook-registration drift)
+commits[4]{sha,phase,summary}:
+  45c9976,12,remove stale worktree block from CLAUDE.md + guard test
+  f922a01,11a,strangler-migrate hooks/ CSV+TOON+atomic-write callers onto lib/ (full hooks/ sweep)
+  eff67d0,11b,strangler-migrate scripts/ defect-8 callers onto lib/
+  2559e7f,13,hook-registration convergence (3 sources) + flip drift gate blocking + delete dead tooling
+filesCreated[4]: tests/lib/dedup-migration.test.ts, tests/guards/claude-md-worktree.test.ts, tests/hooks/hook-registration-drift.test.ts, hooks/context-budget-check.ts
+filesDeleted[2]: scripts/validate-toon-schemas.ts, hooks/context-budget-test.ts
+filesModifiedCount: 33
+verification: pass
+verificationDetail: eslint . = 0 errors; tsc -p hooks/tsconfig.json = 0; check-hook-drift.ts exit 0; 351 tests pass across tests/{lib,hooks,guards,protocols,scripts}; dedup-migration 3/3; claude-md-worktree guard 4/4; hook-registration-drift 3/3
+acceptanceNotes[3]{ac,status,note}:
+  C-08,covered,"hooks/ fully swept (0 renameSync stragglers); eslint import-ban 0 errors"
+  C-09,covered,"CLAUDE.md worktree block removed; guard test green"
+  C-20,covered,"3 registration sources agree; context-budget on correct event; pr-gate hook-drift now blocking"
+deferredFollowups[1]{item,reason,tracking}:
+  scripts/ broad atomic-write sweep (~35 files),"AC-1457 broader than P11b declared deliverables; user chose plan-scoped P11b + follow-up",.plan-execution/RESUME-exceed-gstack.md#discovered-follow-up
+awarenessNotes[1]: "loom-hooks manifest change-detector bumped 19->22 (reconciliation brought all 3 sources into agreement; acknowledged in register-loom-hooks.test.ts)"
