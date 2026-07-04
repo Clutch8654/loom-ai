@@ -1,0 +1,4 @@
+evalId: csv-row-extraction
+prompt: "Return the order row as CSV: id, customer name, status."
+response: "4471,""Doe, Jane"",shipped"
+expectedName: "Doe, Jane"

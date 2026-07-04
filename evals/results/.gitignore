@@ -1,0 +1,4 @@
+# Runner output — machine-generated EvalTierResult artifacts.
+# Tracked dir, ignored contents (evals/results/** is runner-owned).
+*
+!.gitignore

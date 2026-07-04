@@ -183,6 +183,30 @@ jobs:
       - name: Validate skills/library.yaml
         run: bun scripts/ci/check-library-catalog.ts
 
+  eval-t1:
+    # T1 eval tier (Phase 20, F-20): static / in-process evals that make ZERO
+    # network/LLM calls (llmCalls MUST be 0). Runs on every PR and fails the job
+    # on any red eval. This job is ADDITIVE — the frozen 6-check branch-
+    # protection interface (protocols/ci-gates.contract.md, checks[6]) is left
+    # untouched, so the gate-status table below is unchanged.
+    name: eval-t1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run T1 evals (static, zero LLM calls)
+        run: bun scripts/eval/run-evals.ts --tier t1
+
   gate-status:
     name: gate-status
     runs-on: ubuntu-latest

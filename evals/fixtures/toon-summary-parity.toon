@@ -1,0 +1,4 @@
+evalId: toon-summary-parity
+prompt: Summarize the release note as a TOON document with a `title` field.
+response: "title: Ship the three-tier eval ladder\nitems[2]: t1, t2\n"
+expectedTitle: Ship the three-tier eval ladder
