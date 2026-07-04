@@ -14,7 +14,7 @@
 #                                    vacuous pass until the config exists)
 #   changed-file-tests  blocking     bun scripts/ci/changed-files-vitest.ts
 #   hook-drift          blocking     Phase 13 reconciled the three sources (defect 10)
-#   docs-drift          warn-only    until Phase 16 (generated-docs markers not yet everywhere)
+#   docs-drift          blocking     Phase 16 landed generated-docs markers + manifest (defect 12)
 #   library-catalog     blocking     bun scripts/ci/check-library-catalog.ts
 #
 # Every run publishes `.loom-ci/gate-status.toon` as a machine-readable artifact.
@@ -162,10 +162,10 @@ jobs:
         with:
           bun-version: latest
 
-      # --warn-only until Phase 16 lands generated-docs markers + manifest
-      # everywhere. Phase 16 removes the flag and flips this check to blocking.
+      # Blocking as of Phase 16: check-docs-drift recomputes every generated
+      # section from source and fails if the docs or manifest are stale.
       - name: Recompute generated-docs checksums
-        run: bun scripts/ci/check-docs-drift.ts --check --warn-only
+        run: bun scripts/ci/check-docs-drift.ts --check
 
   library-catalog:
     name: library-catalog
@@ -212,7 +212,7 @@ jobs:
             lint,${{ needs.lint.result }},true,
             changed-file-tests,${{ needs.changed-file-tests.result }},true,
             hook-drift,${{ needs.hook-drift.result }},true,
-            docs-drift,${{ needs.docs-drift.result }},false,16
+            docs-drift,${{ needs.docs-drift.result }},true,
             library-catalog,${{ needs.library-catalog.result }},true,
           EOF
           mv .loom-ci/gate-status.toon.tmp .loom-ci/gate-status.toon
