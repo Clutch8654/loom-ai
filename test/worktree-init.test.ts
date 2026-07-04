@@ -14,18 +14,21 @@ import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import {
+  dockerDaemonReachable,
+  dockerE2eOptIn,
+  dockerE2eSkipReason,
+} from "./helpers/docker-e2e-guard.js";
 
 const REPO_ROOT = join(__dirname, "..");
 const HARNESS = join(REPO_ROOT, "test/docker/run-harness.sh");
 const TARBALL = join(REPO_ROOT, "dist/loom-local-test.tar.gz");
 
-function hasDocker(): boolean {
-  const r = spawnSync("docker", ["info"], { stdio: "ignore" });
-  return r.status === 0;
-}
-
-const DOCKER_AVAILABLE = hasDocker();
+const DOCKER_AVAILABLE = dockerDaemonReachable();
 const TARBALL_AVAILABLE = existsSync(TARBALL);
+// The heavy container matrix runs only when its deps are present AND the run is
+// provisioned for it (CI or LOOM_DOCKER_E2E=1). See test/helpers/docker-e2e-guard.ts.
+const RUN_HARNESS = DOCKER_AVAILABLE && TARBALL_AVAILABLE && dockerE2eOptIn();
 
 // Inner worktree-scenario script executed via `docker run`. Kept here
 // (not embedded in run-harness.sh) so the S-02 scenario is co-located
@@ -78,7 +81,16 @@ describe("Phase 8 — worktree init E2E (S-02)", () => {
     expect(existsSync(HARNESS)).toBe(true);
   });
 
-  it.skipIf(!DOCKER_AVAILABLE || !TARBALL_AVAILABLE)(
+  it("clean-machine E2E gate is resolved and documented", () => {
+    const depsAvailable = DOCKER_AVAILABLE && TARBALL_AVAILABLE;
+    const reason = RUN_HARNESS
+      ? "enabled — running the full container harness"
+      : `skipped — ${dockerE2eSkipReason(depsAvailable)}`;
+    console.info(`[worktree-init E2E] ${reason}`);
+    expect(typeof RUN_HARNESS).toBe("boolean");
+  });
+
+  it.skipIf(!RUN_HARNESS)(
     "worktree gets independent .loom/plugin-root",
     () => {
       // Build the image (idempotent; uses layer cache).

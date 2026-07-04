@@ -19,6 +19,11 @@ import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  dockerDaemonReachable,
+  dockerE2eOptIn,
+  dockerE2eSkipReason,
+} from "./helpers/docker-e2e-guard.js";
 
 const REPO_ROOT = join(__dirname, "..");
 const HARNESS = join(REPO_ROOT, "test/docker/run-harness.sh");
@@ -37,17 +42,24 @@ const PRETOOLUSE_HOOKS = [
   "wiki-write-guard",
 ] as const;
 
-function hasDocker(): boolean {
-  const r = spawnSync("docker", ["info"], { stdio: "ignore" });
-  return r.status === 0;
-}
-
-const DOCKER_AVAILABLE = hasDocker();
+const DOCKER_AVAILABLE = dockerDaemonReachable();
 const TARBALL_AVAILABLE = existsSync(TARBALL);
+// The heavy container matrix runs only when its deps are present AND the run is
+// provisioned for it (CI or LOOM_DOCKER_E2E=1). See test/helpers/docker-e2e-guard.ts.
+const RUN_HARNESS = DOCKER_AVAILABLE && TARBALL_AVAILABLE && dockerE2eOptIn();
 
 describe("Phase 8 — plugin install E2E", () => {
   it("harness driver exists and is executable", () => {
     expect(existsSync(HARNESS)).toBe(true);
+  });
+
+  it("clean-machine E2E gate is resolved and documented", () => {
+    const depsAvailable = DOCKER_AVAILABLE && TARBALL_AVAILABLE;
+    const reason = RUN_HARNESS
+      ? "enabled — running the full container harness"
+      : `skipped — ${dockerE2eSkipReason(depsAvailable)}`;
+    console.info(`[plugin-install-e2e] ${reason}`);
+    expect(typeof RUN_HARNESS).toBe("boolean");
   });
 
   it("fixture exists and was derived from the .toon source", () => {
@@ -71,7 +83,7 @@ describe("Phase 8 — plugin install E2E", () => {
     expect(existsSync(CONVERGE_MD)).toBe(true);
   });
 
-  it.skipIf(!DOCKER_AVAILABLE || !TARBALL_AVAILABLE)(
+  it.skipIf(!RUN_HARNESS)(
     "S-01: clean-machine plugin install + Phase 3 no-op + Phase 5 success-output",
     () => {
       const result = spawnSync("sh", [HARNESS, "--local-tarball", TARBALL], {
@@ -84,7 +96,7 @@ describe("Phase 8 — plugin install E2E", () => {
     }
   );
 
-  it.skipIf(!DOCKER_AVAILABLE || !TARBALL_AVAILABLE)(
+  it.skipIf(!RUN_HARNESS)(
     "S-03: PATH-strip matrix — all 6 PreToolUse hooks exit 0 with empty stderr",
     () => {
       // The harness inner script runs the matrix and bails non-zero on any
@@ -105,7 +117,7 @@ describe("Phase 8 — plugin install E2E", () => {
     }
   );
 
-  it.skipIf(!DOCKER_AVAILABLE || !TARBALL_AVAILABLE)(
+  it.skipIf(!RUN_HARNESS)(
     "/loom-converge --help exits 0 inside the container",
     () => {
       // Validated transitively through the harness inner script's
