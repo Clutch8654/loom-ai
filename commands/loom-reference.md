@@ -185,7 +185,7 @@ A multi-agent pipeline for planning, executing, and verifying software projects.
 | Command | Description |
 |---------|-------------|
 | `/loom-design consultation` | Ground-up brand kickoff: 5-phase interview → design premise under `.loom/design/` (consults prior design learnings) |
-| `/loom-design html` | Ship production HTML/CSS from a prose or image mockup (Pretext-native: text reflows, heights computed, layouts not pixel-frozen) |
+| `/loom-design html` | Ship production HTML/CSS from a prose or image mockup (reflow-native: text reflows, heights computed, layouts not pixel-frozen) |
 | `/loom-design shotgun` | Fire N parallel UI variants (default 4) rendered side-by-side; captures preference with time-based decay |
 | `/loom-docs generate` | Cold-start Diataxis docs tree: tutorial, how-to, reference, explanation (`--force`, `--only <quadrant>`) |
 | `/loom-docs release` | Post-ship doc sync: diff-driven README/CHANGELOG/architecture updates + diagram drift detection + doc-debt gate (`--base`, `--head`, `--pr`, `--plan`) |

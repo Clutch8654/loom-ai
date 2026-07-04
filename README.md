@@ -276,7 +276,7 @@ For a guided 30-minute tour see [`docs/first-30-minutes.md`](docs/first-30-minut
 | **Design & docs (build-time)** | | |
 | Ground-up brand kickoff (typography, color, motion) | `/loom-design consultation` | 5-phase design consultation; writes a durable premise artifact to `.loom/design/` |
 | Parallel UI variants on one route with taste memory | `/loom-design shotgun` | Generate N candidates on distinct axes; capture preference; decay old prefs (90d/180d) |
-| Ship production HTML/CSS from a mockup | `/loom-design html` | Pretext-native rules + anti-AI-slop guards; emits to `docs/design/{slug}/` |
+| Ship production HTML/CSS from a mockup | `/loom-design html` | reflow-native rules + anti-AI-slop guards; emits to `docs/design/{slug}/` |
 | Cold-start Diataxis docs | `/loom-docs generate` | Generates `docs/tutorial`, `docs/how-to`, `docs/reference`, `docs/explanation` with frontmatter |
 | Author an excalidraw triplet from English or mermaid | `/loom-diagram` | Source `.md` + editable `.excalidraw` + rendered `.svg`/`.png` |
 | **Learn & improve (post-ship)** | | |
@@ -379,7 +379,7 @@ Before a roadmap exists there is an idea, and ideas arrive at different levels o
 
 ### /loom-think
 
-`/loom-think <topic>` runs an office-hours-style deep interview for genuinely fuzzy problems: one question per turn, your language carried forward verbatim. The five phases are Problem, Demand Evidence, Status Quo, Target User / Narrowest Wedge, and Synthesis (Constraints + Premises + Approaches A/B + Recommendation), with a cross-model second-opinion pass between phases 3 and 4 that sketches Approach Candidates A/B/C and leaves a `Cross-model review: PENDING` marker as a hook for a later adversarial pass (e.g. `/loom-debate`). Sparse demand evidence is flagged prominently — `Demand evidence: SPARSE` — so a downstream `/loom-roadmap init` treats the doc as a risky input.
+`/loom-think <topic>` runs a rigorous, structured deep interview for genuinely fuzzy problems: one question per turn, your language carried forward verbatim. The five phases are Problem, Demand Evidence, Status Quo, Target User / Narrowest Wedge, and Synthesis (Constraints + Premises + Approaches A/B + Recommendation), with a cross-model second-opinion pass between phases 3 and 4 that sketches Approach Candidates A/B/C and leaves a `Cross-model review: PENDING` marker as a hook for a later adversarial pass (e.g. `/loom-debate`). Sparse demand evidence is flagged prominently — `Demand evidence: SPARSE` — so a downstream `/loom-roadmap init` treats the doc as a risky input.
 
 The result is a durable design doc at `.loom/thinks/{slug}-{timestamp}.md` (frontmatter: slug, datetime, branch, supersedes, `status: DRAFT`; written atomically). Docs chain per topic: a new think on the same `--branch` supersedes the previous one, resolved by frontmatter datetime, so a topic's thinking history stays traceable. Feed the doc forward with `/loom-roadmap init --from <path>` or `/loom-spec --from <path>`.
 
@@ -515,11 +515,11 @@ The output is a durable premise document at `.loom/design/{slug}-{timestamp}.md`
 
 `/loom-design html` ships production HTML/CSS from a mockup — either a prose description or a path to a mockup image (image analysis happens in dialogue; the agent doesn't silently guess). If a premise exists under `.loom/design/`, it honors that typography and color system. Output is `index.html` + `styles.css` under `docs/design/{slug}/`, validated for structural HTML parse, CSS lint, and contrast.
 
-Two rule sets constrain the output. The Pretext-native rules keep layouts alive rather than pixel-frozen: rem/em units, flexbox/grid, computed heights, `text-wrap: balance`/`pretty`, semantic HTML5, tokenized colors. The anti-AI-slop guards ban the defaults that mark generated UI: gradient overuse, marketing-prose comments, stock palettes, placeholder text. Use it for a single known mockup; for exploring multiple directions, use `shotgun`.
+Two rule sets constrain the output. The reflow-native rules keep layouts alive rather than pixel-frozen: rem/em units, flexbox/grid, computed heights, `text-wrap: balance`/`pretty`, semantic HTML5, tokenized colors. The anti-AI-slop guards ban the defaults that mark generated UI: gradient overuse, marketing-prose comments, stock palettes, placeholder text. Use it for a single known mockup; for exploring multiple directions, use `shotgun`.
 
 ### /loom-design shotgun
 
-`/loom-design shotgun [--n <count>]` generates N UI variants (default 4) of one target route on deliberately distinct axes — defaults: minimalist, dense, brutalist, editorial — each rendered through the `html` pipeline so every variant inherits the Pretext and anti-slop rules. Variants render side-by-side via the `/loom-browser` daemon when it's running; otherwise each variant is written to `.loom/design/shotgun/{slug}/variant-*.html` and the paths are printed.
+`/loom-design shotgun [--n <count>]` generates N UI variants (default 4) of one target route on deliberately distinct axes — defaults: minimalist, dense, brutalist, editorial — each rendered through the `html` pipeline so every variant inherits the reflow and anti-slop rules. Variants render side-by-side via the `/loom-browser` daemon when it's running; otherwise each variant is written to `.loom/design/shotgun/{slug}/variant-*.html` and the paths are printed.
 
 You pick a winner, and the choice is appended to `.loom/design/preferences.toon` (winning axis, rejected axes, `capturedAt` timestamp). Future shotgun runs read those preferences as a soft bias for axis selection — with decay: preferences weight down after 90 days and drop out after 180, so the system develops taste without ossifying around last year's picks.
 

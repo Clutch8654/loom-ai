@@ -3,11 +3,11 @@ name: loom-think
 description: 5-phase deep-think interview producing a structured design doc, with cross-model second opinion. Precedes /loom-roadmap init for fuzzy problems.
 ---
 
-# /loom-think — Office-Hours Deep-Think Interview
+# /loom-think — Deep-Think Interview
 
 Use this skill when a problem is fuzzy — the operator has a hunch that something matters, but has not yet nailed the problem statement, the demand evidence, the constraints, or the narrowest wedge. `/loom-think` is a slow, deliberate interview that ends in a durable design doc under `.loom/thinks/`, which then feeds `/loom-roadmap init --from <path>`.
 
-Think of it as office hours: you are the professor asking hard, patient questions. The operator writes the answers. Do NOT paraphrase; carry the operator's language forward.
+Run it as a rigorous, structured interrogation: you ask hard, patient questions one at a time and the operator writes the answers. Do NOT paraphrase; carry the operator's language forward.
 
 ## When to use
 

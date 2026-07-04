@@ -32,7 +32,7 @@ The generator MAY introduce other axes if the target UI calls for them
 variants on the same axis.
 
 Each variant is a self-contained HTML file with inline or co-located
-CSS, emitted via the F-23 pipeline so it inherits the Pretext-native
+CSS, emitted via the F-23 pipeline so it inherits the reflow-native
 rules and anti-slop guards.
 
 ## Rendering side-by-side
@@ -84,7 +84,7 @@ does not force all four variants to be minimalist.
 ## Anti-slop guards
 
 - No variant may be a trivial recolor of another.
-- No variant may violate the Pretext-native rules (F-23).
+- No variant may violate the reflow-native rules (F-23).
 - If fewer than N distinct axes are available for the target UI,
   reduce N rather than duplicating.
 

@@ -348,7 +348,7 @@ library:
       source: skills/loom-design-consultation/SKILL.md
 
     - name: loom-design-html
-      description: "Production HTML/CSS from mockup — Pretext-native rules (rem/em, flexbox/grid, computed heights, text-wrap: balance/pretty, semantic HTML5, tokenized colors) plus Phase 5 F-14 anti-AI-slop guards (no gradient overuse, no marketing-prose comments, no default palettes without customization). Emits docs/design/{slug}/index.html + styles.css atomically. Shipped by M-13 (gstack adoption Phase 13 F-23)."
+      description: "Production HTML/CSS from mockup — reflow-native rules (rem/em, flexbox/grid, computed heights, text-wrap: balance/pretty, semantic HTML5, tokenized colors) plus Phase 5 F-14 anti-AI-slop guards (no gradient overuse, no marketing-prose comments, no default palettes without customization). Emits docs/design/{slug}/index.html + styles.css atomically. Shipped by M-13 (gstack adoption Phase 13 F-23)."
       source: skills/loom-design-html/SKILL.md
 
     - name: loom-design-shotgun
@@ -975,7 +975,7 @@ library:
       requires: [skill:loom-install, infrastructure:loom-install]
 
     - name: loom-design
-      description: "Design dispatcher — subcommands: consultation (5-phase brand kickoff → .loom/design premise), html (Pretext-native HTML/CSS from mockup with anti-AI-slop guards → docs/design/{slug}/), shotgun (N parallel UI variants on distinct axes, side-by-side render via /loom-browser with file-fallback, time-decaying preference memory at .loom/design/preferences.toon). Shipped by M-13 (gstack adoption Phase 13 F-22, F-23, F-24)."
+      description: "Design dispatcher — subcommands: consultation (5-phase brand kickoff → .loom/design premise), html (reflow-native HTML/CSS from mockup with anti-AI-slop guards → docs/design/{slug}/), shotgun (N parallel UI variants on distinct axes, side-by-side render via /loom-browser with file-fallback, time-decaying preference memory at .loom/design/preferences.toon). Shipped by M-13 (gstack adoption Phase 13 F-22, F-23, F-24)."
       source: commands/loom-design.md
       requires: [skill:loom-design-consultation, skill:loom-design-html, skill:loom-design-shotgun]
 
@@ -984,7 +984,7 @@ library:
       source: commands/loom-design/consultation.md
 
     - name: loom-design-html
-      description: "Mockup-to-HTML subcommand — accepts prose description or image path, emits docs/design/{slug}/index.html + styles.css with Pretext-native rules and Phase 5 F-14 anti-slop guards, validates structural parse. Shipped by M-13 (gstack adoption Phase 13 F-23)."
+      description: "Mockup-to-HTML subcommand — accepts prose description or image path, emits docs/design/{slug}/index.html + styles.css with reflow-native rules and Phase 5 F-14 anti-slop guards, validates structural parse. Shipped by M-13 (gstack adoption Phase 13 F-23)."
       source: commands/loom-design/html.md
 
     - name: loom-design-shotgun
@@ -1046,7 +1046,7 @@ kits:
         name: code-codex-review-agent
 
   - name: design-build
-    description: "Build-time design kit — ground-up brand consultation, Pretext-native HTML/CSS from mockup with anti-AI-slop guards, and parallel UI variant board with time-decaying taste memory. Shipped by M-13 (gstack adoption Phase 13 F-22/F-23/F-24)."
+    description: "Build-time design kit — ground-up brand consultation, reflow-native HTML/CSS from mockup with anti-AI-slop guards, and parallel UI variant board with time-decaying taste memory. Shipped by M-13 (gstack adoption Phase 13 F-22/F-23/F-24)."
     version: 0.1.0
     minLoomVersion: 4
     includes:

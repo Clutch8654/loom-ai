@@ -1,5 +1,5 @@
 ---
-description: Ship production HTML/CSS from a prose or image mockup with Pretext-native rules and anti-AI-slop guards. Emits to docs/design/{slug}/
+description: Ship production HTML/CSS from a prose or image mockup with reflow-native rules and anti-AI-slop guards. Emits to docs/design/{slug}/
 ---
 
 # /loom-design html
@@ -15,7 +15,7 @@ Runs the M-13 F-23 mockup-to-HTML pipeline.
    recent one and honor its typography and color decisions.
 3. Emit `docs/design/{slug}/index.html` + `docs/design/{slug}/styles.css`
    (atomic `.tmp` + rename).
-4. Enforce Pretext-native rules (rem/em, flexbox/grid, computed heights,
+4. Enforce reflow-native rules (rem/em, flexbox/grid, computed heights,
    `text-wrap: balance`/`pretty`, semantic HTML5, tokenized colors).
 5. Enforce Phase 5 F-14 anti-AI-slop guards (no gradient overuse, no
    marketing-prose comments, no default palettes, no placeholder text).
