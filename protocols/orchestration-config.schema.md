@@ -10,8 +10,16 @@ Projects declare a `.claude/orchestration.toml` at the project root to register 
 [settings]
 maxParallelAgents = 6       # cap concurrent agent spawns
 defaultModel = "sonnet"     # default model for app-specific agents
+modelProfile = "quality"    # active tier→model profile (see "## Model Profiles" below)
 persistHistory = true       # auto-write to planning/history/
 dataFormat = "toon"         # "toon" | "json" for inter-agent data
+
+[settings.profiles.quality]  # per-tier model map for the "quality" profile
+planning = "opus"
+execution = "opus"
+review = "opus"
+verification = "sonnet"
+utility = "sonnet"
 
 # ─────────────────────────────────────────────────────────────
 # Pipeline agents — plug into /review-plan, /execute-plan, etc.
@@ -220,6 +228,77 @@ type = "code"                   # "code" | "research" | "creative" | "business" 
 contractType = "type-files"     # "type-files" | "ontology" | "glossary" | "schema"
 verificationPipeline = ["tsc --noEmit", "bun run lint", "bun test"]  # replaces hardcoded checks
 ```
+
+## Model Profiles
+
+`modelProfile` (under `[settings]`) selects an active **tier → model** map so every
+agent's model is resolved from its *tier* rather than being hard-coded per agent. It
+is read by the model-resolution step of the pipeline commands (`/loom-plan`,
+`/loom-auto`, `/loom-converge`, `/loom-code`, `/loom-roadmap`, and the
+`/loom-auto/links/*` links); `/loom-profile` reads and writes it.
+
+### Shape
+
+```toml
+[settings]
+modelProfile = "quality"          # name of the active profile; must match a
+                                  # [settings.profiles.<name>] block below.
+                                  # Omit (or leave unset) to disable profile
+                                  # resolution entirely and fall back to
+                                  # per-agent frontmatter.
+
+[settings.profiles.<name>]        # one block per profile; <name> is user-chosen
+planning = "opus"                 # tier → model. The five standard tiers are:
+execution = "opus"                #   planning | execution | review |
+review = "opus"                   #   verification | utility
+verification = "sonnet"           # Each value is a model id (opus | sonnet |
+utility = "sonnet"                # haiku). Do NOT use fable here — it exhausts
+                                  # usage limits under multi-agent orchestration.
+```
+
+### The five tiers
+
+| Tier | Agents that resolve to it (examples) |
+|---|---|
+| `planning` | plan-builder, roadmap reviewers, plan reviewers |
+| `execution` | implementer-agent, contracts-agent, wiring-agent, data-pipeline-agent |
+| `review` | security-reviewer, architecture-reviewer, all extended `[[review.agents]]` |
+| `verification` | verification-agent, test agents |
+| `utility` | fixer-agent, target-parser, harness-builder, delta-analyzer, convergence-driver, triage/router agents |
+
+Each command documents its own agent→tier mapping (e.g. `/loom-converge` maps
+`convergence-driver = utility`, `/loom-code` maps `fixer-agent = utility`). When a
+command spawns an agent it looks up that agent's tier, then reads the active
+profile's model for that tier.
+
+### Built-in profiles
+
+`/loom-profile` ships three reference profiles. Projects may add their own
+`[settings.profiles.<name>]` blocks and point `modelProfile` at them.
+
+| Tier | `quality` | `balanced` | `budget` |
+|---|---|---|---|
+| planning | opus | opus | sonnet |
+| execution | opus | sonnet | sonnet |
+| review | opus | sonnet | haiku |
+| verification | sonnet | sonnet | haiku |
+| utility | sonnet | haiku | haiku |
+
+### How a model is selected (resolution priority)
+
+For every agent spawn the orchestrator resolves the model in this order (first
+match wins):
+
+1. **Profile tier mapping** — if `[settings] modelProfile` is set, look up the
+   agent's tier and use `[settings.profiles.<modelProfile>].<tier>`.
+2. **Agent `.md` frontmatter `model:`** — used when no profile is active or the
+   tier is unmapped.
+3. **Inherit the parent** — if neither is available.
+
+The orchestrator reads `.claude/orchestration.toml` once at start, checks
+`modelProfile`, and resolves per spawn — passing `model: "{resolved}"` on each
+Agent tool call. Switching profiles (`/loom-profile <name>`) rewrites only the
+`modelProfile` field and never overwrites custom `[settings.profiles.*]` blocks.
 
 ## How Orchestrators Use This
 

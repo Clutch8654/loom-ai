@@ -152,7 +152,7 @@ Report results inline rather than writing test files. This mode is for debugging
 
 ### AgentResult
 
-Return a standard `AgentResult` JSON with:
+Return a standard `AgentResult` TOON with:
 - `filesCreated`: all test and config files written
 - `integrationNotes`: which specs are covered, which need a running server, any manual steps
 - `issues`: specs that couldn't be automated and why (e.g., "requires real email delivery")

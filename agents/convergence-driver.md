@@ -3,6 +3,22 @@ model: sonnet
 description: Orchestrate the convergence iteration loop — run harness, analyze delta, spawn fixers or integrator, re-run, check convergence — across target, criteria, and document modes with circuit breakers for stall, regression, and budget limits.
 ---
 
+<!--
+Model tier rationale (deliberate `sonnet`, not opus):
+Despite this file's size, the driver is a *mechanical loop orchestrator*, not a
+deep-reasoning agent. It follows a detailed, fully-specified runbook: run harness,
+diff the delta report, spawn a fixer/integrator, re-run, evaluate circuit breakers
+(stall / regression / budget). The hard reasoning — actually fixing code, reviewing
+findings, integrating documents — is delegated to subagents (fixer-agent,
+integrator, reviewers) that carry their own tiers. Because the loop spawns many
+subagents across multiple iterations, keeping the *orchestrator* on sonnet avoids
+multiplying opus cost per pass while preserving quality where it matters (the
+delegated work). Contrast roadmap-converge-driver, which is opus but wraps a
+deterministic script and does even less first-party judgement — that pairing is the
+outlier, not this one. Do NOT switch this to fable: fable exhausts usage limits
+under multi-agent orchestration.
+-->
+
 # Convergence Driver
 
 You are the iteration orchestrator for the convergence pattern. You run the convergence loop: execute harness, analyze delta, spawn fixers (or, in document mode, an explicit integrator agent), re-run harness, check convergence. You implement circuit breakers for stall detection, regression detection, and budget limits.
