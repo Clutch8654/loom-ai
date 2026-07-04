@@ -1,46 +1,24 @@
 wave: 6
-phase: 6
 status: complete
-completedAt: 2026-06-22
-agent: wiring-agent
-
-filesCreated[3]:
-  tests/integration/roadmap-converge-e2e.test.ts
-  tests/fixtures/roadmaps/example-cli.md
-  planning/history/post-mortems/2026-06-22-roadmap-converge-dogfood.md
-
-filesModified[4]:
-  commands/loom-resume.md
-  .claude/orchestration.toml
-  skills/library.yaml
-  checksums.sha256
-
-testsPassingTotal: 162
-testsPassingNew: 3
-exportsAdded: 0
-
-verification:
-  bun_test: pass (exit 0)
-  sign_off_purity_grep: pass
-  library_yaml_lint: pass (122 entries, 0 warnings)
-
-summary: |
-  Wave 6 wires /loom-resume to delegate to roadmap-converge digests via
-  resume-delegate.ts (dual-state ordering by mtime descending), registers
-  all 10 new resources in skills/library.yaml (4 agents, 3 prompts, 3
-  protocols), adds [roadmap.converge] config block and [execution.agents]
-  registrations to .claude/orchestration.toml, ships e2e integration test
-  against example-cli.md fixture (cold-start → pass 1 → integrator → pass 2 →
-  sign-off-eligible in < 120s), and documents dogfood readiness post-mortem
-  with two pre-existing implementation gaps flagged for the converge.md
-  command wrapper layer.
-
-keyDecisions[3]:
-  /loom-resume probes roadmap-converge state before pipeline-state — roadmap digest path is the priority surface when both exist
-  Dogfood post-mortem written as "readiness" document rather than live-run — agent cannot invoke slash commands; flags expected rubric drift for user verification
-  E2E test injects writeState transition for sign_off_state=eligible because driver.ts does not own that transition — gap documented in issues[]
-
-nextStageHints[1]:
-  Two driver.ts gaps flagged in wave-6 issues should be addressed in a follow-up plan: (1) sign_off_state=eligible transition ownership, (2) dimensionSnapshot ordering relative to stall check
-
-crossBoundaryRequests[0]:
+completedAt: 2026-07-04T03:14:37Z
+phasesComplete[1]: 18
+agentsRun[1]: w6-p18
+commits[1]{sha,phase,summary}:
+  425205f,18,property + meta tests + metrics-snapshot with calibrated ratio equivalence
+filesCreated[6]: scripts/metrics-snapshot.ts, tests/property/toon-roundtrip.property.test.ts, tests/property/merge-order.property.test.ts, tests/meta/planted-defect.test.ts, tests/scripts/metrics-snapshot.test.ts, planning/reports/metrics-snapshot.toon
+verification: pass
+verificationDetail: 27 tests pass (tests/property + tests/meta + metrics-snapshot.test); tsc 0; eslint 0; metrics-snapshot deterministic (run twice identical)
+metricDecision:
+  rawRatio: 1.05
+  rawFloor: 1.4
+  rawMeetsFloor: false
+  equivalenceBasis: behavioral-assertion-density
+  equivalenceComputedValue: 5.88
+  densityFloor: 3.0
+  densityFloorDerivation: max(lib-core-density 2.24, absolute 3.0 assertions/export bar)
+  equivalenceMeetsFloor: true
+  note: "IC-001 equivalence path taken (raw 1.05 << 1.4 infeasible this phase). Orchestrator caught + fixed a unit-mismatch: original check compared assertion-density against the 1.4 LOC floor; recalibrated to a distinct justified DENSITY_FLOOR (user-approved 'strengthen the floor')."
+acceptanceNotes[3]{ac,status,note}:
+  C-11b,covered,"property test (round-trip identity + merge order-indep) + planted-defect meta-test (guard-on catches, guard-off misses)"
+  IC-001,covered,"machine-validated equivalence block, calibrated floor distinct from LOC ratio, deterministic"
+  test-source-ratio,equivalence-met,"raw 1.05 < 1.4 but density 5.88 >= calibrated floor 3.0 — M-04 metric satisfied via sanctioned equivalence path"
