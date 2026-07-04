@@ -1,0 +1,6 @@
+skill: browser
+batch: ops
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: Persistent Chromium daemon shared across commands with queue-only stub-mode fallback when no browser binary is present, so browserless CI still emits plans instead of hard-failing.

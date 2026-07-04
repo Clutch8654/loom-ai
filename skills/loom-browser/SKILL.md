@@ -5,6 +5,8 @@ description: Persistent Chromium daemon at .loom/browser/ with tiered READ/WRITE
 
 # /loom-browser — Persistent Chromium Daemon (M-11)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 `/loom-browser` gives Loom a long-lived headless (or headed) Chromium session
 that downstream commands share instead of each cold-starting their own browser.
 It is the substrate that `/loom-qa` (M-07), `/loom-design (consultation|html|shotgun)` (M-13), and
@@ -132,6 +134,16 @@ or a related `BROWSER_NO_BINARY` diagnostic and falls back to **stub mode**
 (queue-only — commands are written to `.loom/browser/queue.toon` for the
 operator to run manually). This keeps M-11 best-effort so downstream milestones
 can still emit useful plans in CI environments without a browser.
+
+## Beyond upstream
+
+gstack's browser support cold-starts a fresh headless Chrome per invocation.
+`/loom-browser` goes **beyond parity** with a *persistent daemon* that survives
+across commands (`.loom/browser/state.toon`) and degrades to a queue-only
+**stub mode** (`.loom/browser/queue.toon`) when no Chromium binary is present —
+so downstream commands still emit useful plans in a browserless CI box instead
+of hard-failing. That daemon + queue-fallback behavior is what
+`tests/backfill/loom-browser-daemon.test.ts` exercises as a live subprocess.
 
 ## Downstream consumers
 

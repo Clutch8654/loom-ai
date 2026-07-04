@@ -5,6 +5,8 @@ description: "Side-by-side comparison of Claude+GPT+Gemini on same prompt with L
 
 # /loom-benchmark models — Cross-Vendor Model Comparison (M-08 F-25)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 Runs the same prompt(s) across configured LLM vendors (Anthropic Claude,
 OpenAI GPT, Google Gemini), uses an LLM judge to score output quality on a
 0-10 scale, and emits a TOON dashboard comparing **latency**, **tokens**,
@@ -111,3 +113,14 @@ and cost over time.
 
 Every write to `.loom/benchmark-history.toon` writes to
 `.loom/benchmark-history.toon.tmp` first, then `fs.renameSync`.
+
+## Beyond upstream
+
+gstack benchmarks a single vendor's model in isolation. `/loom-benchmark models`
+goes **beyond parity** by running the *same* prompt across Claude, GPT, and
+Gemini side-by-side, scoring each with an **LLM judge** on a 0–10 rubric, and
+emitting a single dashboard that trades off latency, tokens, cost, **and**
+judged quality per vendor — appended to `.loom/benchmark-history.toon` for
+cross-run drift tracking. The best-effort **vendor-skip enforcement** (a vendor
+whose API key is absent is recorded `skipped: true` rather than failing the run;
+only an all-keys-missing run exits 1) is the live gate this skill claims.

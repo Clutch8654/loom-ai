@@ -5,6 +5,8 @@ description: Retrospective codification — walks back conversation transcript, 
 
 # /loom-skillify — Retrospective Codification
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 `/loom-agent create` and `/loom-skill create` are the **forward** path: you know what capability you want, you scaffold it. `/loom-skillify` is the **backward** path: you already did a valuable flow once, and now you want it captured as a re-runnable script with a test and a fixture so it stops being a one-off.
 
 ## Inputs
@@ -88,6 +90,16 @@ bunx vitest run scripts/skillified/{slug}.test.ts
 ## Optional Promotion
 
 Later, the operator can run `/loom-skill create --from-skillified {slug}` (when that flag ships in the skill wizard) to turn the codified script into a full `skills/{name}/SKILL.md` skill with description triggers. Until then, `/loom-skillify` output stays under `scripts/skillified/` as codified-but-not-yet-formalized capability.
+
+## Beyond upstream
+
+gstack has no retrospective-codification path — capability only flows *forward*
+(you decide what to build, then scaffold it). `/loom-skillify` is the
+**backward** direction: it mines an already-successful transcript slice into a
+re-runnable `script.ts` + `test.ts` + fixture, and — critically — **gates
+registration on a green test** (`SKILLIFY_TEST_FAIL` blocks the
+`library.yaml` write). No competitor ships a test-gated transcript-to-skill
+codifier; this is capability beyond parity, not a re-skin.
 
 ## Contracts Referenced
 

@@ -1,0 +1,6 @@
+skill: benchmark
+batch: ops
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: Measures Core Web Vitals on both merge-base and PR head via the shared persistent browser daemon and keeps an append-only perf-history trend line per PR — a regression gate with memory, not a one-shot snapshot.

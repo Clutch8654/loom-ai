@@ -1,0 +1,6 @@
+skill: benchmark-models
+batch: ops
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: Runs one prompt across Claude+GPT+Gemini side-by-side with an LLM judge scoring quality and a dashboard trading off latency, tokens, cost, and quality per vendor with a best-effort vendor-skip gate.

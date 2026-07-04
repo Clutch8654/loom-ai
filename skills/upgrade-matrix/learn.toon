@@ -1,0 +1,6 @@
+skill: learn
+batch: ops
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: Learnings as a queryable confidence-ranked corpus with a --min-confidence enforcement filter and proactive "didn't we fix this before?" surfacing, versus inert scattered prose upstream.
