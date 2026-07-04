@@ -1,14 +1,16 @@
 ---
-description: "Launch 6 parallel planning-review agents and synthesize a unified plan-quality report."
+description: "Launch up to 10 parallel planning-review agents (6 core + 4 specialized lenses) and synthesize a unified plan-quality report."
 ---
 
 ## Subcommand: review
 
-You are an orchestrator that launches 6 specialized planning agents in parallel to review, improve, or create a project plan.
+You are an orchestrator that launches up to 10 specialized planning agents in parallel — the 6 core planning agents plus the 4 M-04 review lenses (CEO, Engineering, Design, DevEx) — to review, improve, or create a project plan.
+
+**Agent count is 10, not 6.** The 6 core agents (feature-coverage, strategy, ux, phasing, parallelization, agentic-workflow) always run. The 4 M-04 lenses run by default too, but are archetype-relevant: `plan-eng-review-agent` and `plan-devex-review-agent` apply to essentially every plan; `plan-ceo-review-agent` and `plan-design-review-agent` add the most value on product/UI-facing plans and may be skipped (with a one-line note) on pure-infrastructure plans. Do not silently run only the 6 core agents — that omits the engineering and DevEx lenses that catch the highest-severity findings.
 
 ### Context
 
-This subcommand reviews a PLAN.md (or equivalent planning document) by spawning 6 specialized agents simultaneously. Each agent focuses on a different dimension of plan quality. After all agents complete, synthesize their findings into a unified summary.
+This subcommand reviews a PLAN.md (or equivalent planning document) by spawning up to 10 specialized agents simultaneously (6 core + 4 M-04 lenses). Each agent focuses on a different dimension of plan quality. After all agents complete, synthesize their findings into a unified summary.
 
 ### Arguments
 
@@ -66,12 +68,12 @@ Project-specific agents with `outputRole: blocker` must pass (no blocking findin
 
 #### Step 3: Synthesize Results
 
-After all 6 agents return, produce a unified summary:
+After all agents return, produce a unified summary:
 
 ```
 ## Plan Review Summary
 
-Six specialized planning agents ran in parallel reviewing the plan. Here's what each one focused on:
+The planning agents ran in parallel reviewing the plan (6 core + the M-04 lenses that applied). Here's what each one focused on:
 
 Agent: Feature Coverage Agent
 Specialization: [what it focused on]
@@ -96,6 +98,22 @@ Key Feedback: [2-3 most important findings]
 Agent: Agentic Workflow Agent
 Specialization: [what it focused on]
 Key Feedback: [2-3 most important findings]
+────────────────────────────────────────
+Agent: Engineering Review Agent (M-04 lens)
+Specialization: [architecture, dependencies, error handling, sizing, phasing, parallelization, contracts — with anti-skip clauses citing named regressions]
+Key Feedback: [2-3 most important findings; note any BLOCKING findings]
+────────────────────────────────────────
+Agent: DevEx Review Agent (M-04 lens)
+Specialization: [8-pass developer-experience review; emits predictedTTHW for the /loom-devex boomerang]
+Key Feedback: [2-3 most important findings; include predictedTTHW]
+────────────────────────────────────────
+Agent: CEO Review Agent (M-04 lens — product/UI plans; note if skipped)
+Specialization: [vision fit, business impact, positioning, scope discipline, risks, distribution]
+Key Feedback: [2-3 most important findings, or "skipped — pure-infrastructure plan"]
+────────────────────────────────────────
+Agent: Design Review Agent (M-04 lens — product/UI plans; note if skipped)
+Specialization: [IA, interaction flow, journey, state coverage, empty/error/loading, a11y, visual hierarchy]
+Key Feedback: [2-3 most important findings, or "skipped — no user-facing UI"]
 ```
 
 #### Step 4: Identify Cross-Cutting Themes
