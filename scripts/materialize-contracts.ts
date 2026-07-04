@@ -28,6 +28,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { splitCsvLine, atomicWriteText } from "../lib/index.js";
 import { parseScenarios } from "../hooks/lib/scenario-parser.js";
 import type { Scenario } from "../hooks/lib/scenario-parser.js";
 import {
@@ -325,9 +326,7 @@ export function proposePartition(options: MaterializeOptions): {
   lines.push(`unassignedEntities[0]:`);
   lines.push(`notes: Scaffolded by /loom-plan materialize --propose-partition. Review and split into coherent bounded contexts before running materialize for real.`);
 
-  const tmp = `${partitionPath}.tmp`;
-  fs.writeFileSync(tmp, lines.join("\n") + "\n", "utf8");
-  fs.renameSync(tmp, partitionPath);
+  atomicWriteText(partitionPath, lines.join("\n") + "\n");
 
   return { partitionFile: partitionPath, entityCount: entityNames.length };
 }
@@ -394,7 +393,7 @@ export function parsePartitionManifest(content: string): PartitionManifest {
     if (sourcePlansMatch) {
       const count = parseInt(sourcePlansMatch[1], 10);
       const rest = sourcePlansMatch[2];
-      sourcePlans = count === 0 || !rest ? [] : splitCsv(rest).map((s) => s.trim());
+      sourcePlans = count === 0 || !rest ? [] : splitCsvLine(rest, { preserveQuotes: true }).map((s) => s.trim());
       continue;
     }
 
@@ -408,7 +407,7 @@ export function parsePartitionManifest(content: string): PartitionManifest {
     if (unassignedMatch) {
       const count = parseInt(unassignedMatch[1], 10);
       const rest = unassignedMatch[2];
-      unassignedEntities = count === 0 || !rest ? [] : splitCsv(rest).map((s) => s.trim());
+      unassignedEntities = count === 0 || !rest ? [] : splitCsvLine(rest, { preserveQuotes: true }).map((s) => s.trim());
       inUnassigned = false;
       continue;
     }
@@ -429,7 +428,7 @@ export function parsePartitionManifest(content: string): PartitionManifest {
 
 function parsePartitionRow(row: string): PartitionEntry | null {
   // Row format: domain,"Ent1,Ent2,Ent3",description text
-  const cells = splitCsv(row);
+  const cells = splitCsvLine(row, { preserveQuotes: true });
   if (cells.length < 3) return null;
   const domain = cells[0].trim();
   const entitiesRaw = stripQuotes(cells[1].trim());
@@ -782,25 +781,6 @@ function capitalize(domain: string): string {
     .split("-")
     .map((part) => (part.length === 0 ? part : part[0].toUpperCase() + part.slice(1)))
     .join(" ");
-}
-
-function splitCsv(row: string): string[] {
-  const out: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (const ch of row) {
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-      current += ch;
-    } else if (ch === "," && !inQuotes) {
-      out.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
-  return out;
 }
 
 function stripQuotes(s: string): string {

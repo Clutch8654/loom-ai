@@ -66,7 +66,8 @@ import {
   type WikiIndexRow,
 } from "../../hooks/lib/contract-page-writer.js";
 import { canonicalBodyChecksumFromPage } from "../../hooks/lib/checksum.js";
-import { bumpAfter, atomicWriteText } from "./init.js";
+import { bumpAfter } from "./init.js";
+import { atomicWriteText, splitCsvLine } from "../../lib/index.js";
 import { applyFrontmatterUpdates } from "./review.js";
 import { parseProposalFrontmatter } from "./proposal-frontmatter.js";
 import {
@@ -759,7 +760,10 @@ function parseContractPage(content: string): ParsedContractPage {
     // Array header form `name[N]: a, b`.
     const arrayMatch = /^([A-Za-z_][A-Za-z0-9_]*)\[(\d+)\]$/.exec(key);
     if (arrayMatch) {
-      simpleArrays.set(arrayMatch[1], splitCsvLine(value));
+      simpleArrays.set(
+        arrayMatch[1],
+        splitCsvLine(value, { trim: true }).filter((s) => s.length > 0),
+      );
       continue;
     }
     frontmatter.set(key, value);
@@ -1084,7 +1088,7 @@ function parseScenarioToon(raw: string, fallbackId: string): ContractPageScenari
     const m = new RegExp(`^${escape(key)}\\[(\\d+)\\]:\\s*(.*)$`, "m").exec(raw);
     if (!m) return [];
     if (Number(m[1]) === 0) return [];
-    return splitCsvLine(m[2]).filter((s) => s.length > 0);
+    return splitCsvLine(m[2], { trim: true }).filter((s) => s.length > 0);
   };
 
   const id = find("id") || fallbackId;
@@ -1115,32 +1119,13 @@ function parseScenarioToon(raw: string, fallbackId: string): ContractPageScenari
 // ---------------------------------------------------------------------------
 // Misc helpers
 // ---------------------------------------------------------------------------
-
-function splitCsvLine(value: string): string[] {
-  if (value.length === 0) return [];
-  const out: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < value.length; i++) {
-    const ch = value[i];
-    if (ch === '"') {
-      const next = value[i + 1];
-      if (inQuotes && next === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      out.push(current.trim());
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current.trim());
-  return out.filter((s) => s.length > 0);
-}
+//
+// CSV splitting routes through the shared core (lib/csv.ts, C-02). The former
+// local splitCsvLine collapsed `""` → `"`, stripped surrounding quotes and
+// trimmed each field — reproduced by `splitCsvLine(value, { trim: true })`.
+// Its empty-field filter was caller policy, so each call site applies
+// `.filter((s) => s.length > 0)` itself (an empty string splits to `[""]`,
+// which the filter then drops to `[]` — matching the old empty-input case).
 
 function normalizeText(text: string): string {
   return text.replace(/\s+/g, " ").trim();

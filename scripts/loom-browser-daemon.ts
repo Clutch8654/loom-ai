@@ -15,6 +15,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { spawn } from "node:child_process";
+import { atomicWrite } from "../lib/index.js";
 
 const BROWSER_DIR = path.join(process.cwd(), ".loom", "browser");
 const STATE_FILE = path.join(BROWSER_DIR, "state.toon");
@@ -27,13 +28,6 @@ const DEFAULT_CDP_PORT = 9222;
 
 function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true });
-}
-
-function atomicWrite(filePath: string, content: string) {
-  ensureDir(path.dirname(filePath));
-  const tmp = filePath + ".tmp";
-  fs.writeFileSync(tmp, content);
-  fs.renameSync(tmp, filePath);
 }
 
 function nowISO(): string {

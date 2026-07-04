@@ -40,8 +40,13 @@ import {
   deltasPath,
   isValidChangeId,
   proposalPath,
-  tmpPathFor,
 } from "../../hooks/lib/change-paths.js";
+// atomicWriteText now comes from the shared core (C-02); the local copy was
+// strangled in Phase 11b. Imported into local scope for this module's own
+// writes AND re-exported so importers that reference it via `./init.js` keep
+// working transparently against the lib/ implementation.
+import { atomicWriteText } from "../../lib/index.js";
+export { atomicWriteText };
 import {
   readChangeState,
   writeChangeState,
@@ -312,14 +317,6 @@ export function renderEmptyDeltasToon(): string {
     `deltas[0]{domain,breakingChange,addedReqCount,modifiedReqCount,removedReqCount,addedScenarioCount,modifiedScenarioCount,removedScenarioCount}:`,
     ``,
   ].join("\n");
-}
-
-/** Atomic text write: write `.tmp`, then `fs.renameSync`. */
-export function atomicWriteText(target: string, content: string): void {
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  const tmp = tmpPathFor(target);
-  fs.writeFileSync(tmp, content, "utf8");
-  fs.renameSync(tmp, target);
 }
 
 /**

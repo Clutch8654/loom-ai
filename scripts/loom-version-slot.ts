@@ -32,6 +32,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { execFileSync } from "node:child_process";
+import { atomicWriteText } from "../lib/index.js";
 
 interface Slot {
   repo: string;
@@ -253,13 +254,6 @@ function emitRegistry(reg: { updatedAt: string; slots: Slot[] }): string {
   return [...header, ...rows, ""].join("\n");
 }
 
-function writeAtomic(target: string, content: string) {
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  const tmp = `${target}.tmp`;
-  fs.writeFileSync(tmp, content, "utf8");
-  fs.renameSync(tmp, target);
-}
-
 function refresh(reg: { updatedAt: string; slots: Slot[] }): {
   updatedAt: string;
   slots: Slot[];
@@ -371,7 +365,7 @@ function emitToonReport(obj: Record<string, unknown>): string {
 function main() {
   const [, , subcmd = "scan", ...rest] = process.argv;
   const reg = refresh(parseRegistry());
-  writeAtomic(REGISTRY_PATH, emitRegistry(reg));
+  atomicWriteText(REGISTRY_PATH, emitRegistry(reg));
 
   if (subcmd === "scan") {
     process.stdout.write(emitRegistry(reg));
@@ -419,7 +413,7 @@ function main() {
       lastSeenAt: now,
     });
     reg.updatedAt = now;
-    writeAtomic(REGISTRY_PATH, emitRegistry(reg));
+    atomicWriteText(REGISTRY_PATH, emitRegistry(reg));
     process.stdout.write(
       emitToonReport({ status: "reserved", repo, version: v }) + "\n",
     );
@@ -436,7 +430,7 @@ function main() {
       (s) => !(s.repo === repo && s.version === v),
     );
     reg.updatedAt = nowIso();
-    writeAtomic(REGISTRY_PATH, emitRegistry(reg));
+    atomicWriteText(REGISTRY_PATH, emitRegistry(reg));
     process.stdout.write(
       emitToonReport({
         status: "released",

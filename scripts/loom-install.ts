@@ -25,6 +25,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { atomicWrite } from "../lib/index.js";
 
 type Host = "claude-code" | "hermes" | "openclaw" | "codex";
 type Action = "link" | "unlink" | "check";
@@ -111,13 +112,6 @@ function readLoomVersion(root: string): string {
   } catch {
     return "0.0.0";
   }
-}
-
-function atomicWrite(target: string, content: string): void {
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  const tmp = `${target}.tmp`;
-  fs.writeFileSync(tmp, content, "utf8");
-  fs.renameSync(tmp, target);
 }
 
 function renderManifest(m: InstallManifest): string {
