@@ -1,5 +1,5 @@
 /**
- * Hook: context-budget-test (PreToolUse -- Agent)
+ * Hook: context-budget-check (PreToolUse -- Agent)
  * Preflight budget check specifically for test agent spawns.
  * Ensures test agents (e2e-runner-agent, qa-review-agent, vitest-runner,
  * integration-test-agent) stay within the 100k token budget cap.
@@ -290,7 +290,7 @@ export async function checkTestAgentBudget(prompt: string): Promise<TestBudgetCh
 
 // --- Hook entry point (runs when invoked as a Claude Code hook) ---
 
-runHook("context-budget-test", async (input) => {
+runHook("context-budget-check", async (input) => {
   // Only intercept Agent tool calls
   if (input.tool_name !== "Agent") return allow();
 

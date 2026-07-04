@@ -28,7 +28,7 @@ Plus two infrastructure scripts:
 - `statusline-renderer.cjs` — pipeline + test metrics + convergence segments
 - `loom-update-checker.cjs` — background catalog version check (4h throttle)
 
-Plus one test harness: `context-budget-test.ts`.
+Plus one test-agent budget hook: `context-budget-check.ts`.
 
 Register wiki hooks into `~/.claude/settings.json` via `scripts/register-wiki-hooks.ts`.
 

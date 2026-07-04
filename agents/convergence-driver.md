@@ -1111,7 +1111,7 @@ conflicts[0]:
 
 ### Context Budget Preflight
 
-Before starting the convergence loop, the driver runs a context-budget preflight check using `detectConvergenceTier()` and `getEffectiveBudgetCap()` from `hooks/context-budget-test.ts`. This ensures each tier's agent spawns fit within the budget cap, applying tier-specific multipliers (unit=0.6x, integration=0.8x, e2e=1.0x, qa-review=0.75x). If the estimated cost exceeds the budget cap, the driver logs a warning and suggests splitting the task or reducing `--max-iterations`.
+Before starting the convergence loop, the driver runs a context-budget preflight check using `detectConvergenceTier()` and `getEffectiveBudgetCap()` from `hooks/context-budget-check.ts`. This ensures each tier's agent spawns fit within the budget cap, applying tier-specific multipliers (unit=0.6x, integration=0.8x, e2e=1.0x, qa-review=0.75x). If the estimated cost exceeds the budget cap, the driver logs a warning and suggests splitting the task or reducing `--max-iterations`.
 
 ---
 

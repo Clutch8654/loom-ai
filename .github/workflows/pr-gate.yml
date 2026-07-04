@@ -13,7 +13,7 @@
 #   lint                blocking     bunx eslint . (flat config lands Phase 2b;
 #                                    vacuous pass until the config exists)
 #   changed-file-tests  blocking     bun scripts/ci/changed-files-vitest.ts
-#   hook-drift          warn-only    until Phase 13 (sources known-divergent, defect 10)
+#   hook-drift          blocking     Phase 13 reconciled the three sources (defect 10)
 #   docs-drift          warn-only    until Phase 16 (generated-docs markers not yet everywhere)
 #   library-catalog     blocking     bun scripts/ci/check-library-catalog.ts
 #
@@ -136,10 +136,10 @@ jobs:
         with:
           bun-version: latest
 
-      # --warn-only until Phase 13 reconciles the three registration sources
-      # (defect 10). Phase 13 removes the flag and flips this check to blocking.
+      # Phase 13 reconciled the three registration sources (defect 10), so this
+      # check runs blocking: any drift now fails the PR gate.
       - name: Compare the three hook-registration sources
-        run: bun scripts/ci/check-hook-drift.ts --warn-only
+        run: bun scripts/ci/check-hook-drift.ts
 
       - name: Upload drift report
         if: always()
@@ -211,7 +211,7 @@ jobs:
             typecheck,${{ needs.typecheck.result }},true,
             lint,${{ needs.lint.result }},true,
             changed-file-tests,${{ needs.changed-file-tests.result }},true,
-            hook-drift,${{ needs.hook-drift.result }},false,13
+            hook-drift,${{ needs.hook-drift.result }},true,
             docs-drift,${{ needs.docs-drift.result }},false,16
             library-catalog,${{ needs.library-catalog.result }},true,
           EOF

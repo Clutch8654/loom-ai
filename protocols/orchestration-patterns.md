@@ -603,7 +603,7 @@ The tier to use is specified in `converge.config` or via the `--tier` flag on `/
 - **Agents:** `convergence-driver.md`, `convergence-planner-agent.md`, `e2e-runner-agent.md`, `e2e-test-writer-agent.md`, `interpretation-reviewer-agent.md`, `wiki-maintainer-triggers.md`
 - **Schemas:** `convergence-tier.schema.md`, `e2e-story.schema.md`, `interpretation-conflict.schema.md`, `interpretation-report.schema.md`, `criteria-plan.schema.md`, `taxonomy.md`, `flaky-test.schema.md`, `convergence-rollback.md`, `schema-upgrade.md`
 - **Commands:** `/loom-converge` (`loom-converge.md`), `/loom-auto` (`loom-auto.md`), `/loom-upgrade` (`loom-upgrade.md`)
-- **Hooks:** `hooks/context-budget-test.ts` — preflight budget check (`checkTestAgentBudget`) enforcing 100k token cap before spawning test/convergence agents
+- **Hooks:** `hooks/context-budget-check.ts` — preflight budget check (`checkTestAgentBudget`) enforcing 100k token cap before spawning test/convergence agents
 
 ### Flaky Test Quarantine and Rollback
 
