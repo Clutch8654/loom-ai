@@ -33,6 +33,10 @@ library:
       description: TOON (Token-Oriented Object Notation) format specification for all on-disk artifacts and agent communication
       source: protocols/toon-format.md
 
+    - name: skill-preamble
+      description: "Shared skill-preamble prelude cited by reference from every Loom SKILL.md — single authoritative source for the conventions skills repeat (TOON output, atomic writes, exit codes, AgentResult, confidence, model resolution, init guard). Skill-side analogue of commands/_loom-init-guard.md; byte-stable canonical block between LOOM:SKILL-PREAMBLE markers, resolved by the @loom-include directive."
+      source: protocols/skill-preamble.md
+
     - name: pattern-executor-protocol
       description: Reusable pattern runtime protocol for debate, chain, vote, triage orchestration patterns
       source: protocols/pattern-executor.md
