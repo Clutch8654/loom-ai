@@ -266,3 +266,59 @@ Examples:
 - **agent-result.schema.md** -- The e2e-runner-agent returns test results in the AgentResult envelope with `verificationStatus`.
 - **criteria-plan.schema.md** -- Criteria with `testTier: e2e` are the input source for story generation. Stories reference criteria via `criteriaRefs`.
 - **scenario.schema.md** -- Canonical leaf-level testable unit. Every e2e story MUST cite ≥1 source scenario via `derivedFrom[]`. The story is the concrete user-journey realization of one or more scenarios.
+
+---
+
+## Daemon-Mode Structured Action Grammar (addendum — C-03)
+
+> Added in Wave 0 (Phase 0) for the `loom-browser` daemon executor. This addendum is **additive** — it does not modify any rule, field, or example above.
+
+The e2e-story schema above allows `StoryStep.action` to be **free-form prose** (the default), which the headless / chrome-mcp runners interpret via an NLP/LLM pass. The **daemon executor** (`scripts/e2e-daemon-runner.ts`, P3, driven by `sessionMode: daemon` added in P4a) does NOT do prose NLP. Instead it consumes a **closed, structured action grammar**: each `action` string is a single verb line that parses deterministically into a `BrowserCommand` (see `browser-command.schema.md`). A step that does not parse fails with `STORY_PARSE_ERROR` — it is never guessed.
+
+This mode is **explicitly distinct** from the default free-form prose mode:
+
+| Mode | `sessionMode` | `action` interpretation |
+|------|---------------|-------------------------|
+| Prose (default) | `headless`, `chrome-mcp` | Free-form natural language, NLP/LLM-interpreted. |
+| **Structured (daemon)** | `daemon` | **Structured action grammar below**, deterministically parsed. No NLP. |
+
+### Action grammar (closed)
+
+Each `action` in a daemon-mode story is one of these forms. `<a11y-ref-json>` is a JSON object `{"role":..,"name":..,"index":..}` matching the `A11yRef` shape in `browser-command.schema.md`.
+
+| Action form | Compiles to BrowserCommand | Notes |
+|-------------|----------------------------|-------|
+| `navigate <url>` | verb `navigate` (WRITE), target = url | Runs the daemon preflight + injection hook. |
+| `click <a11y-ref-json>` | verb `click` (WRITE), target = A11yRef | On ref miss → `REF_UNRESOLVED`. |
+| `type <a11y-ref-json> <text>` | verb `type` (WRITE), target = A11yRef, args.text = text | `<text>` is the remainder of the line. |
+| `assert-text <text>` | maps `expected` → a READ assertion over page text | Assertion, not a mutation. |
+| `assert-visible <a11y-ref-json>` | verb `is-visible` (READ) on the ref | Green iff the node is visible. |
+| `screenshot` | verb `screenshot` (READ) | Captures for the audit trail. |
+
+Grammar notes:
+- The verb subset is a **strict subset** of the `BrowserCommand` closed verb enum; daemon stories may only use the six forms above.
+- `assert-text` / `assert-visible` are **assertions** — they populate the DeltaReport pass/fail, distinct from the WRITE actions that mutate the page.
+- Tokenization: the leading token is the action keyword; for `type`, everything after the a11y-ref JSON is the literal text.
+- Any other leading keyword, or malformed a11y-ref JSON, is a `STORY_PARSE_ERROR` (non-zero) — the daemon executor never falls back to prose interpretation.
+
+### Example (daemon-mode story steps)
+
+```yaml
+steps:
+  - action: navigate https://localhost:3000/login
+    expected: Login form is visible
+  - action: type {"role":"textbox","name":"Email","index":0} user@example.com
+    expected: Email field contains user@example.com
+  - action: click {"role":"button","name":"Sign in","index":0}
+    expected: Redirect to dashboard
+  - action: assert-text Welcome back
+    expected: Dashboard greets the user
+  - action: assert-visible {"role":"heading","name":"Dashboard","index":0}
+    expected: Dashboard heading is present
+```
+
+### Relationship
+
+- **browser-command.schema.md** — the target IR each action compiles to (closed verb enum, A11yRef, error codes incl. `STORY_PARSE_ERROR`).
+- **daemon-preflight.schema.md** — the executor runs the daemon preflight before the first step.
+- The `sessionMode` enum gains `daemon` in P4a; this addendum defines what `daemon` mode *means* for `action` parsing.

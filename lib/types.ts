@@ -420,3 +420,191 @@ export interface ScorecardResult {
   /** One score per dimension (pk_dim = runAt, dimension). */
   dimensions: ScorecardDimension[];
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 3. Browser-E2E contracts (PLAN-browser-e2e, Phase 0 / Wave 0)
+ *
+ * Wave-0 source of truth for the loom-browser daemon capability. Types only —
+ * no behavior. Full specs: protocols/browser-command.schema.md,
+ * protocols/browser-skill.schema.md, protocols/outcome-eval.schema.md,
+ * protocols/daemon-preflight.schema.md, and the e2e-story daemon-mode addendum.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/* ── BrowserCommand + a11y-ref + result envelope + error taxonomy ────────── */
+
+/** Concurrency tier of a browser verb (C-08). read=concurrent, write=sequenced, meta=exclusive. */
+export type BrowserTier = "read" | "write" | "meta";
+
+/** Closed READ verb set — includes computed-style verbs (css/is-visible/bounding-box) so the P8 visual-bug category is detectable. */
+export type BrowserReadVerb =
+  | "screenshot"
+  | "dom-query"
+  | "a11y-snapshot"
+  | "console-log"
+  | "network-log"
+  | "get-url"
+  | "get-title"
+  | "css"
+  | "is-visible"
+  | "bounding-box";
+
+/** Closed WRITE verb set — page mutations, daemon-lock sequenced. */
+export type BrowserWriteVerb =
+  | "click"
+  | "type"
+  | "hover"
+  | "navigate"
+  | "submit"
+  | "upload";
+
+/** Closed META verb set — daemon lifecycle, lock-exclusive. */
+export type BrowserMetaVerb =
+  | "start"
+  | "stop"
+  | "restart"
+  | "config"
+  | "cookie-import";
+
+/** The closed union of all browser verbs. Unknown verbs are STORY_PARSE_ERROR. */
+export type BrowserVerb = BrowserReadVerb | BrowserWriteVerb | BrowserMetaVerb;
+
+/**
+ * Accessibility-tree element reference. Targets one node by ARIA role +
+ * accessible name + 0-based positional index (document order). On a miss the
+ * command fails with REF_UNRESOLVED (never a silent no-op).
+ */
+export interface A11yRef {
+  /** ARIA role, e.g. "button", "textbox", "link". */
+  role: string;
+  /** Accessible name (label / aria-label / associated text). May be empty. */
+  name: string;
+  /** 0-based occurrence among nodes matching {role, name}. */
+  index: number;
+}
+
+/** Closed browser error-code enum. Each maps to a stable non-zero exitCode. */
+export type BrowserErrorCode =
+  | "DAEMON_NOT_RUNNING"
+  | "CHROMIUM_ABSENT"
+  | "CDP_DISCONNECTED"
+  | "REF_UNRESOLVED"
+  | "STEP_TIMEOUT"
+  | "STORY_PARSE_ERROR"
+  | "BROWSER_INJECTION_BLOCKED";
+
+/** Failure block on a BrowserResult. Always carries an operator message + remediation. */
+export interface BrowserError {
+  code: BrowserErrorCode;
+  /** Operator-facing message: what happened. */
+  message: string;
+  /** Actionable next step: how to fix it. */
+  remediation: string;
+}
+
+/**
+ * One instruction to the loom-browser daemon. `tier` is derived from `verb`
+ * and MUST match the verb's tier (read/write/meta).
+ */
+export interface BrowserCommand {
+  verb: BrowserVerb;
+  tier: BrowserTier;
+  /**
+   * Element/URL the verb acts on. A11yRef for element-scoped verbs, a URL
+   * string for navigate, a raw selector string, or null for page/META verbs.
+   */
+  target?: A11yRef | string | null;
+  /** Verb-specific arguments (e.g. { text } for type, { path } for upload). */
+  args?: Record<string, unknown>;
+  /** Per-command timeout in ms; expiry → STEP_TIMEOUT. Default 30000. */
+  timeoutMs?: number;
+}
+
+/** The uniform result envelope for every BrowserCommand. */
+export interface BrowserResult {
+  /** true on success, false on any failure. */
+  ok: boolean;
+  verb: BrowserVerb;
+  tier: BrowserTier;
+  /** 0 on success; non-zero on failure (mirrors error.code). Never 0 on error. */
+  exitCode: number;
+  /** Verb-specific payload on success; null on failure. */
+  data?: Record<string, unknown> | null;
+  /** Populated iff ok === false. */
+  error?: BrowserError | null;
+  durationMs?: number;
+}
+
+/* ── BrowserSkill (fixture-tested browser-skill convention, C-04) ─────────── */
+
+/**
+ * Metadata for a fixture-tested browser-skill whose parser is a pure function
+ * over captured HTML (zero network/daemon). Layout: SKILL.md + script.ts +
+ * fixtures/ + script.test.ts. See protocols/browser-skill.schema.md.
+ */
+export interface BrowserSkill {
+  /** kebab-case id, unique; matches the directory name. */
+  name: string;
+  description: string;
+  /** Provenance: URL/page the fixtures/captured.html was captured from. */
+  capturedFrom: string;
+  /** Path to the pure parser (conventionally "script.ts"). */
+  parserEntry: string;
+  /** Captured HTML fixtures under fixtures/ (≥1). */
+  fixtureFiles: string[];
+  /** Path to the vitest file (conventionally "script.test.ts"). */
+  testFile: string;
+  /** MUST be true — asserts zero network/daemon. */
+  pure: boolean;
+  /** MUST be true — parser errors (not returns empty) when the target is absent. */
+  throwsOnMissing: boolean;
+}
+
+/* ── OutcomeEval (ground-truth planted-bug eval, per-category) ────────────── */
+
+export type OutcomeEvalStatus = "passed" | "failed" | "skipped" | "error";
+export type OutcomeSeverity = "critical" | "major" | "minor";
+
+/**
+ * One per-category, per-severity detection row. `floor`/`max` thresholds are
+ * intentionally NOT here — they live in the ground-truth fixture and are
+ * joined at scoring time (see protocols/outcome-eval.schema.md).
+ */
+export interface OutcomeCategoryRow {
+  /** Bug category, e.g. "functional", "visual", "console", "overflow". */
+  category: string;
+  severity: OutcomeSeverity;
+  /** Whether the QA report detected the planted bug(s) of this category+severity. */
+  detected: boolean;
+}
+
+/**
+ * Result of the ground-truth outcome eval (P8a). Carries per-category
+ * detection, not just two scalars; the roll-up scalars are derived from it.
+ */
+export interface OutcomeEval {
+  /** Stable run id, e.g. "qa-outcome-{date}-{shortsha}". */
+  evalId: string;
+  /** Eval-ladder tier id; fixed to "qa-outcome". */
+  tier: string;
+  /** "skipped" (exit 0) when LOOM_EVAL_LLM is unset. */
+  status: OutcomeEvalStatus;
+  /** Path to the ground-truth fixture (planted bugs + floor/max thresholds). */
+  groundTruthRef: string;
+  /** Fixture pages driven through the daemon (≥2: static + SPA/flow). */
+  fixturesRun: string[];
+  /** Per-category, per-severity detection rows (the core of this schema). */
+  perCategory: OutcomeCategoryRow[];
+  /** Roll-up: fraction of planted bugs detected (0.0–1.0), derived from perCategory. */
+  detectionRate: number;
+  /** Roll-up: reported issues with no matching planted bug, derived from perCategory. */
+  falsePositives: number;
+  /** Actionable reason when status === "skipped". */
+  skipReason?: string;
+}
+
+/* ── EvalTier extension note ──────────────────────────────────────────────
+ * The existing EvalTier union above ("t1" | "t2" | "t3") gains the new eval
+ * tier id "qa-outcome" in Phase 8b (P8b owns run-evals.ts + the EvalTier union
+ * edit). Wave 0 does NOT modify the EvalTier union — it only records the
+ * intent here so downstream implementers know the id and the owner.
+ * ──────────────────────────────────────────────────────────────────────── */

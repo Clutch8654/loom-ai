@@ -249,6 +249,23 @@ library:
       description: "Diagram triplet registry schema at .loom/diagrams/index.toon. Defines diagrams[]{slug,path,source,generatedAt,shaShort} appended by /loom-diagram; shaShort (truncated SHA-256 of the .md source) is the anchor /loom-docs release uses for DIAGRAM_DRIFT_DETECTED drift detection."
       source: protocols/diagram-index.schema.toon
 
+    # Browser-E2E contracts (PLAN-browser-e2e, Phase 0)
+    - name: browser-command-schema
+      description: "Closed command grammar for the loom-browser daemon — READ/WRITE/META verb enum (incl computed-style css/is-visible/bounding-box), A11yRef (role+name+index) targeting, BrowserResult envelope, and the closed error-code enum (DAEMON_NOT_RUNNING, CHROMIUM_ABSENT, CDP_DISCONNECTED, REF_UNRESOLVED, STEP_TIMEOUT, STORY_PARSE_ERROR, BROWSER_INJECTION_BLOCKED) with operator message + remediation per code."
+      source: protocols/browser-command.schema.md
+
+    - name: daemon-preflight-schema
+      description: "Single daemon-down behavior shared by every loom-browser consumer (C-07): hard non-zero fail with DAEMON_NOT_RUNNING + remediation 'run loom-browser start first'. Explicitly forbids silent-skip and queue-return-0 (blocking F-03)."
+      source: protocols/daemon-preflight.schema.md
+
+    - name: outcome-eval-schema
+      description: "Ground-truth planted-bug outcome-eval result (qa-outcome tier). Carries perCategory[]{category,severity,detected} per-category detection (not two scalars); floor/max thresholds live in the ground-truth fixture, not the result."
+      source: protocols/outcome-eval.schema.md
+
+    - name: browser-skill-schema
+      description: "Fixture-tested browser-skill convention (C-04): SKILL.md + script.ts + fixtures/ + script.test.ts, a pure parser over captured HTML (zero network/daemon) that throws (not returns empty) on a missing target."
+      source: protocols/browser-skill.schema.md
+
   # In v4, skills = Claude Code native skills (new, initialized empty at v3→v4 migration)
   skills:
     - name: python-conventions

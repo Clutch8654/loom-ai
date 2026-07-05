@@ -1,9 +1,10 @@
 wave: 0
-phase: 0
-status: complete
+label: P0-contracts
+status: success
 agent: contracts-agent
-taskId: w0-contracts
-filesCreated[7]: lib/types.ts, protocols/shared-core.schema.md, protocols/ci-gates.contract.md, protocols/eval-tier.schema.md, protocols/release-versioning.schema.md, protocols/metrics-snapshot.schema.md, .plan-execution/contracts/manifest.toon
+filesCreated[5]: protocols/browser-command.schema.md,protocols/browser-skill.schema.md,protocols/outcome-eval.schema.md,protocols/daemon-preflight.schema.md,.plan-execution/contracts/manifest.toon
+filesModified[3]: protocols/e2e-story.schema.md,lib/types.ts,skills/library.yaml
+exportsAdded[15]: BrowserTier,BrowserReadVerb,BrowserWriteVerb,BrowserMetaVerb,BrowserVerb,A11yRef,BrowserErrorCode,BrowserError,BrowserCommand,BrowserResult,BrowserSkill,OutcomeEvalStatus,OutcomeSeverity,OutcomeCategoryRow,OutcomeEval
 verification: pass
-verificationChecks[3]: tsc-standalone-pass, ownership-drift-none, toon-convention-pass
-contractAmendments[1]: agent-result.schema.md confidence scale 0.0-1.0 vs 1..10 — Phase 3 reconciles
+verificationCommand: bunx tsc --noEmit -p hooks/tsconfig.json
+unresolvedIssues[0]:
