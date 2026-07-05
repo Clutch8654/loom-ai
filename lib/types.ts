@@ -329,7 +329,7 @@ export interface DocsGenerationManifest {
 
 /* ── 10/12 EvalTierResult ───────────────────────────────────────────────── */
 
-export type EvalTier = "t1" | "t2" | "t3";
+export type EvalTier = "t1" | "t2" | "t3" | "qa-outcome";
 export type EvalStatus =
   | "pending"
   | "running"

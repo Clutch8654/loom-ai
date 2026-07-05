@@ -152,6 +152,28 @@ of hard-failing. That daemon + queue-fallback behavior is what
 - **M-07 `/loom-cso`** — two-tier live security review
 - **M-13 `/loom-design (consultation|html|shotgun)`** — HTML → design consultation → shotgun screenshot compare
 - **M-08 F-27 `/loom-benchmark`** — comparative live-site benchmark harness
+- **`e2e-runner-agent` (daemon session mode)** — the convergence e2e-tier runner. When `/loom-converge --e2e --daemon` is invoked, `e2e-runner-agent` drives this daemon through the structured-action executor (`scripts/e2e-daemon-runner.ts`) instead of Playwright or Chrome MCP. See `agents/e2e-runner-agent.md` § Daemon Mode.
 
 Each of these commands may only issue tier-appropriate operations and MUST
 respect the READ/WRITE serialization contract above.
+
+## Daemon preflight (mandatory for every consumer)
+
+Before any consumer issues a `BrowserCommand` — READ, WRITE, or the first step
+of a daemon-mode e2e story — it MUST run the daemon preflight defined in
+`protocols/daemon-preflight.schema.md`. This is the single sanctioned
+daemon-down behavior, identical across every consumer above:
+
+- If the daemon is **running**, preflight returns `action: proceed`, `exitCode: 0`.
+- If the daemon is **not running**, the consumer MUST **fail hard with a
+  non-zero exit code** (`exitCode: 2`, `errorCode: DAEMON_NOT_RUNNING`) and print
+  `run 'loom-browser start' first` on stderr. It does nothing else — no queued
+  state, no partial work.
+
+The following daemon-down behaviors are **forbidden** and MUST NOT be
+reintroduced: silent-skip (treat down as "nothing to do"), queue-return-0
+(enqueue and return exit 0), implicit auto-start, or downgrade-to-warning +
+exit 0. Any exit-0 path on daemon-down defeats CI/loop gating — daemon-down is
+an error, not a warning. (`CHROMIUM_ABSENT` — daemon up but no browser binary —
+is a separate hard-fail at runtime; only P2/P8a/P9a *tests* SKIP cleanly on
+absent Chromium so CI stays green.)

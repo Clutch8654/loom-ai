@@ -20,6 +20,7 @@
  *   bun scripts/eval/run-evals.ts --tier t1     # PR gate (blocking, free)
  *   bun scripts/eval/run-evals.ts --tier t2     # nightly (advisory, hermetic)
  *   bun scripts/eval/run-evals.ts --tier t3     # opt-in behind LOOM_EVAL_LLM
+ *   bun scripts/eval/run-evals.ts --tier qa-outcome  # ground-truth outcome eval, opt-in behind LOOM_EVAL_LLM
  *
  * Exit codes:
  *   0  tier passed / skipped (t3 always exits 0 on judged-score grounds)
@@ -40,6 +41,7 @@ import type {
 import { runT1 } from "./tiers/t1-static.js";
 import { runT2 } from "./tiers/t2-hermetic.js";
 import { runT3, type Judge } from "./tiers/t3-judge.js";
+import { runQaOutcome } from "./tiers/qa-outcome.js";
 
 /** Default artifact directories, repo-relative. */
 export const RESULTS_DIR = "evals/results";
@@ -91,16 +93,18 @@ export interface RunOptions {
   gitRef?: string;
 }
 
-const VALID_TIERS: readonly EvalTier[] = ["t1", "t2", "t3"];
+const VALID_TIERS: readonly EvalTier[] = ["t1", "t2", "t3", "qa-outcome"];
 
 function parseTier(argv: string[]): EvalTier {
   const i = argv.indexOf("--tier");
   const raw = i >= 0 ? argv[i + 1] : undefined;
   if (raw === undefined) {
-    throw new UsageError("missing required --tier <t1|t2|t3>");
+    throw new UsageError("missing required --tier <t1|t2|t3|qa-outcome>");
   }
   if (!VALID_TIERS.includes(raw as EvalTier)) {
-    throw new UsageError(`invalid tier "${raw}" (expected t1 | t2 | t3)`);
+    throw new UsageError(
+      `invalid tier "${raw}" (expected t1 | t2 | t3 | qa-outcome)`,
+    );
   }
   return raw as EvalTier;
 }
@@ -204,8 +208,13 @@ export async function main(argv: string[], opts: RunOptions = {}): Promise<numbe
     out = runT1();
   } else if (tier === "t2") {
     out = runT2({ fixturesDir });
-  } else {
+  } else if (tier === "t3") {
     out = await runT3({ env, judge: opts.judge, resultsDir, floorRef: opts.floorRef });
+  } else {
+    // qa-outcome: gated on LOOM_EVAL_LLM, mirrors t3. No reporter is wired from
+    // the CLI, so with the flag set it advisory-skips; unset it skips (exit 0).
+    // P9a's nightly CI job injects a reporter to score planted-bug detections.
+    out = await runQaOutcome({ env });
   }
 
   const result: EvalTierResult = {

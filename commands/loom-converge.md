@@ -38,6 +38,7 @@ Parse arguments after `converge`:
 - `--no-tests` -- skip unit and integration tiers (prints stderr warning)
 - `--no-e2e` -- skip e2e tier (prints stderr warning)
 - `--e2e` -- shorthand for `--tier e2e` (runs `e2e-test-writer-agent` for story generation then `e2e-runner-agent` for execution)
+- `--daemon` -- run the e2e tier via the shared `loom-browser` daemon (`sessionMode: daemon`; structured-action stories drive the persistent Chromium via `scripts/e2e-daemon-runner.ts`). Hard-fails with `DAEMON_NOT_RUNNING` (exit 2) if the daemon is down — run `loom-browser start` first. Alternative to the default `headless` / `--chrome-mcp` session modes.
 - `--no-qa-review` -- skip qa-review tier (prints stderr warning)
 
 **Document mode options (mode=document):**

@@ -91,7 +91,7 @@ A PlaywrightTest links an E2EStory to a concrete Playwright test file and execut
 | storyRef | string | yes | Must reference an existing `E2EStory.name`. |
 | testFile | string | yes | Path to the test file. Must end with `.spec.ts` or `.test.ts`. |
 | sessionName | string | yes | Unique session identifier. Must be kebab-case. |
-| sessionMode | enum | yes | Execution mode: `headless` or `chrome-mcp`. |
+| sessionMode | enum | yes | Execution mode: `headless`, `chrome-mcp`, or `daemon`. `daemon` selects the structured-action executor (`scripts/e2e-daemon-runner.ts`, added P4a) — see the Daemon-Mode Structured Action Grammar addendum for its semantics. |
 | isolated | boolean | yes | Whether the test runs in an isolated browser context. |
 
 ### Example
@@ -144,7 +144,7 @@ playwrightTests[N]{storyRef,testFile,sessionName,sessionMode,isolated}:
 2. **Test file extension.** `testFile` must end with `.spec.ts` or `.test.ts`.
 3. **Session name format.** `sessionName` must be kebab-case (lowercase letters, digits, and hyphens only).
 4. **Session name uniqueness.** `sessionName` must be unique across all PlaywrightTest entries.
-5. **Session mode enum.** Must be one of: `headless`, `chrome-mcp`.
+5. **Session mode enum.** Must be one of: `headless`, `chrome-mcp`, `daemon`. `headless`/`chrome-mcp` interpret each `action` as free-form prose; `daemon` requires the structured action grammar (see the daemon-mode addendum) and routes to the `scripts/e2e-daemon-runner.ts` executor via the e2e-runner-agent's daemon session mode.
 
 ---
 
@@ -317,8 +317,13 @@ steps:
     expected: Dashboard heading is present
 ```
 
+### Writer contract (e2e-test-writer-agent)
+
+When a story (or its linked `PlaywrightTest`) targets `sessionMode: daemon`, the **e2e-test-writer-agent** MUST emit each `StoryStep.action` in the **structured action grammar above** — one of the six closed verb forms — NOT free-form prose. A daemon-mode story containing a prose action is invalid: the daemon executor parses it deterministically and fails the step with `STORY_PARSE_ERROR` rather than guessing. The writer's `--session-mode` selection therefore governs the `action` dialect: `headless`/`chrome-mcp` → prose; `daemon` → this grammar. `expected` remains human-readable in all modes (it seeds failure-detail text and, for `assert-text`/`assert-visible`, the assertion narrative).
+
 ### Relationship
 
 - **browser-command.schema.md** — the target IR each action compiles to (closed verb enum, A11yRef, error codes incl. `STORY_PARSE_ERROR`).
 - **daemon-preflight.schema.md** — the executor runs the daemon preflight before the first step.
+- **e2e-runner-agent.md** — hosts the `daemon` session mode: it runs the daemon preflight (hard non-zero fail on daemon-down), invokes `runE2EDaemon` from `scripts/e2e-daemon-runner.ts`, and remains the sole writer of the canonical `.plan-execution/convergence/e2e/delta-report.toon`.
 - The `sessionMode` enum gains `daemon` in P4a; this addendum defines what `daemon` mode *means* for `action` parsing.
