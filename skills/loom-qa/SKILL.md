@@ -123,6 +123,38 @@ writes, so `/loom-learn` queries and future bugfix runs see qa-loop fixes
 too. Archive after the commit succeeds; include page, ref, symptom,
 confidence, and commitSha.
 
+## Ground-truth outcome eval (planted bugs)
+
+Beyond the live-site loop, `/loom-qa` is graded against a **planted-bug outcome
+eval** — the ground-truth harness ported from gstack (P8a). It answers "does the
+QA drive actually find the bugs it should?" rather than "did the loop run?".
+
+- **Fixtures.** Two deliberately-buggy pages ship under `evals/fixtures/`:
+  `planted-bugs.html` (static: functional + visual + overflow bugs) and
+  `planted-bugs-spa.html` (SPA/flow: console + functional-flow bugs). The tier
+  drives each through the `/loom-browser` daemon (`navigate` + the `css` /
+  `is-visible` / `bounding-box` / `console-log` READ verbs). The visual and
+  overflow categories are detectable **because** those computed-style READ verbs
+  exist — a QA drive can measure contrast and clipped boxes, not just DOM text.
+
+- **Ground truth + thresholds.** `evals/fixtures/qa-ground-truth.toon` catalogs
+  every planted bug by `{category, severity, selector}` and carries the
+  per-category `floor` (minimum `detectionRate`) and `max` (maximum
+  `falsePositives`). Thresholds live in the fixture — versioned alongside the
+  bugs they gate — not in the result.
+
+- **Scoring.** `scripts/eval/tiers/qa-outcome.ts` scores the QA report
+  **per category and per severity**, not as one global pass/fail. It emits an
+  `OutcomeEval` (`protocols/outcome-eval.schema.md`, TOON) whose
+  `perCategory[]{category,severity,detected}` rows drive the assertions
+  `detectionRate >= floor` and `falsePositives <= max` for each category.
+
+- **Opt-in behind `LOOM_EVAL_LLM`.** Interpreting a driven page into issues
+  needs an LLM, so the tier is gated exactly like the T3 judge: with the flag
+  unset it is `skipped` (exit 0) with an actionable reason. The QA reporter is
+  an injected seam so tests mock it — the hermetic test never drives Chromium or
+  hits the network; the live drive runs in the nightly CI job.
+
 ## Non-goals
 
 - No load / performance testing (that's `/loom-benchmark`, M-08 F-27).

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!--
+  planted-bugs.html — static ground-truth fixture for the qa-outcome eval (P8a).
+
+  This page contains DELIBERATELY planted bugs, catalogued in
+  evals/fixtures/qa-ground-truth.toon by {category, severity, selector}. The
+  qa-outcome tier drives this page through the /loom-browser daemon (navigate +
+  READ verbs: css / is-visible / bounding-box / console-log) and scores the QA
+  report's detections against that ground truth.
+
+  DO NOT "fix" these bugs — they are the eval's fixtures. Each is annotated
+  inline with the ground-truth row it backs.
+
+  Categories exercised here: functional, visual, overflow.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planted Bugs — Static Fixture</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; margin: 2rem; }
+
+    /* PLANTED BUG: visual/major — text contrast well below WCAG 4.5:1.
+       #cccccc on #ffffff ≈ 1.6:1. Detectable via the `css` READ verb
+       (color + background-color computed style). Selector: .low-contrast */
+    .low-contrast { color: #cccccc; background: #ffffff; }
+
+    /* PLANTED BUG: overflow/minor — fixed-height box whose content overflows
+       and is clipped. scrollHeight > clientHeight and content escapes the
+       box. Detectable via the `bounding-box` READ verb comparing the child's
+       box to the container's. Selector: .overflow-box */
+    .overflow-box {
+      width: 120px;
+      height: 24px;
+      overflow: hidden;
+      border: 1px solid #333;
+      white-space: nowrap;
+    }
+    .overflow-box .runaway { display: inline-block; width: 600px; }
+  </style>
+</head>
+<body>
+  <h1>Static Fixture</h1>
+
+  <!-- PLANTED BUG: functional/critical — the submit button has NO click
+       handler and no form association, so clicking it does nothing. A
+       working QA drive detects the dead control (no navigation, no console
+       activity, no DOM change after click). Selector: #submit-btn -->
+  <form onsubmit="return false">
+    <label>Email <input type="email" name="email" /></label>
+    <button id="submit-btn" type="button">Submit</button>
+  </form>
+
+  <p class="low-contrast">
+    This paragraph is nearly invisible against the white page background.
+  </p>
+
+  <div class="overflow-box">
+    <span class="runaway">This very long line overflows its clipped container and is silently cut off.</span>
+  </div>
+
+  <script>
+    // No console errors on this page — the static fixture's console is clean.
+    // The console-category planted bug lives in planted-bugs-spa.html.
+    document.title = "Planted Bugs — Static Fixture";
+  </script>
+</body>
+</html>

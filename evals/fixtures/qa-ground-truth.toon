@@ -1,0 +1,14 @@
+groundTruthId: qa-outcome-planted-bugs-v1
+description: Planted-bug ground truth for the qa-outcome eval (P8a). Thresholds (floor/max) live HERE, versioned alongside the bugs they gate — not in the OutcomeEval result.
+fixtures[2]: evals/fixtures/planted-bugs.html, evals/fixtures/planted-bugs-spa.html
+plantedBugs[5]{category,severity,selector,expectedDetection}:
+  functional,critical,#submit-btn,submit button has no handler and does nothing on click
+  visual,major,.low-contrast,text contrast far below WCAG 4.5:1 (grey on white)
+  overflow,minor,.overflow-box,child content overflows and is clipped by the fixed-height box
+  console,major,#load-error,uncaught console error emitted on reaching flow step 2
+  functional,major,#next-step,flow next() throws instead of advancing the step
+thresholds[4]{category,floor,max}:
+  functional,1.0,0
+  visual,0.5,1
+  overflow,0.5,1
+  console,1.0,0

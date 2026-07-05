@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture Home</title>
+    <style>
+      /* Load-bearing for the computed-style READ assertion (css verb). The
+         daemon-e2e test asserts getComputedStyle(#hero).color === this rgb. */
+      #hero {
+        color: rgb(16, 94, 200);
+      }
+      body {
+        font-family: system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="hero">Fixture Home</h1>
+    <p id="tagline">Loom browser-e2e fixture page.</p>
+
+    <!-- WRITE round-trip target: fill the textbox, submit, land on /echo?q=... -->
+    <form id="search" method="GET" action="/echo">
+      <label for="q">Search query</label>
+      <input id="q" name="q" type="text" aria-label="Search query" />
+      <button id="go" type="submit">Go</button>
+    </form>
+  </body>
+</html>

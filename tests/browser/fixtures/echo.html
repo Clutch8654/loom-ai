@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Echo</title>
+  </head>
+  <body>
+    <!-- {{q}} is substituted (HTML-escaped) by fixture-server.ts render(). The
+         WRITE round-trip asserts this element reflects the submitted query. -->
+    <h1 id="result">You searched for: {{q}}</h1>
+    <a id="home" href="/">Back home</a>
+  </body>
+</html>
