@@ -1,24 +1,10 @@
 wave: 6
-status: complete
-completedAt: 2026-07-04T03:14:37Z
-phasesComplete[1]: 18
-agentsRun[1]: w6-p18
-commits[1]{sha,phase,summary}:
-  425205f,18,property + meta tests + metrics-snapshot with calibrated ratio equivalence
-filesCreated[6]: scripts/metrics-snapshot.ts, tests/property/toon-roundtrip.property.test.ts, tests/property/merge-order.property.test.ts, tests/meta/planted-defect.test.ts, tests/scripts/metrics-snapshot.test.ts, planning/reports/metrics-snapshot.toon
+label: P9b-rescore
+status: success
+agent: implementer-agent
+filesCreated[1]: planning/reports/tests-rescore.toon
 verification: pass
-verificationDetail: 27 tests pass (tests/property + tests/meta + metrics-snapshot.test); tsc 0; eslint 0; metrics-snapshot deterministic (run twice identical)
-metricDecision:
-  rawRatio: 1.05
-  rawFloor: 1.4
-  rawMeetsFloor: false
-  equivalenceBasis: behavioral-assertion-density
-  equivalenceComputedValue: 5.88
-  densityFloor: 3.0
-  densityFloorDerivation: max(lib-core-density 2.24, absolute 3.0 assertions/export bar)
-  equivalenceMeetsFloor: true
-  note: "IC-001 equivalence path taken (raw 1.05 << 1.4 infeasible this phase). Orchestrator caught + fixed a unit-mismatch: original check compared assertion-density against the 1.4 LOC floor; recalibrated to a distinct justified DENSITY_FLOOR (user-approved 'strengthen the floor')."
-acceptanceNotes[3]{ac,status,note}:
-  C-11b,covered,"property test (round-trip identity + merge order-indep) + planted-defect meta-test (guard-on catches, guard-off misses)"
-  IC-001,covered,"machine-validated equivalence block, calibrated floor distinct from LOC ratio, deterministic"
-  test-source-ratio,equivalence-met,"raw 1.05 < 1.4 but density 5.88 >= calibrated floor 3.0 — M-04 metric satisfied via sanctioned equivalence path"
+testsScore: 8
+acceptanceStatus: calibrated-equivalence
+signOffRequired: true
+unresolvedIssues[1]: "info: tests=8 calibrated-equivalence (not >=9); residuals raw-count parity + Windows CI are pre-declared Non-Goals; user sign-off required"

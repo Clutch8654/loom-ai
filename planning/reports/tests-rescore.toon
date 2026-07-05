@@ -1,0 +1,73 @@
+title: Loom `tests` Dimension — Honest Single-Dimension Re-score (Phase 9b, PLAN-browser-e2e)
+schemaTypes: lib/types.ts ScorecardDimension (single-dimension slice)
+methodology: "Honest single-dimension re-score of `tests` against the FROZEN gstack rubric (planning/reports/scorecard-baseline.toon, gstack tests pinned=9, NEVER re-scored). Anchored to DEMONSTRATED capability delivered by PLAN-browser-e2e, not padded test count. Each evidence claim was verified by reading/grepping the actual shipped file before citing it. No massaging: the frozen bar is `tests >= 9 (meet-or-beat gstack)`."
+runAt: 2026-07-05
+taskId: w6-p9b
+wave: 6
+rubricRef: planning/reports/scorecard-baseline.toon
+priorScoreRef: planning/reports/scorecard-rerun.toon
+dimension: tests
+
+frozenRubric:
+  source: planning/reports/scorecard-baseline.toon + ROADMAP-exceed-gstack.md:23-28 (F-25 / M-04 measurable acceptance)
+  gstackScore: 9
+  gstackScoreImmutable: "Pinned from baseline; copied verbatim to any rerun. Never re-scored (C-09 anti-drift)."
+  acceptanceRule: "Dimension PASSES iff loomScore - gstackScore >= 0, i.e. tests >= 9. Any single trailing dimension fails the every-dimension gate and loops back to M-04."
+  criteria[5]{id,criterion,measure}:
+    R1,Test:source ratio >= 1.4:1 by LOC (or a justified density-equivalent),LOC comparison over tests/** vs source **/*.ts
+    R2,Zero tautological / prompt-grep tests remaining,tautological-test audit (F-12) shows zero such classifications
+    R3,>= 1 planted-defect meta-test that actually fires,vitest meta-test proves a guard catches an intentional regression
+    R4,Property tests + issue-pinned regressions present,suite carries order-independent round-trip + regression-pinned tests
+    R5,Comparative breadth vs gstack's 9,"gstack's 9 rests on ~434 test files (2.3x Loom), an eval harness Loom lacked, and cross-platform/Windows CI"
+
+priorScore:
+  value: 8
+  status: below-target (calibrated at 8, trailing gstack 9 by -1)
+  recordedIn: planning/reports/scorecard-rerun.toon (dimensions[].tests=8; runAt 2026-07-04T11:35:00Z)
+  whyEight: "Post-remediation the RED-suite defect was fixed (7->8) and R1-R4 substantially held (ratio reframed as density-equivalence 5.84>=3.0; audit zeroed tautological tests; meta-tests + property tests present). It stayed BELOW 9 on a genuine STRUCTURAL BREADTH gap, not a defect."
+  namedResidualsAtEight[3]{plank,detail}:
+    raw-test-file-count-parity,"gstack ~434 test files vs Loom ~192 (~2.3x). Loom does not pad count to close this."
+    eval-harness,"gstack ships a ground-truth outcome/eval harness Loom lacked."
+    cross-platform-windows-ci,"gstack runs cross-platform incl Windows CI; Loom is single-platform."
+
+# Each new capability shipped by THIS plan, mapped to the rubric criterion it strengthens.
+# `verified` = the cited file was read/grepped in this run and the claim held.
+newCapabilities[6]{capability,evidenceFile,proof,rubricCriterion,verified}:
+  daemon-drives-chromium-via-connectOverCDP,"scripts/lib/browser-client.ts + scripts/loom-browser-daemon.ts","browser-client.ts:227 `chromium.connectOverCDP(cdpEndpoint)` (never launch); loom-browser-daemon.ts:50/249 resolveCdpEndpoint polls /json/version for webSocketDebuggerUrl. Makes the previously-stubbed browser subsystem REAL and thus testable.",R5 (capability that anchors browser-layer test breadth),true
+  convergence-e2e-uses-daemon,"agents/e2e-runner-agent.md + protocols/convergence-tier.schema.md","e2e-runner-agent Daemon Mode (:61-72) invokes runE2EDaemon (sole-writer preserved); convergence-tier.schema.md:74-77 migrated e2e `runner:` scalar -> runners[3]{name,sessionMode} incl `e2e-runner-agent,daemon`; schema bumped v1->v2. e2e verification tier now has a real daemon runner variant.",R5 (e2e/integration test-capability breadth),true
+  rung4-loop-red-green,"scripts/loop-browser-rung.ts + tests/skills/feedback-loop-browser-rung.test.ts","loop-browser-rung.ts exits non-zero on failed daemon assertion / zero on pass; feedback-loop Rung 4 is verified-red-capable then green (TRDA-gated). Real browser-backed feedback loop, not prose.",R4 (verified-red regression capability) + R5,true
+  fixture-tested-browser-skill,"skills/browser-skills/extract-product-listing/ (script.ts + fixtures/ + script.test.ts)","Pure-parser fixture test runs OFFLINE and passes; mutated-fixture case (selector absent) throws rather than silently-empty. Establishes reusable fixture-tested browser-skill convention (C-04).",R2 (behavioral non-tautological test) + R4,true
+  per-category-outcome-eval-in-nightly,"scripts/eval/tiers/qa-outcome.ts + scripts/eval/run-evals.ts + .github/workflows/nightly-gate.yml","qa-outcome registered at all 4 sites (EvalTier union lib/types.ts:332, VALID_TIERS, import, dispatch); nightly-gate.yml:277 qa-outcome job stands up an in-process SCORED runner (injects driveFixture reporter, not the CLI advisory-skip); scores detection_rate/false_positives per category+severity vs ground-truth fixture. This is the EVAL-HARNESS plank the prior 8 named as missing.",R5 eval-harness plank + R3 (ground-truth detection),true
+  adversarial-injection-test,"tests/browser/injection-defense.test.ts (BE-10)","Asserts onPageText hook fires on navigation (:49) and fails closed with BROWSER_INJECTION_BLOCKED exit 8 when hook returns ok:false (:64,:85). One adversarial test per plan Non-Goals (gstack ships ~15-file cluster).",R4 (adversarial/regression test) + R5,true
+
+verification:
+  tsc:
+    command: bunx tsc --noEmit -p hooks/tsconfig.json
+    exitCode: 0
+  vitest:
+    command: bunx vitest run tests/browser tests/skills tests/eval tests/agents tests/ci skills/browser-skills
+    exitCode: 0
+    testFiles: 27 passed
+    tests: 442 passed, 2 skipped
+    skipReason: "The 2 skips are the live-Chromium tests (daemon-e2e), which SKIP-not-fail without Chromium per the known runtime gap (C-07). All hermetic browser-e2e capability tests pass green."
+  newTestFilesThisPlan[9]: tests/browser/injection-defense.test.ts, tests/browser/daemon-e2e.test.ts, tests/browser/e2e-daemon-runner.test.ts, tests/agents/e2e-runner-daemon-mode.test.ts, tests/skills/feedback-loop-browser-rung.test.ts, tests/eval/qa-outcome.test.ts, tests/ci/browser-ci-wiring.test.ts, skills/browser-skills/extract-product-listing/script.test.ts, tests/browser/fixture-server.ts (harness)
+
+# ---- Honest re-score ----
+newScore:
+  value: 8
+  status: calibrated-equivalence
+  delta: -1 (vs frozen gstack 9)
+  justification: "This plan closes ONE of the three structural planks that held tests at 8: the EVAL-HARNESS gap is now genuinely closed (per-category ground-truth qa-outcome eval, scored in-process in nightly). It also converts the previously-STUBBED browser subsystem into a REAL, tested capability (connectOverCDP drives Chromium; daemon session mode wired into the convergence e2e tier; Rung-4 feedback loop red->green; fixture-tested browser-skill convention; one adversarial injection test) — all backed by 9 new hermetic test files, tsc=0, 442 green. This is a REAL strengthening of demonstrated capability and narrows the gap. BUT the frozen bar is meet-or-beat gstack's 9, and TWO of the three anchoring planks remain OPEN: (a) raw test-file-count parity — gstack ~434 vs Loom ~192 (~2.3x); this plan deliberately does NOT pad count (Non-Goal); (b) cross-platform/Windows CI — Loom remains single-platform (Non-Goal). Because two structural planks that ground the 1-point gap persist and are pre-declared Non-Goals of this very plan, an honest demonstrated-capability re-score against the FROZEN rubric cannot cross the integer threshold to 9. NO self-declared pass."
+  reachedNine: false
+  residual[2]{plank,detail,disposition}:
+    raw-test-file-count-parity,"gstack ~434 test files vs Loom ~192 (~2.3x). Closing by capability (browser-e2e is now real+tested) not by count-padding.",pre-declared Non-Goal (PLAN-browser-e2e Non-Goals: 'Raw test-file-count parity (434 vs ~192)')
+    cross-platform-windows-ci,"Loom CI is single-platform; gstack runs Windows CI.",pre-declared Non-Goal (PLAN-browser-e2e Non-Goals: 'cross-platform/Windows CI')
+  plankClosedThisPlan[1]{plank,detail}:
+    eval-harness,"Previously-named missing plank. Now closed: qa-outcome ground-truth outcome eval with per-category/severity detection, scored in-process in the nightly gate (nightly-gate.yml:277)."
+
+acceptance:
+  gateStatus: below-target (tests 8 < frozen 9)
+  everyDimensionRuleMet: false
+  userSignOffRequired: true
+  signOffNote: "Acceptance of `tests` as an honest calibrated-equivalence at 8 requires EXPLICIT user sign-off, because the frozen every-dimension rule (tests >= 9) is NOT met on demonstrated capability. The two residual planks (raw count + Windows CI) are pre-declared Non-Goals, so this is a documented, honest equivalence — not a discovered miss and not a massaged pass."
+  overallContext: "Prior full-scorecard overall was 8.36 > 8.3 floor with 6/7 dimensions clear; tests was the sole trailing dimension. This plan strengthens tests (eval-harness plank closed, browser layer real+tested) but does not lift the integer to 9. Overall floor was already cleared; the outstanding gate item is the every-dimension rule on tests."
