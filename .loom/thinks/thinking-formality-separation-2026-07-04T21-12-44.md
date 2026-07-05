@@ -4,7 +4,7 @@ datetime: 2026-07-04T21:12:44Z
 branch: thinking-formality-separation
 repo: https://github.com/launchstack-dev/loom-ai
 supersedes:
-status: DRAFT-READY-FOR-SIGNOFF
+status: ROADMAPPED
 relatedThinks[1]: .loom/thinks/ceo-review-placement-2026-07-01T09-45-00.md
 producedBy: debate + storm + deep-think exploration (4 parallel agents, 2026-07-04), synthesized
 ---
@@ -71,8 +71,10 @@ Resolves the four tensions:
 - **M-15 — pre-plan lenses:** reuse the M-04 `plan-eng/devex/ceo/design-review` agents (or think-scoped variants) as the `/loom-think:review` panel; archetype-selected.
 - **B — competitive benchmark, moved earlier:** a `--benchmark` pattern flag (rail: `--debate/--vote/--chain`) and/or a `/loom-compete <reference>` command that writes a scorecard section into the think doc, checked by `/loom-think:review`. Rename around the perf `loom-benchmark` skill.
 
-## Open questions for sign-off
-1. Router thresholds — what makes `/loom-think:review` return `rewrite` vs `kill` vs `proceed`? Confidence-scored or agent-judgment?
-2. Do the M-15 lenses live at `/loom-think:review` only, or also get added to `/loom-roadmap review` (which today has just 4 non-strategic agents)?
-3. Is `/loom-compete` a standalone command or flag-only? (Storm flagged the `loom-benchmark` name collision.)
-4. Typed handoff for explore/debate/prototype into the brief, or leave those manual for now?
+## Framing decisions (resolved by thinking-review, 2026-07-04 → proceed)
+1. **Router = agent-judgment rubric.** Lens agents return severity-tagged findings; the router maps them: fundamental problem/approach flaw → `kill`, fixable framing gaps → `rewrite-think`, none → `proceed`. No brittle numeric threshold.
+2. **Lenses at BOTH surfaces.** The eng/devex/ceo/design lenses power `/loom-think:review` AND get added to `/loom-roadmap review` (today only 4 non-strategic agents). Strategic critique at both early stages.
+3. **Benchmark = flag-first.** `--benchmark` on the `--debate/--vote/--chain` rail, writing a scorecard section into the think doc; promote to a standalone `/loom-compete` later if it earns it. Dodges the `loom-benchmark` (perf) name collision.
+4. **Manual handoff for v1.** Only the `/loom-think --from` path is typed; explore/debate/prototype stay manual carry-forward for v1. Typed handoffs are a later add.
+
+Verdict: **PROCEED** — framing sound, all four resolved. Formalized as `planning/ROADMAP-thinking-gate.md` + `planning/plans/PLAN-thinking-gate.md`.
