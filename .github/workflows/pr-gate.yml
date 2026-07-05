@@ -207,6 +207,37 @@ jobs:
       - name: Run T1 evals (static, zero LLM calls)
         run: bun scripts/eval/run-evals.ts --tier t1
 
+  browser-fixture-tests:
+    # Offline browser fixture-parser + browser-skill tests (Phase 9a,
+    # PLAN-browser-e2e). These suites (tests/browser, tests/skills, tests/eval,
+    # skills/browser-skills) are hermetic: every live-Chromium case self-skips
+    # (C-07 actionable skip — no browser is installed in this job), so the job is
+    # green without a daemon while still catching fixture/parser regressions on
+    # every PR.
+    #
+    # This job is ADDITIVE — it is deliberately NOT added to the gate-status
+    # `needs:` block below, so the frozen 6-check branch-protection interface
+    # (protocols/ci-gates.contract.md, checks[6]) is left UNTOUCHED. It mirrors
+    # the eval-t1 additive pattern above: advisory-by-position, never a required
+    # check.
+    name: browser-fixture-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run offline fixture-parser + browser-skill tests (live cases self-skip)
+        run: bunx vitest run tests/browser tests/skills tests/eval skills/browser-skills
+
   gate-status:
     name: gate-status
     runs-on: ubuntu-latest

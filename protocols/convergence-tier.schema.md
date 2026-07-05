@@ -1,6 +1,10 @@
 # Convergence Tier Schema
 
+**schemaVersion: 2**
+
 Defines the 4 convergence tiers that map to the planning hierarchy levels defined in `taxonomy.md`. Each tier specifies how convergence is verified at its scope level, which agent or tool runs the verification, and how failures gate downstream execution.
+
+> **v1 → v2:** the `e2e` tier's `runner:` scalar became a `runners[]{name,sessionMode}` typed array so `/loom-converge` can route to a specific runner session-mode variant (`headless` | `chrome-mcp` | `daemon`). The `unit`, `integration`, and `qa-review` tiers keep their scalar `runner:`. v1 configs (e2e with a scalar `runner:`) are accepted as legacy and treated as the `headless` variant.
 
 ---
 
@@ -23,7 +27,8 @@ gatingBehavior: block-wave
 | name | enum | yes | Tier name: `unit`, `integration`, `e2e`, `qa-review`. |
 | level | integer | yes | Numeric level 1-4, ascending order of cost. 1 = cheapest (unit), 4 = most expensive (qa-review). |
 | hierarchyLevel | enum | yes | Planning hierarchy level this tier maps to: `wave`, `phase`, `feature`, `milestone`. |
-| runner | string | yes | Agent or CLI tool that executes verification at this tier. |
+| runner | string | conditional | Agent or CLI tool that executes verification at this tier. Required for the `unit`, `integration`, and `qa-review` tiers (scalar). The `e2e` tier omits this scalar and instead declares `runners[]` (see below). |
+| runners | array | conditional | E2E tier only. Typed array `runners[N]{name,sessionMode}` enumerating each runner-agent + session-mode variant. `sessionMode` draws from the e2e-story `sessionMode` enum (`headless` \| `chrome-mcp` \| `daemon`). Mutually exclusive with the `runner` scalar. |
 | passCondition | enum | yes | What constitutes a pass: `all-pass`, `zero-critical`, `zero-blocking`. |
 | defaultEnabled | boolean | yes | Whether this tier runs by default in the convergence pipeline. |
 | gatingBehavior | enum | yes | How a failure at this tier affects execution: `block-wave`, `block-feature`, `block-milestone`, `advisory`. |
@@ -66,13 +71,18 @@ Integration tests verify cross-phase wiring within a feature. A feature cannot b
 name: e2e
 level: 3
 hierarchyLevel: milestone
-runner: e2e-runner-agent
+runners[3]{name,sessionMode}:
+  e2e-runner-agent,headless
+  e2e-runner-agent,chrome-mcp
+  e2e-runner-agent,daemon
 passCondition: zero-blocking
 defaultEnabled: true
 gatingBehavior: block-milestone
 ```
 
 End-to-end stories verify complete user workflows across all features in a milestone. The `e2e-test-writer-agent` converts criteria-plan e2e specs into YAML stories and Playwright test files; the `e2e-runner-agent` executes them. Blocking stories must all pass; advisory stories may fail without preventing milestone completion.
+
+Unlike the other three tiers, the e2e tier declares its runner as a `runners[]` typed array rather than a single `runner:` scalar. Each row pairs the runner agent (`e2e-runner-agent`) with a `sessionMode`, letting `/loom-converge` route to the matching runner variant — including the daemon runner. The `sessionMode` values draw from the e2e-story `sessionMode` enum (`headless` | `chrome-mcp` | `daemon`; see `e2e-story.schema.md`): `headless` runs Playwright without a visible browser, `chrome-mcp` drives an authenticated Chrome MCP session, and `daemon` routes through the persistent `/loom-browser` daemon.
 
 ### QA Review (Level 4 -- Phase)
 
@@ -101,6 +111,8 @@ tiers[4]{name,level,hierarchyLevel,runner,passCondition,defaultEnabled,gatingBeh
   e2e,3,milestone,e2e-runner-agent,zero-blocking,true,block-milestone
   qa-review,4,phase,qa-review-agent,zero-critical,true,advisory
 ```
+
+> **Note:** the flat `runner` column above shows only the runner-agent *name* for compactness. The `e2e` tier actually carries a `runners[]{name,sessionMode}` typed array (see the E2E tier definition above) with `headless`, `chrome-mcp`, and `daemon` session-mode variants; the flat table cannot represent the per-mode rows and lists the agent name as the canonical runner. The other three tiers use the scalar `runner` verbatim.
 
 ---
 
@@ -255,3 +267,12 @@ agentBudget: 30
 | `converge.config` | `findings.toon` (latest) | OVERWRITE | OVERWRITE -- only latest matters at runtime |
 | `converge.config` | `IterationSnapshot` rows (per-pass) | RETAIN | RETAIN per C-07 (keep all forever) |
 | `converge.config` | `convergence-summary.toon` | RETAIN | OVERWRITE on terminal-state re-transition (resume) |
+
+---
+
+## Changelog
+
+| Version | Change |
+|---------|--------|
+| 2 | E2E tier `runner:` scalar migrated to `runners[]{name,sessionMode}` typed array (rows: `e2e-runner-agent,headless` / `e2e-runner-agent,chrome-mcp` / `e2e-runner-agent,daemon`) so `/loom-converge` can route to the daemon runner variant. `sessionMode` values draw from the e2e-story `sessionMode` enum. Unit/integration/qa-review tiers unchanged (scalar `runner:`). |
+| 1 | Initial 4-tier schema (all tiers with a scalar `runner:`). |

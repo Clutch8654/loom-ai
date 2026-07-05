@@ -1,22 +1,11 @@
 wave: 5
-status: complete
-completedAt: 2026-07-04T02:43:39Z
-phasesComplete[5]: 14a, 14b, 15, 16, 17
-agentsRun[6]: w5-p14a, w5-p14b-B1, w5-p14b-B2, w5-p15, w5-p16, w5-p17
-defectsClosed[4]: 6 (untested PR#31 files), 7 (tautological tests), 12 (docs drift both halves), plus F-18/F-19 docs generation
-commits[5]{sha,phase,summary}:
-  1dbed55,14a,entry guards (isMain) + shared backfill template
-  1e38082,14b,50 behavioral backfill tests (8 PR#31 files, 2 batches)
-  5bcf6dd,15,tautological-test audit + delete 3 no-value tests with tombstones
-  6a52cb3,16,generated docs metadata + flip docs-drift gate blocking
-  55491ab,17,TOON-convention agent fixes + modelProfile doc + tier rationale
-filesCreated[14]: tests/helpers/backfill-template.ts, tests/backfill/*.test.ts (8), scripts/audit-tests.ts, planning/reports/test-audit.toon, tests/guards/audit-report-complete.test.ts, scripts/generate-docs.ts, docs/reference/{commands,hooks,agents}.md, docs/.generated-manifest.toon, tests/scripts/generate-docs.test.ts
-filesDeleted[3]: tests/commands/loom-prototype.test.ts, tests/regressions/stuck-at-loop-construction.test.ts, tests/regressions/stuck-at-loop-construction-hitl.test.ts
+label: P4b+P6+P9a
+status: success
+agents[3]: w5-p4b,w5-p6,w5-p9a
+filesCreated[2]: tests/agents/tdd-coach-browser-tracer.test.ts,tests/ci/browser-ci-wiring.test.ts
+filesModified[4]: protocols/convergence-tier.schema.md,agents/tdd-coach.md,.github/workflows/pr-gate.yml,.github/workflows/nightly-gate.yml
 verification: pass
-verificationDetail: tsc -p hooks/tsconfig.json = 0 (fixed P16 TS5097 .ts-extension imports -> .js); eslint . = 0; docs-drift check exit 0 (now BLOCKING); 238 tests pass across tests/{backfill,helpers,guards,scripts}; backfill 50/50; generate-docs 9/9; audit deterministic (re-run identical) + guard green
-acceptanceNotes[4]{ac,status,note}:
-  C-11a,covered,"tautological/prompt-grep count post-deletion = 0; 4 suspects retained as behavioral with evidence"
-  C-05,covered,"all 4 README hook-count drift sites now read 21 from one generated source; docs-drift blocking"
-  F-11,covered,"8 PR#31 files each have >=1 behavioral test via shared template"
-  F-19,covered,"grep 'AgentResult JSON' agents/ = 0; modelProfile documented"
-awarenessNotes[2]: "hook count 21 (per-project enforcement, README) vs 22 (loom-hooks-manifest total incl. session-level loom-careful) vs MANIFEST_SIZE_ACKNOWLEDGED=22 — generate-docs + check-docs-drift agree at 21 so blocking gate is self-consistent", "P16 authored the generator + gate-flip but did not run final --write; orchestrator ran generate-docs --write to regenerate README (deterministic output of P16 tool) and fixed 3 TS5097 import-extension errors"
+verificationCommand: bunx tsc --noEmit -p hooks/tsconfig.json && bunx vitest run tests/browser tests/skills tests/eval tests/agents tests/ci skills/browser-skills
+testsPass: 442
+testsSkip: 2
+unresolvedIssues[0]:
