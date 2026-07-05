@@ -91,6 +91,58 @@ bunx vitest run scripts/skillified/{slug}.test.ts
 
 Later, the operator can run `/loom-skill create --from-skillified {slug}` (when that flag ships in the skill wizard) to turn the codified script into a full `skills/{name}/SKILL.md` skill with description triggers. Until then, `/loom-skillify` output stays under `scripts/skillified/` as codified-but-not-yet-formalized capability.
 
+## Codify-scrape — the browser-skill variant (C-04)
+
+The default workflow above emits a codified script under `scripts/skillified/`.
+There is a **second, distinct output shape** for one specific kind of flow: a
+successful *browser scrape* — you drove a page with the `/loom-browser` daemon,
+pulled its HTML, and extracted structured data from it. That flow codifies as a
+**browser-skill** (`protocols/browser-skill.schema.md`), NOT as a
+`scripts/skillified/` script.
+
+### When to pick this variant
+
+Choose codify-scrape when the flow's valuable core is **parsing captured HTML
+into typed rows** (a product listing, an article index, a search-results page).
+The parser is the durable asset; the browser drive was just how you *captured*
+the HTML once.
+
+### Output layout — explicitly distinct from `scripts/skillified/`
+
+| | Default skillify | Codify-scrape (browser-skill) |
+|---|---|---|
+| **Path** | `scripts/skillified/{slug}.ts` + `.test.ts` + `fixtures/{slug}.toon` | `skills/browser-skills/{slug}/` directory |
+| **Members** | three flat files | `SKILL.md` + `script.ts` + `fixtures/captured.html` + `script.test.ts` |
+| **Fixture** | TOON (`{slug}.toon`) | raw captured **HTML** (`fixtures/captured.html`) |
+| **Script shape** | reproduces an arbitrary flow | a **pure function** `(html: string) => Row[]` — zero network, zero daemon |
+| **Registered under** | `library.infrastructure:` | `library.skills:` |
+
+The `scripts/skillified/` path is for general flow codification; the
+`skills/browser-skills/` path is for pure HTML parsers. Do not conflate them —
+a browser-skill's `script.ts` must never open a socket or spawn the daemon.
+
+### Codify-scrape workflow
+
+1. **Capture once.** From the transcript, recover the URL and the HTML the flow
+   parsed. Save that HTML verbatim to
+   `skills/browser-skills/{slug}/fixtures/captured.html`.
+2. **Distill the pure parser** into `skills/browser-skills/{slug}/script.ts`:
+   export a function of the HTML string only. It MUST **throw** (not return an
+   empty result) when the target selector is absent — a silently-empty parse
+   lets a page redesign rot undetected.
+3. **Emit `script.test.ts`** that reads `fixtures/captured.html`, asserts the
+   extracted rows, and includes a **mutated-fixture case** (target selector
+   removed) asserting the parser throws. It must pass **offline**.
+4. **Write `SKILL.md`** with BrowserSkill frontmatter (`pure: true`,
+   `throwsOnMissing: true`, `parserEntry`, `fixtureFiles`, `testFile`,
+   `capturedFrom`).
+5. **Gate on green.** Run `bunx vitest run skills/browser-skills/{slug}/`; on
+   pass, register under `library.skills:` in `skills/library.yaml`. On fail,
+   `SKILLIFY_TEST_FAIL` blocks registration.
+
+The reference implementation is
+`skills/browser-skills/extract-product-listing/` — copy its shape.
+
 ## Beyond upstream
 
 gstack has no retrospective-codification path — capability only flows *forward*

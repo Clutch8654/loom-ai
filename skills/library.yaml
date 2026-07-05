@@ -392,6 +392,11 @@ library:
       description: "English or mermaid → excalidraw triplet (source .md + editable .excalidraw + rendered .svg/.png). Registers each triplet in .loom/diagrams/index.toon for drift detection by /loom-docs release. Shipped by M-08 (gstack adoption Phase 9 F-29)."
       source: skills/loom-diagram/SKILL.md
 
+    # Browser-skill (fixture-tested codify pattern, C-04, PLAN-browser-e2e Phase 7)
+    - name: extract-product-listing
+      description: "Reference browser-skill (C-04) — a PURE parser over captured HTML that extracts a product listing (ul.product-list) into typed {sku,name,priceCents,currency} rows. Zero network, zero daemon: script.test.ts runs offline over fixtures/captured.html and throws (not returns empty) on a missing target selector. The copy-me shape for /loom-skillify's codify-scrape flow. Layout: SKILL.md + script.ts + fixtures/ + script.test.ts per protocols/browser-skill.schema.md."
+      source: skills/browser-skills/extract-product-listing/SKILL.md
+
   infrastructure:
     - name: statusline-renderer
       description: Node.js statusline renderer for Claude Code — pipeline state, context bar, update indicator

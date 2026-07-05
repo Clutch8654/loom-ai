@@ -1,11 +1,12 @@
 wave: 2
-status: partial-complete
-phasesComplete[4]: 3, 4, 5, 6
-phasesPending[2]: 7, 8
-agentsVerified[4]: w2-p3-validator, w2-p4-health, w2-p5-versionslot, w2-p6-reconcile
-filesModified[5]: hooks/agent-result-validator.ts, .claude/settings.json, scripts/loom-health.ts, scripts/loom-version-slot.ts, protocols/agent-result.schema.md
-filesCreated[5]: tests/hooks/agent-result-validator.test.ts, tests/scripts/loom-health-exec.test.ts, tests/scripts/loom-version-slot-security.test.ts, tests/scripts/loom-version-slot-scope.test.ts, tests/protocols/agent-result-conformance.test.ts
+label: P1b-write+P7-skill
+status: success
+agents[2]: w2-p1b,w2-p7
+filesCreated[5]: tests/browser/injection-defense.test.ts,skills/browser-skills/extract-product-listing/SKILL.md,skills/browser-skills/extract-product-listing/script.ts,skills/browser-skills/extract-product-listing/fixtures/captured.html,skills/browser-skills/extract-product-listing/script.test.ts
+filesModified[4]: scripts/lib/browser-client.ts,scripts/loom-browser-daemon.ts,skills/loom-skillify/SKILL.md,skills/library.yaml,tests/skills/browser-skill-fixture.test.ts
+exportsAdded[12]: execWrite,execMeta,injectCookies,assertNoInjection,onPageText,OnPageText,InjectionResult,InjectionFinding,parseProductListing,ProductParseError,ProductRow,PRODUCT_LIST_SELECTOR
+wiring: "orchestrator wired execWrite/execMeta tier-dispatch into daemon execCmd (resolved w2-p1b cross-boundary request)"
 verification: pass
-verificationDetail: vitest 39/39 pass (validator+conformance+health+version-slot); execSync injection eliminated in loom-health(0) + loom-version-slot(0), execFileSync argv arrays; validator runHook signature fixed + registered + blocking on confidence; tsc baseline measured 21 (not 25)
-defectsClosed[4]: 1 (validator no-op), 2 (both shell injections), 3 (cross-repo contamination), 11 (schema blocking posture)
-pendingWork: P7 (F-15 release spine) quarantined partial in .plan-execution/wip-p7-partial/ (loom-release.ts, version-gate.ts, version-gate.yml — untested, ~20pct, DISCARD+redo on resume); P8 (F-17 install fail-closed) not started (install.sh untouched)
+verificationCommand: bunx tsc --noEmit -p hooks/tsconfig.json && bunx vitest run tests/browser skills/browser-skills tests/skills
+testsPass: 12
+unresolvedIssues[0]:

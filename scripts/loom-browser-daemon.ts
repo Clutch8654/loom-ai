@@ -400,9 +400,8 @@ async function execCmd(args: string[]): Promise<number> {
     return 2; // DAEMON_NOT_RUNNING exitCode
   }
 
-  const { connect, execRead, errorResult, EXIT_CODES } = await import(
-    "./lib/browser-client.js"
-  );
+  const { connect, execRead, execWrite, execMeta, errorResult, EXIT_CODES } =
+    await import("./lib/browser-client.js");
 
   // --- Parse the command ------------------------------------------------
   let command: import("../lib/index.js").BrowserCommand;
@@ -418,23 +417,19 @@ async function execCmd(args: string[]): Promise<number> {
     return result.exitCode;
   }
 
-  // P1a serves the READ tier only; WRITE/META dispatch lands in P1b.
-  if (command.tier !== "read") {
-    console.error(
-      `NOT_IMPLEMENTED: verb '${command.verb}' is tier '${command.tier}'; ` +
-        "only the READ tier is wired in P1a (WRITE/META land in P1b)."
-    );
-    return 1;
-  }
-
   const cdpEndpoint =
     typeof state["cdpEndpoint"] === "string" ? state["cdpEndpoint"] : "";
 
-  // --- Attach + dispatch ------------------------------------------------
+  // --- Attach + dispatch by tier (READ P1a, WRITE/META P1b) -------------
   let session: Awaited<ReturnType<typeof connect>> | null = null;
   try {
     session = await connect(cdpEndpoint);
-    const result = await execRead(session, command);
+    const result =
+      command.tier === "write"
+        ? await execWrite(session, command)
+        : command.tier === "meta"
+          ? await execMeta(session, command)
+          : await execRead(session, command);
     printResult(result);
     return result.exitCode;
   } catch (err) {
