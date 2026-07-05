@@ -1,0 +1,10 @@
+stage: execute
+wave: 5
+iteration: 0
+completedAt: 2026-07-05T22:39:07Z
+filesChanged[6]: protocols/convergence-tier.schema.md,agents/tdd-coach.md,tests/agents/tdd-coach-browser-tracer.test.ts,.github/workflows/pr-gate.yml,.github/workflows/nightly-gate.yml,tests/ci/browser-ci-wiring.test.ts
+findingsResolved: 0
+findingsRemaining: 0
+summary: "P4b: e2e-tier runner scalar->runners[3]{name,sessionMode} array (headless/chrome-mcp/daemon), schemaVersion 2, legacy scalar=headless. P6: tdd-coach RED step documents browser tracer bullet (reuses P5 daemon assertion), red->green ordering test. P9a: CI wiring — additive PR fixture job (NOT in frozen 6-check needs), nightly daemon-e2e + scored qa-outcome jobs (continue-on-error). 442 pass/2 skip, tsc=0. Frozen 6-check untouched."
+keyDecisions[3]: "P9a qa-outcome nightly injects a reporter in-process (scored path runs, not CLI advisory-skip); degrades to documented skip when LOOM_EVAL_LLM unset — never silent pass","P9a fixture job strictly additive; gate-status needs = exactly the frozen 6","P4b legacy scalar runner treated as headless variant (back-compat)"
+nextStageHints[2]: "P9b (Wave 6, final): honest single-dimension tests re-score vs FROZEN gstack rubric anchored to demonstrated capability — write planning/reports/tests-rescore.toon. PASS if >=9 else calibrated-equivalence-at-8 naming residual (raw count + Windows CI per Non-Goals)","Evidence for re-score: daemon drives Chromium via connectOverCDP (P1a); convergence e2e uses it (P4a/P4b); Rung-4 loop red->green (P5); fixture-tested browser-skill (P7); per-category outcome eval in nightly (P8a/P8b/P9a); injection test (P1b BE-10)"

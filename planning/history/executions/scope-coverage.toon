@@ -1,0 +1,16 @@
+# Scope coverage — each phase's acceptance criteria covered by that phase's task
+criteria[14]{phaseId,domain,coveringTasks,status}:
+  P0,shared contracts + schemas + library.yaml,w0-contracts,pending
+  P1a,browser-client READ half + cdpEndpoint resolve,w1-p1a,pending
+  P1b,browser-client WRITE/META + cookie + lock + injection stub,w2-p1b,pending
+  P7,loom-skillify codify + reference browser-skill,w2-p7,pending
+  P2,fixture-server + daemon behavioral test,w3-p2,pending
+  P3,e2e-daemon-runner over structured action grammar,w3-p3,pending
+  P8a,loom-qa ground-truth outcome eval,w3-p8a,pending
+  P4a,e2e-runner daemon session mode,w4-p4a,pending
+  P5,feedback-loop Rung 4 daemon-backed,w4-p5,pending
+  P8b,eval-ladder tier registration,w4-p8b,pending
+  P4b,convergence-tier runner array,w5-p4b,pending
+  P6,tdd-coach browser tracer mode,w5-p6,pending
+  P9a,CI wiring fixture-PR + live-nightly,w5-p9a,pending
+  P9b,honest tests re-score,w6-p9b,pending

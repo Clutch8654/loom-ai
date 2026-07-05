@@ -1,0 +1,14 @@
+stage: contracts
+wave: 0
+iteration: 0
+startedAt: 2026-07-05T21:33:00Z
+completedAt: 2026-07-05T21:40:22Z
+inputTokensEstimate: 6000
+outputTokensEstimate: 88000
+filesChanged[8]: protocols/browser-command.schema.md,protocols/browser-skill.schema.md,protocols/outcome-eval.schema.md,protocols/daemon-preflight.schema.md,protocols/e2e-story.schema.md,lib/types.ts,skills/library.yaml,.plan-execution/contracts/manifest.toon
+exportsAdded[15]: BrowserCommand,BrowserResult,BrowserVerb,BrowserErrorCode,BrowserError,A11yRef,BrowserSkill,OutcomeEval,OutcomeCategoryRow,BrowserTier,BrowserReadVerb,BrowserWriteVerb,BrowserMetaVerb,OutcomeEvalStatus,OutcomeSeverity
+findingsResolved: 0
+findingsRemaining: 0
+summary: "Laid all shared contracts — closed BrowserCommand verb enum (READ/WRITE/META) + closed 7-member error-code enum, daemon-preflight hard-fail contract, OutcomeEval perCategory schema, e2e-story daemon action-grammar addendum, BrowserSkill fixture convention. lib/types.ts is source-of-truth; 4 protocols registered in library.yaml. tsc=0."
+keyDecisions[4]: "BrowserVerb is a closed union; tier derived-from-verb (MUST match)","DAEMON_NOT_RUNNING (runtime hard-fail) disambiguated from CHROMIUM_ABSENT (tests SKIP)","OutcomeEval floor/max live in ground-truth fixture not the row type","DeltaReport shape REUSED from convergence-driver.md:1106-1124 — no new writer path"
+nextStageHints[3]: "P1a: import BrowserCommand/BrowserResult/A11yRef/BrowserErrorCode from lib/types.ts; resolve real cdpEndpoint before connect","P1b: on daemon-down exit non-zero DAEMON_NOT_RUNNING (remove queue-return-0)","P8b: add qa-outcome to EvalTier union (left untouched by contracts per plan)"
