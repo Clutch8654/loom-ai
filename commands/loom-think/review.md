@@ -52,20 +52,35 @@ lensSelectionRule[6]{archetype,lenses,rationale}:
   default,"eng,devex,ceo,design","Unknown archetype: fire all four (widest net)"
 ```
 
-#### Step 3: Spawn the lens panel (M-14: the M-04 agents AS-IS)
+#### Step 3: Spawn the altitude-mode lens panel (M-15)
 
-For M-14, spawn the existing M-04 review agents AS-IS, one per active lens, in a SINGLE message so they run concurrently. Each receives the full think-doc text and returns findings scoped to its lens:
+> **Wired at the P4 extension point (Wave 2):** this step swaps the earlier M-14 "agents AS-IS" placeholder for the altitude-mode panel, and Step 3b folds in the benchmark-presence check. The router (Step 4) and canonical verdict write (Step 5) are untouched.
+
+Spawn the M-04 review agents in **think-altitude mode**, one per active lens, in a SINGLE message so they run concurrently. This is the same four agent files used by `/loom-plan review` — NOT forked `-think` variants (C-04). Each is switched to framing altitude by a `scope` parameter; each carries `model: opus`, so resolve and pass `model: "opus"` on every spawn:
 
 - `eng`    → `plan-eng-review-agent`
 - `devex`  → `plan-devex-review-agent`
 - `ceo`    → `plan-ceo-review-agent`
 - `design` → `plan-design-review-agent`
 
-Instruct each agent to review the **think doc** (not a plan) from its altitude and return `ThinkReviewFinding` rows: `{id, lens, severity(blocking|warning|info), confidence(1..10), fixable, remediation, message}`. `fixable` is load-bearing only for `blocking` findings — it splits `kill` (fixable=false, fatal approach error) from `rewrite-think` (fixable=true).
+Each spawn prompt MUST set **`scope: think`** (a.k.a. `altitude: framing`) and pass the full think-doc text. In this mode the agent reviews the doc's **framing** — problem clarity, approach soundness, gap-closure, benchmark presence — NOT phases or waves (a think doc has none). See each agent's **Think-Altitude Mode (framing review — C-04)** section. Each returns `ThinkReviewFinding` rows scoped to its own lens: `{id, lens, severity(blocking|warning|info), confidence(1..10), fixable, remediation, message}`. `fixable` is load-bearing only for `blocking` findings — it splits `kill` (fixable=false, fatal approach error, no fix within this framing) from `rewrite-think` (fixable=true).
 
-> **P4 EXTENSION POINT (Wave 2):** P4 swaps this panel for the altitude-mode panel and adds a **benchmark-presence check** (a missing or `thin` `BenchmarkScorecard` in the think doc becomes a benchmark-presence finding). Keep Steps 2–4 as discrete, swappable stages so P4 can replace Step 3's panel and insert its check before Step 4 without touching the router.
+Collect the `ThinkReviewFinding[]` from every reporting lens into one flat array (`findings`) for the router.
 
-Count `reportingLenses` = the number of lenses that returned a **well-formed** result. A lens that crashed, timed out, or returned a malformed envelope does **NOT** count toward `reportingLenses` — this is what makes the gate fail closed.
+**Count `reportingLenses`** = the number of lenses that returned a **well-formed** `ThinkReviewFinding` envelope (a valid, parseable result — even an empty findings list from a lens that passed COUNTS as reporting). A lens that crashed, timed out, or returned a malformed envelope does **NOT** count toward `reportingLenses`. This count is REQUIRED by the router (`opts.reportingLenses`) and is what makes the gate fail closed — omitting it collapses to 0 and forces a fail-closed `rewrite-think` (see Step 4).
+
+#### Step 3b: Benchmark-presence check (folded in from P5)
+
+Before routing, run the **benchmark-presence check** over the think doc — this check lives in the panel, not in a new agent. Read the typed `BenchmarkScorecard` (see `lib/types.ts` / `protocols/benchmark-scorecard.schema.md`) that the `benchmark-agent` writes into the converged doc. Emit a `ThinkReviewFinding` (lens `ceo`, the positioning lens) when the scorecard is missing or **thin**:
+
+```toon
+benchmarkPresenceRule[3]{condition,severity,fixable,rationale}:
+  "no BenchmarkScorecard present in the think doc",warning,true,"idea is asserted in a vacuum — add a competitive benchmark before formality"
+  "scorecard is thin: dimensions.length < 3",warning,true,"too few benchmarked dimensions to trust the positioning"
+  "scorecard is thin: any dimension has an empty sourceRefs (refScore UNSOURCED)",warning,true,"a reference score with no BenchmarkReference backing it is unsourced"
+```
+
+The `thin` flag is a **derived** field on the scorecard (`dimensions.length < 3` OR any dimension's `sourceRefs` is empty) — trust it if present, else recompute it from the rule above. A benchmark-presence finding is `warning`/`fixable: true` (it routes `rewrite-think`, never `kill` — a missing benchmark is repairable). Append this finding to `findings` before Step 4. If the scorecard is present and NOT thin, emit no benchmark-presence finding.
 
 #### Step 4: Route through the fail-closed C-02 router
 

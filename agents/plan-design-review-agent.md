@@ -70,9 +70,35 @@ Return an `AgentResult` envelope in TOON. `integrationNotes` MUST include:
 - Count of blocking findings
 - Highest-leverage single change across all 7 passes (one sentence)
 
+## Think-Altitude Mode (framing review — C-04)
+
+This agent has **two altitudes**, selected by a `scope` parameter passed in the spawn prompt:
+
+- `scope: plan` (default, unset, or `phase`/`wave`) — the 7-pass plan design review defined above. Unchanged.
+- `scope: think` (a.k.a. `altitude: framing`) — review a **converged `.loom/thinks/` think doc's FRAMING**, NOT its phases or waves (a think doc has none). This is the panel `/loom-think:review` fires. The same agent file, a new mode — there is no forked `-think` agent. `design` fires only for archetypes with a visual/user surface (web-app / default) per the archetype→lens rule; when it is not selected it simply does not run.
+
+When `scope: think` is set, do NOT run the 7 plan passes. Instead audit the think doc's experience **framing** along these dimensions (the design slice of the shared framing rubric):
+
+- **Problem clarity** — is the user and their journey named, or is the doc all mechanism and no experience?
+- **Approach soundness (experience)** — does the proposed shape imply a coherent flow and information architecture, or does the framing already commit to a confusing surface?
+- **Gap-closure** — does the framing account for the full state space (empty / error / loading / first-run), or only the happy middle?
+- **Benchmark presence** — is the experience bar set against a named reference, or asserted without comparison? (The panel runs the authoritative structural benchmark-presence check over the `BenchmarkScorecard`; here you flag experience-substance gaps in that positioning.)
+
+**Output in `scope: think` mode:** emit `ThinkReviewFinding` rows (NOT the plan `issues[]` envelope), each carrying `{id, lens, severity, confidence, fixable, remediation, message}`:
+
+- `id` — `F-01`, `F-02`, … unique.
+- `lens` — always `design` (this agent's fixed lens).
+- `severity` — `blocking` | `warning` | `info`.
+- `confidence` — integer 1..10.
+- `fixable` — **load-bearing only for `blocking`**: `fixable: false` → the router routes `kill`; `fixable: true` → `rewrite-think`. Warnings/info do not gate on `fixable`.
+- `remediation` — non-empty actionable next step.
+- `message` — non-empty prose that names the concrete experience defect.
+
+Info-only findings never gate. The panel collects these rows across lenses and hands them to the pure `routeThinkReview` router; do NOT decide the verdict yourself.
+
 ## Hard Rules
 
-- Do NOT modify the plan.
+- Do NOT modify the plan or the think doc.
 - Do NOT spawn other agents.
 - Passes are sequential — run them in order 1..7 so earlier framing informs later scoring.
 - If the plan has no user-facing surface (pure protocol / library plan), score IA, State Coverage, and Accessibility against the developer-facing surface (types, error messages, API shape) and note the reinterpretation in your `integrationNotes`.
