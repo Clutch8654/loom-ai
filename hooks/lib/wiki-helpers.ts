@@ -31,15 +31,12 @@ export function findProjectRoot(): string | null {
 }
 
 /**
- * Atomic write: write to {path}.tmp, then rename to {path}.
- * Creates parent directories as needed.
+ * Atomic write — alias for the shared-core `atomicWriteText` (C-02,
+ * lib/atomic-fs.ts). Re-exported under the historical `writeAtomic` name so the
+ * three top-level wiki hooks keep their import unchanged; the tmp→rename
+ * implementation now lives once in lib/ (Phase 11a strangler, F-08 defect 8).
  */
-export function writeAtomic(filePath: string, content: string): void {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const tmp = filePath + ".tmp";
-  fs.writeFileSync(tmp, content, "utf-8");
-  fs.renameSync(tmp, filePath);
-}
+export { atomicWriteText as writeAtomic } from "../../lib/index.js";
 
 /**
  * Canonicalize a file path that may not exist yet.

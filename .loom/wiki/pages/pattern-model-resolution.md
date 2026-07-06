@@ -2,12 +2,16 @@
 pageId: pattern-model-resolution
 title: Model Resolution
 category: pattern
+subtype:
 domain: code
+summary: Mandatory before every Agent spawn — resolve model from (1) active tier→model profile in orchestration.toml, (2) agent frontmatter model:, (3) inherit parent. Never fable.
+estimatedTokens: 1172
+bodySections[5]: Summary, Examples, Resolution Priority, Tier→Model Profiles, Common Model Assignments
 createdAt: 2026-04-25T22:00:00Z
-updatedAt: 2026-04-25T22:00:00Z
+updatedAt: 2026-07-06T00:00:00Z
 createdBy: human
-updatedBy: human
-sourceRefs[2]: CLAUDE.md, agents/implementer-agent.md
+updatedBy: wiki-ingest-agent
+sourceRefs[3]: CLAUDE.md, agents/implementer-agent.md, protocols/orchestration-config.schema.md
 crossRefs[2]{pageId,relationship}:
   structure-agent-taxonomy,relates-to
   component-orchestration-patterns,relates-to
@@ -18,80 +22,53 @@ confidence: high
 
 # Model Resolution
 
-Model resolution is **mandatory** before every Agent tool call in Loom. The CLAUDE.md mandate (added 2026-04-25) states: "Before every Agent tool call, read the target agent's `.md` frontmatter `model:` field and pass `model: "{value}"` on the call."
+## Summary
 
-Spawning an agent without resolving its model first is a protocol violation.
+Model resolution is **mandatory** before every Agent tool call in Loom. Per CLAUDE.md: "Before every Agent tool call, read the target agent's `.md` frontmatter `model:` field and pass `model: "{value}"` on the call. Resolution priority: (1) `orchestration.toml` profile tier, (2) frontmatter, (3) inherit parent." Spawning an agent without resolving its model first is a protocol violation.
 
----
+The mechanism has two moving parts: an active **tier→model profile** (`modelProfile` under `[settings]` in `.claude/orchestration.toml`) that maps each agent's *tier* to a model, and the per-agent `model:` frontmatter default. The profile wins when set.
 
 ## Resolution Priority
 
-Models are resolved in strict priority order. Higher-priority sources override lower ones.
+Higher-priority sources override lower ones:
 
-1. **`orchestration.toml` profile tier** — The active cost profile (e.g., `economy`, `balanced`, `performance`) can override individual agent models project-wide. Configured under `[profiles.<name>]` in `.claude/orchestration.toml`.
-2. **Agent frontmatter `model:` field** — The default model declared in the agent's `.md` file header.
-3. **Inherit parent** — If neither of the above is available, inherit the calling orchestrator's model. This is a fallback only; agents should always have a declared model.
+1. **`orchestration.toml` profile tier** — `modelProfile` selects a `[settings.profiles.<name>]` block that maps the five tiers (`planning`, `execution`, `review`, `verification`, `utility`) to models. Read by the model-resolution step of pipeline commands (`/loom-plan`, `/loom-auto/links/*`); `/loom-profile` reads/writes it. Omit `modelProfile` to disable profile resolution.
+2. **Agent frontmatter `model:`** — the default declared in the agent's `.md` header.
+3. **Inherit parent** — fallback to the calling orchestrator's model when neither above applies. Agents should always declare a model.
 
----
+## Tier→Model Profiles
 
-## Why Model Resolution Matters
+`.claude/orchestration.toml` currently ships three profiles; the active one is `modelProfile = "quality"`:
 
-**Cost control.** Opus costs significantly more per token than Sonnet or Haiku. Spawning all agents at Opus by default would make large pipelines prohibitively expensive. Resolution lets the system right-size each agent call.
+| Tier | quality (active) | balanced | budget |
+|------|------------------|----------|--------|
+| `planning` | opus | opus | sonnet |
+| `execution` | opus | sonnet | sonnet |
+| `review` | opus | sonnet | haiku |
+| `verification` | sonnet | sonnet | haiku |
+| `utility` | sonnet | haiku | haiku |
 
-**Right-sizing capability.** Not all tasks need Opus-level reasoning:
-- A parser that extracts structured data from a schema file is well-suited to Haiku.
-- A code reviewer that must understand architectural tradeoffs benefits from Sonnet.
-- A plan builder generating a multi-phase implementation plan warrants Opus.
-
-**Profile-based cost management.** The orchestration.toml profile system lets teams run the same pipeline at different cost tiers — e.g., `economy` profile downgrades Opus agents to Sonnet for faster iteration during development.
-
----
+Each value is a model id (`opus | sonnet | haiku`). **Do NOT use `fable` in these maps — it exhausts usage limits under multi-agent orchestration.** Switching profiles right-sizes the whole pipeline: `budget` downgrades planning/execution to sonnet and review/verification to haiku for cheap iteration.
 
 ## Common Model Assignments
 
-Based on agent frontmatter as of 2026-04-25:
+Derived from current agent frontmatter (`model:` fields):
 
-### Opus
+### opus
 
-High-stakes generation where quality outweighs cost:
+High-stakes generation where errors compound: `contracts-agent` (Wave 0 shared types), `implementer-agent` (core code), `plan-builder-agent`, `roadmap-builder-agent`, `questioner-agent`, `benchmark-agent`, `interpretation-reviewer-agent`, `debug-investigator-agent`, `roadmap-converge-driver`, and the plan-review lenses (`plan-eng/ceo/design/devex-review-agent`).
 
-| Agent | Reason |
-|-------|--------|
-| `plan-builder-agent` | Multi-phase plan generation requires deep reasoning |
-| `contracts-agent` | Wave 0 contracts affect all downstream agents — errors compound |
-| `implementer-agent` | Core code generation in implementation waves |
+### sonnet
 
-### Sonnet
+Analysis, review, and mid-complexity work — the majority tier: most review agents (`security-reviewer`, `architecture-reviewer`, `code-*-review-agent`), `convergence-driver`, `convergence-planner-agent`, `delta-analyzer` (haiku — see below), `fixer-agent`, `meta-agent`, `wiki-ingest-agent`, `wiki-maintainer-agent`, test agents (`unit-test-agent`, `e2e-test-agent`, `integration-test-agent`), and `auto-dispatcher`.
 
-Analysis, review, and mid-complexity generation:
+### haiku
 
-| Agent | Reason |
-|-------|--------|
-| `security-reviewer` | Pattern recognition across many vulnerability classes |
-| `architecture-reviewer` | Structural analysis requiring code understanding |
-| `convergence-planner-agent` | Target discovery and method selection |
-| `convergence-driver` | Orchestrates multi-iteration convergence loops |
-| `delta-analyzer` | Structured comparison between SOURCE and TARGET outputs |
-| `meta-agent` | Generating new agent scaffolding |
-| `fixer-agent` | Applying targeted fixes from review findings |
-| `wiki-ingest-agent` | Converting source files to structured wiki pages |
-| Most review agents | Analysis tasks that need language understanding but not planning depth |
+Lightweight, low-ambiguity operations where speed and cost dominate: `verification-agent` (typecheck/test/lint tooling), `target-parser` and `delta-analyzer` (structured TOON parsing), `context-budget-reviewer`, `docs-auditor`, `plan-critic-agent`, `presubmit-sweep-agent`, `roadmap-archetype-detector`, `e2e-runner-agent`, and `wiki-lint-agent`.
 
-### Haiku
+## Examples
 
-Lightweight operations where speed and cost dominate:
-
-| Agent | Reason |
-|-------|--------|
-| `verification-agent` | Running typecheck/test/lint — deterministic tooling, not reasoning |
-| `target-parser` | Parsing structured TOON schemas — low ambiguity |
-| Router agents in triage patterns | Classification is cheap; routing doesn't need reasoning depth |
-
----
-
-## Reading Frontmatter
-
-Agent `.md` files use a YAML-style frontmatter block at the top. The `model:` field specifies the default model:
+Agent `.md` files declare the default via frontmatter; the orchestrator reads it before spawning:
 
 ```markdown
 ---
@@ -101,21 +78,4 @@ model: opus
 ---
 ```
 
-The orchestrator reads this block before spawning and passes the resolved model to the Agent tool call. If the active orchestration.toml profile overrides the tier, that value is used instead.
-
----
-
-## Profile Override Example
-
-In `.claude/orchestration.toml`:
-
-```toml
-[profiles.economy]
-# Downgrade all opus agents to sonnet for development iterations
-opusAgents = "sonnet"
-
-[profiles.performance]
-# Use declared model for everything (default behavior)
-```
-
-With `economy` profile active, `implementer-agent` (declared `opus`) would be spawned as `sonnet`.
+With `modelProfile = "budget"` active, `implementer-agent` (tier `execution`) resolves to `sonnet` regardless of its `opus` frontmatter — the profile tier takes priority. With no `modelProfile` set, the `opus` frontmatter value is used directly.

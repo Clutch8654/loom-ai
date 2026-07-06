@@ -211,7 +211,7 @@ The orchestrator logs a warning when fail-open is triggered, but never blocks th
 
 ## Test Agent Budget Rules
 
-Test agents at different convergence tiers have different budget profiles. The budget hook (`hooks/context-budget-test.ts`) applies tier-specific multipliers to the base `agentBudgetCap` to enforce right-sized budgets.
+Test agents at different convergence tiers have different budget profiles. The budget hook (`hooks/context-budget-check.ts`) applies tier-specific multipliers to the base `agentBudgetCap` to enforce right-sized budgets.
 
 ### Tier Budget Profiles
 

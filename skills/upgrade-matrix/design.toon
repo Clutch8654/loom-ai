@@ -1,0 +1,6 @@
+skill: design
+batch: review
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Time-decaying taste memory — /loom-design shotgun weight-reduces preferences past 90 days and archives them at 180 days per protocols/design-preferences.schema.toon, so the taste model adapts instead of ossifying; gstack's variant board captures a preferred variant but never decays it."

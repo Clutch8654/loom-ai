@@ -1,0 +1,7 @@
+# SkillUpgradeMatrix shard — see lib/types.ts (SkillUpgradeMatrix), C-13
+skill: loom-careful
+batch: workflow
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Destructive-command PreToolUse regex blocklist (rm -rf /, DROP TABLE, force-push, chmod 777, raw-device writes) with per-command LOOM_CAREFUL_OVERRIDE bypass and fail-open posture — gstack ships no such guard."

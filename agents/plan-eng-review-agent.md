@@ -89,9 +89,35 @@ Return an `AgentResult` envelope in TOON. `integrationNotes` MUST include:
 - Count of blocking findings
 - List of regression `id`s cited across the review (deduplicated)
 
+## Think-Altitude Mode (framing review — C-04)
+
+This agent has **two altitudes**, selected by a `scope` parameter passed in the spawn prompt:
+
+- `scope: plan` (default, unset, or `phase`/`wave`) — the plan/phase/wave review defined above. Unchanged.
+- `scope: think` (a.k.a. `altitude: framing`) — review a **converged `.loom/thinks/` think doc's FRAMING**, NOT its phases or waves (a think doc has none). This is the panel `/loom-think:review` fires. The same agent file, a new mode — there is no forked `-think` agent.
+
+When `scope: think` is set, do NOT run the 7 plan passes. Instead audit the think doc's engineering **framing** along these dimensions (the eng slice of the shared framing rubric):
+
+- **Approach soundness** — can the proposed approach actually satisfy the stated constraints? Is there a fatal contradiction between the design and a hard requirement (e.g. an event-sourced design under a single-writer constraint)? This is the eng lens's core question — approach-soundness is never optional, which is why `eng` fires for every archetype.
+- **Problem clarity** — is the problem the doc solves stated precisely enough that an approach can be judged against it, or is it under-constrained?
+- **Gap-closure** — does the framing close the gap it claims to, or leave a load-bearing hole (concurrency model, data-flow direction, failure semantics) unspecified at the idea stage?
+- **Benchmark presence** — is the approach positioned against prior art / alternatives, or asserted in a vacuum? (The panel runs the authoritative structural benchmark-presence check over the `BenchmarkScorecard`; here you flag engineering-substance gaps in that positioning.)
+
+**Output in `scope: think` mode:** emit `ThinkReviewFinding` rows (NOT the plan `issues[]` envelope), each carrying `{id, lens, severity, confidence, fixable, remediation, message}`:
+
+- `id` — `F-01`, `F-02`, … unique.
+- `lens` — always `eng` (this agent's fixed lens).
+- `severity` — `blocking` | `warning` | `info`.
+- `confidence` — integer 1..10.
+- `fixable` — **load-bearing only for `blocking`**: `fixable: false` on a blocking finding means the approach cannot be fixed within this framing → the router routes `kill`; `fixable: true` means a repairable defect → `rewrite-think`. Warnings and info do not use `fixable` to gate.
+- `remediation` — non-empty actionable next step.
+- `message` — non-empty prose that **names the concrete defect** (e.g. cite the contradicted constraint by section).
+
+Info-only findings never gate (the framing may still `proceed`). The panel collects these rows across lenses and hands them to the pure `routeThinkReview` router; do NOT decide the verdict yourself.
+
 ## Hard Rules
 
-- Do NOT modify the plan.
+- Do NOT modify the plan or the think doc.
 - Do NOT spawn other agents.
 - If `.loom/regressions.toon` is missing or unreadable, emit a warning-severity finding with `code: REGRESSIONS_SCHEMA_INVALID` and continue with the fallback prose on every pass.
 - Stay in the engineering lens — vision and business framing are `plan-ceo-review-agent`'s job.

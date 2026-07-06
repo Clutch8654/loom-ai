@@ -5,6 +5,8 @@ description: "Pre-flight rebase-from-base + drift detection + VERSION-slot reser
 
 # /loom-ship — Chief Ship Engineer (M-10 F-30)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 `/loom-ship` is the single, opinionated pre-PR command. It rebases onto base,
 picks a free VERSION slot, audits the plan's deliverables against the diff,
 and opens the PR with all of that inline in the body — no manual pre-flight,
@@ -130,6 +132,15 @@ remembers.
 - A GitHub PR whose body carries the ledger + test plan + doc debt.
 - An `AgentResult` TOON envelope with per-step findings each carrying
   `confidence: 1-10`.
+
+## Beyond gstack upstream
+
+gstack's ship path bumps a single branch's version in place. `/loom-ship` adds
+a **cross-worktree VERSION-slot reservation registry** (`~/.loom/version-slots.toon`)
+that refuses to double-claim a semver across sibling branches — `reserve <v>`
+exits `1` with `already claimed` when the slot is taken. That collision
+enforcement (proven in `tests/skills/workflow-batch.test.ts`) has no upstream
+analogue.
 
 ## Contracts
 

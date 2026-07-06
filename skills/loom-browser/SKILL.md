@@ -5,6 +5,8 @@ description: Persistent Chromium daemon at .loom/browser/ with tiered READ/WRITE
 
 # /loom-browser — Persistent Chromium Daemon (M-11)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 `/loom-browser` gives Loom a long-lived headless (or headed) Chromium session
 that downstream commands share instead of each cold-starting their own browser.
 It is the substrate that `/loom-qa` (M-07), `/loom-design (consultation|html|shotgun)` (M-13), and
@@ -105,14 +107,22 @@ explicit **Out of Scope** for M-11 and left to future milestones.
 
 ## Prompt-injection defense hooks
 
-PLACEHOLDER — full integration lands with **M-05 F-15 llm-trust review**
-(see `agents/code-llm-trust-review-agent.md`, shipped in Phase 5).
+The daemon fires a hook on every page load with the extracted page text. It is
+wired to a **standalone signature detector** (`scanForInjection` in
+`scripts/lib/browser-client.ts`, F-39 / gstack-adoption M-05): the WRITE
+`navigate` path pipes `document.body.innerText` through `onPageText`, which
+returns `ok:false` with `findings[]` on a prompt-injection signature —
+instruction-override, role-hijack/jailbreak, system-prompt exfiltration,
+data-exfiltration, destructive directives, and chat-template delimiter
+injection. On `ok:false` the gate surfaces `BROWSER_INJECTION_BLOCKED` (exit 8)
+and fails closed. Rules are high-precision (multi-word directives), so ordinary
+page copy does not trip them.
 
-The daemon exposes a hook point that fires on every page load with the
-extracted page text. In M-11 the hook is wired to a no-op. In M-05 F-15 the
-hook will pipe page text through the llm-trust agent's untrusted-text
-tainting rules and surface `BROWSER_INJECTION_BLOCKED` when a prompt-injection
-signature is detected.
+**Relationship to F-15 (`code-llm-trust-review-agent`):** complementary, not a
+dependency. F-15 audits *source diffs* at code-review time (an LLM subagent);
+this hook scans *runtime page text* per navigation (a synchronous function).
+They share a theme (trust boundaries) but neither calls the other — a
+diff-review subagent cannot run on every page load.
 
 Hook shape (stable contract — do not rename):
 
@@ -133,6 +143,16 @@ or a related `BROWSER_NO_BINARY` diagnostic and falls back to **stub mode**
 operator to run manually). This keeps M-11 best-effort so downstream milestones
 can still emit useful plans in CI environments without a browser.
 
+## Beyond upstream
+
+gstack's browser support cold-starts a fresh headless Chrome per invocation.
+`/loom-browser` goes **beyond parity** with a *persistent daemon* that survives
+across commands (`.loom/browser/state.toon`) and degrades to a queue-only
+**stub mode** (`.loom/browser/queue.toon`) when no Chromium binary is present —
+so downstream commands still emit useful plans in a browserless CI box instead
+of hard-failing. That daemon + queue-fallback behavior is what
+`tests/backfill/loom-browser-daemon.test.ts` exercises as a live subprocess.
+
 ## Downstream consumers
 
 - **M-07 `/loom-qa`** — live-site iterative test/fix loop
@@ -140,6 +160,28 @@ can still emit useful plans in CI environments without a browser.
 - **M-07 `/loom-cso`** — two-tier live security review
 - **M-13 `/loom-design (consultation|html|shotgun)`** — HTML → design consultation → shotgun screenshot compare
 - **M-08 F-27 `/loom-benchmark`** — comparative live-site benchmark harness
+- **`e2e-runner-agent` (daemon session mode)** — the convergence e2e-tier runner. When `/loom-converge --e2e --daemon` is invoked, `e2e-runner-agent` drives this daemon through the structured-action executor (`scripts/e2e-daemon-runner.ts`) instead of Playwright or Chrome MCP. See `agents/e2e-runner-agent.md` § Daemon Mode.
 
 Each of these commands may only issue tier-appropriate operations and MUST
 respect the READ/WRITE serialization contract above.
+
+## Daemon preflight (mandatory for every consumer)
+
+Before any consumer issues a `BrowserCommand` — READ, WRITE, or the first step
+of a daemon-mode e2e story — it MUST run the daemon preflight defined in
+`protocols/daemon-preflight.schema.md`. This is the single sanctioned
+daemon-down behavior, identical across every consumer above:
+
+- If the daemon is **running**, preflight returns `action: proceed`, `exitCode: 0`.
+- If the daemon is **not running**, the consumer MUST **fail hard with a
+  non-zero exit code** (`exitCode: 2`, `errorCode: DAEMON_NOT_RUNNING`) and print
+  `run 'loom-browser start' first` on stderr. It does nothing else — no queued
+  state, no partial work.
+
+The following daemon-down behaviors are **forbidden** and MUST NOT be
+reintroduced: silent-skip (treat down as "nothing to do"), queue-return-0
+(enqueue and return exit 0), implicit auto-start, or downgrade-to-warning +
+exit 0. Any exit-0 path on daemon-down defeats CI/loop gating — daemon-down is
+an error, not a warning. (`CHROMIUM_ABSENT` — daemon up but no browser binary —
+is a separate hard-fail at runtime; only P2/P8a/P9a *tests* SKIP cleanly on
+absent Chromium so CI stays green.)

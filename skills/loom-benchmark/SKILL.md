@@ -5,6 +5,8 @@ description: "Perf regression via /loom-browser daemon — Core Web Vitals basel
 
 # /loom-benchmark perf — Core Web Vitals Regression Gate (M-08 F-27)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 Detects perf regressions on the current PR by measuring Core Web Vitals
 (LCP, CLS, FID, INP) on both the base branch and the PR head, then reporting
 the delta and a pass/fail verdict. Runs against the `/loom-browser` daemon
@@ -95,3 +97,14 @@ Defaults: `--baseline-ref main`, `--regression-threshold 10`.
 ## Atomic writes
 
 All writes to `.loom/perf-history.toon` go through `.tmp` + `fs.renameSync`.
+
+## Beyond upstream
+
+gstack measures Core Web Vitals on a single build with no historical memory.
+`/loom-benchmark perf` goes **beyond parity** by measuring **both** the
+merge-base and the PR head through the shared persistent `/loom-browser` daemon,
+then appending every run to an append-only `.loom/perf-history.toon` trend log so
+`/loom-status` can render a per-PR before/after trend line across the last N
+runs — a regression *gate* with memory, not a one-shot snapshot. The
+daemon-required enforcement path (exit 1 when the daemon is unavailable) rides
+on the same daemon behavior covered by `tests/backfill/loom-browser-daemon.test.ts`.

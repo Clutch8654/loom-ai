@@ -34,7 +34,7 @@ The orchestrator provides:
 - `--milestone <M-NN>`: Only generate stories for this milestone. Default: all milestones with e2e criteria.
 - `--auto`: Accept all defaults. No interaction. Emit stories and tests immediately.
 - `--dry-run`: Generate stories only, skip Playwright test file generation.
-- `--session-mode <headless|chrome-mcp>`: Override session mode for all tests. Default: `headless`.
+- `--session-mode <headless|chrome-mcp|daemon>`: Override session mode for all tests. Default: `headless`. In `daemon` mode, emit the **closed structured action grammar** (per the daemon-mode addendum in `protocols/e2e-story.schema.md`) — `navigate <url>`, `click <a11y-ref-json>`, `type <a11y-ref-json> <text>`, `assert-text`, `assert-visible`, `screenshot` — NOT free-form prose; the daemon executor rejects unparseable steps with `STORY_PARSE_ERROR`.
 
 ---
 

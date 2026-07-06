@@ -1,0 +1,7 @@
+# SkillUpgradeMatrix shard — see lib/types.ts (SkillUpgradeMatrix), C-13
+skill: loom-canary
+batch: workflow
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Deterministic per-phase health-gate (evaluateHealthGate) that forces CANARY_ROLLED_BACK on the first failed probe with no partial-health promotion — beyond gstack's single-shot ungated deploy."

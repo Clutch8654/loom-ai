@@ -2,32 +2,33 @@
  * scripts/ci/check-docs-drift.ts — CI check `docs-drift` (frozen name, see
  * protocols/ci-gates.contract.md).
  *
- * Recomputes generated-docs section checksums against
- * `docs/.generated-manifest.toon` (DocsGenerationManifest, written by
- * `scripts/generate-docs.ts` from Phase 16). A section's generated block spans
- *   <!-- loom:generated:{section} -->  …  <!-- /loom:generated:{section} -->
- * in its target file; the sha256 of the content between the markers must match
- * the manifest's per-section checksum.
+ * Detects stale generated documentation by RECOMPUTING every marker-bounded
+ * section from its live source (commands/, agents/, scripts/lib/loom-hooks-manifest.ts)
+ * via scripts/generate-docs.ts, then comparing the recomputed content against
+ *   1. the content currently in the target file (between the section markers), and
+ *   2. the per-section sha256 recorded in `docs/.generated-manifest.toon`.
+ *
+ * A section is stale when the file's block or the manifest checksum disagrees
+ * with the freshly recomputed content — so adding a hook, command, or agent
+ * without running `bun scripts/generate-docs.ts --write` fails CI, as does a
+ * manual edit inside a generated block.
  *
  * Flags:
- *   --check            compare only, never write (default true; accepted as no-op)
- *   --warn-only        report drift without failing (Phase 1 → Phase 16)
+ *   --check            compare only, never write (default; accepted as no-op)
+ *   --warn-only        report drift without failing (pre-Phase-16 compatibility)
  *   --manifest <path>  manifest override (default docs/.generated-manifest.toon)
- *   --root <dir>       repo root for resolving targetFile paths (default cwd)
+ *   --root <dir>       repo root for resolving sources + targetFile paths (default cwd)
  *
  * Exit codes: 0 no drift (or --warn-only); 1 DOCS_DRIFT_DETECTED naming each
  * stale section; 3 manifest missing/unparseable.
  *
- * Node-runnable (erasable TS only); also runs under bun. No lib/ runtime
- * imports — the minimal TOON table reader below is scoped to this manifest
- * shape and is slated for replacement by lib/toon.ts in the Phase 11 strangler
- * migration.
+ * Node-runnable (erasable TS only); also runs under bun.
  */
 
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { DocsSection } from "../../lib/types.ts";
+import { extractBlock, renderAllSections, sha256 } from "../generate-docs.ts";
 
 interface CliOptions {
   warnOnly: boolean;
@@ -124,20 +125,54 @@ function parseManifestSections(text: string): DocsSection[] {
   return rows;
 }
 
-type SectionStatus = "clean" | "stale" | "target-missing" | "marker-missing";
+type SectionStatus =
+  | "clean"
+  | "stale"
+  | "manifest-stale"
+  | "target-missing"
+  | "marker-missing";
 
-function checkSection(root: string, section: DocsSection): SectionStatus {
-  const targetPath = resolve(root, section.targetFile);
-  if (!existsSync(targetPath)) return "target-missing";
-  const content = readFileSync(targetPath, "utf8");
-  const begin = `<!-- loom:generated:${section.section} -->`;
-  const end = `<!-- /loom:generated:${section.section} -->`;
-  const beginIdx = content.indexOf(begin);
-  const endIdx = content.indexOf(end);
-  if (beginIdx === -1 || endIdx === -1 || endIdx < beginIdx) return "marker-missing";
-  const block = content.slice(beginIdx + begin.length, endIdx);
-  const checksum = createHash("sha256").update(block).digest("hex");
-  return checksum === section.checksum ? "clean" : "stale";
+interface SectionReport {
+  section: string;
+  targetFile: string;
+  status: SectionStatus;
+}
+
+function checkSections(root: string, manifest: DocsSection[]): SectionReport[] {
+  // Recompute every generator-owned section from its live source. Sections the
+  // generator does not own (e.g. hand-registered manifest entries) fall back to
+  // the manifest-recorded checksum, preserving the original comparison.
+  const recomputedByName = new Map(renderAllSections(root).map((s) => [s.section, s]));
+  const reports: SectionReport[] = [];
+
+  for (const m of manifest) {
+    const targetPath = resolve(root, m.targetFile);
+    let status: SectionStatus;
+    if (!existsSync(targetPath)) {
+      status = "target-missing";
+    } else {
+      const block = extractBlock(readFileSync(targetPath, "utf8"), m.section);
+      if (block === null) {
+        status = "marker-missing";
+      } else {
+        const fileChecksum = sha256(block);
+        const recomputed = recomputedByName.get(m.section);
+        if (recomputed) {
+          if (fileChecksum !== recomputed.checksum) {
+            status = "stale"; // file block is out of date w.r.t. its source
+          } else if (m.checksum !== recomputed.checksum) {
+            status = "manifest-stale"; // docs regenerated but manifest not, or hand-edited
+          } else {
+            status = "clean";
+          }
+        } else {
+          status = fileChecksum === m.checksum ? "clean" : "stale";
+        }
+      }
+    }
+    reports.push({ section: m.section, targetFile: m.targetFile, status });
+  }
+  return reports;
 }
 
 function main(): void {
@@ -146,7 +181,7 @@ function main(): void {
   if (!existsSync(opts.manifest)) {
     if (opts.warnOnly) {
       process.stdout.write(
-        `docsDriftReport:\n  manifest: ${opts.manifest}\n  status: manifest-missing\n  warnOnly: true\nwarning: DOCS_MANIFEST_MISSING\nnote: scripts/generate-docs.ts (Phase 16) writes the manifest; warn-only until then\n`,
+        `docsDriftReport:\n  manifest: ${opts.manifest}\n  status: manifest-missing\n  warnOnly: true\nwarning: DOCS_MANIFEST_MISSING\nnote: scripts/generate-docs.ts writes the manifest via --write\n`,
       );
       process.exit(0);
     }
@@ -156,9 +191,9 @@ function main(): void {
     process.exit(3);
   }
 
-  let sections: DocsSection[];
+  let manifest: DocsSection[];
   try {
-    sections = parseManifestSections(readFileSync(opts.manifest, "utf8"));
+    manifest = parseManifestSections(readFileSync(opts.manifest, "utf8"));
   } catch (err) {
     process.stderr.write(
       `error: DOCS_MANIFEST_UNPARSEABLE\nmessage: ${(err as Error).message}\n`,
@@ -166,7 +201,7 @@ function main(): void {
     process.exit(3);
   }
 
-  const results = sections!.map((s) => ({ ...s, status: checkSection(opts.root, s) }));
+  const results = checkSections(opts.root, manifest!);
   const stale = results.filter((r) => r.status !== "clean");
 
   const lines: string[] = [
@@ -184,12 +219,12 @@ function main(): void {
     const names = stale.map((r) => r.section).join(", ");
     if (opts.warnOnly) {
       process.stdout.write(
-        `warning: DOCS_DRIFT_DETECTED\nstaleSections[${stale.length}]: ${names}\nnote: warn-only until Phase 16 flips docs-drift to blocking\n`,
+        `warning: DOCS_DRIFT_DETECTED\nstaleSections[${stale.length}]: ${names}\nnote: run 'bun scripts/generate-docs.ts --write' to regenerate\n`,
       );
       process.exit(0);
     }
     process.stderr.write(
-      `error: DOCS_DRIFT_DETECTED\nstaleSections[${stale.length}]: ${names}\n`,
+      `error: DOCS_DRIFT_DETECTED\nstaleSections[${stale.length}]: ${names}\nnote: run 'bun scripts/generate-docs.ts --write' to regenerate\n`,
     );
     process.exit(1);
   }

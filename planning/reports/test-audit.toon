@@ -1,0 +1,11 @@
+testAudit:
+  auditedAt: 2026-07-01T00:00:00Z
+  suspectCount: 7
+  rows[7]{testPath,classification,evidence,action,replacedBy}:
+    tests/commands/loom-prototype.test.ts,tautological,Defines an in-file simulateCompletionCeremony() that reimplements scripts/loom-prototype/completion-ceremony.ts and asserts against the copy; the production script is never exercised.,deleted,
+    tests/regressions/stuck-at-loop-construction.test.ts,prompt-grep,Builds stderr by joining the in-file UX_B2_LINES fixture then asserts stderr contains those same literals; no production code path runs — the test asserts its own construction.,deleted,
+    tests/regressions/stuck-at-loop-construction-hitl.test.ts,prompt-grep,Reads agents/convergence-driver.md and asserts verbatim markdown lines are present; a change-detector over prompt text that exercises no behavior.,deleted,
+    tests/regressions/override-loop-gate-empty-reason.test.ts,behavioral,"simulateOverrideLoopGate runs the empty-reason gate over real TOON file I/O and asserts exit code, VALIDATION_ERROR, and that escapeReason stays null after rejection — emergent behavior, not self-assertion.",retained,
+    tests/regressions/retired-loop-immutable.test.ts,behavioral,Exercises retired-loop immutability against real fixture files; asserts the immutable-exit code and snapshot fields read back from disk after a re-retire attempt.,retained,
+    tests/regressions/loom-converge-criteria-boundary.test.ts,behavioral,"Exercises criteria-mode boundary logic; asserts no loop files are created, the state-file contents, and the emitted convergence-plan stdout — observable outputs of the code path.",retained,
+    tests/regressions/linked-loops-lint-typecheck.test.ts,behavioral,"Exercises sibling-loop linkage and lint/typecheck failure paths over real TOON mutations; asserts emergent file and state contents (sibling ids, verifiedRed flags, loop counts).",retained,

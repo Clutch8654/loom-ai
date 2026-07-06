@@ -1,45 +1,13 @@
 wave: 4
-phase: 4
-status: complete
-completedAt: 2026-06-18
-agent: implementer-agent
-
-filesCreated[5]:
-  scripts/roadmap-converge/slug.ts
-  scripts/roadmap-converge/archetype-detector.ts
-  agents/roadmap-archetype-detector.md
-  test/roadmap-converge/slug.test.ts
-  test/roadmap-converge/archetype-detector.test.ts
-
-filesModified[2]:
-  scripts/roadmap-converge/driver.ts
-  commands/loom-roadmap/sign-off.md
-
-testsPassingTotal: 136
-testsPassingNew: 43
-exportsAdded: 8
-
-verification:
-  bun_test: pass (136/136)
-  sign_off_purity_grep: pass
-
-summary: |
-  Wave 4 ships multi-roadmap routing (slug derivation + collision detection),
-  --roadmap <path> plumbing across all three commands, and cold-start
-  archetype detection wired into driver.ts via the Phase 1 hook seam.
-  Non-interactive stdin auto-selects highest-confidence archetype with stderr
-  advisory. archetype-detector agent registered at model: haiku, returns
-  standard AgentResult with {archetype, confidence} in data.
-
-keyDecisions[4]:
-  Slug registry is in-process Map; tests call clearSlugRegistry() between runs to avoid cross-test bleed
-  archetype-detector.ts exports archetypeDetectionHook as production default; tests pass noopArchetypeDetectionHook explicitly for determinism
-  UX-26 advisory line format frozen verbatim: '[roadmap-converge] non-interactive stdin: auto-selected archetype <name> (confidence N). Override with --archetype <name>.'
-  Stage context path execute-archetype.toon disambiguates from Phase 1 execute.toon (AW-14)
-
-nextStageHints[3]:
-  Phase 5 (integrator) inherits driver.ts; will add stall detection + pass-cap halt to the same orchestration loop
-  Phase 6 (/loom-resume integration) wires resume-delegate.ts and consumes slug-derived state paths
-  The slug registry will need clearing or cross-process coordination for any future parallel-roadmap workflows
-
-crossBoundaryRequests[0]:
+label: P4a+P5+P8b
+status: success
+agents[3]: w4-p4a,w4-p5,w4-p8b
+filesCreated[3]: tests/agents/e2e-runner-daemon-mode.test.ts,scripts/loop-browser-rung.ts,tests/skills/feedback-loop-browser-rung.test.ts
+filesModified[7]: protocols/e2e-story.schema.md,agents/e2e-runner-agent.md,skills/loom-browser/SKILL.md,skills/feedback-loop/SKILL.md,lib/types.ts,scripts/eval/run-evals.ts,commands/loom-converge.md,agents/e2e-test-writer-agent.md
+exportsAdded[10]: evaluateAssertion,parseArgs,driveFetch,driveDaemon,runRung,RUNG4_EXIT,RungConfig,RungOutcome
+wiring: "orchestrator closed 2 P4a cross-boundary seams: --daemon flag in loom-converge.md, --session-mode daemon in e2e-test-writer-agent.md"
+verification: pass
+verificationCommand: bunx tsc --noEmit -p hooks/tsconfig.json && bunx vitest run tests/browser tests/skills tests/eval tests/agents skills/browser-skills
+testsPass: 396
+testsSkip: 2
+unresolvedIssues[0]:

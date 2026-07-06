@@ -127,6 +127,37 @@ Iterative test + review loop that converges when all blocking criteria pass.
 
 **Budget:** 2 (setup: criteria-planner + criteria-harness-builder) + iterations x (1 delta-analyzer + N reviewers + M fixers). Reviewer agents count toward budget. Capped by `maxIterations`. Report `agentsUsed` cumulatively.
 
+### Benchmark
+
+Single-agent competitive benchmark of a **bare idea** (pre-roadmap). Unlike the
+plan-scoped review patterns, benchmark runs BEFORE any roadmap or plan exists —
+its subject is a converged `.loom/thinks/` doc (or a raw idea), not a PLAN.md.
+
+This pattern is what makes the `--benchmark` flag non-inert. Without this
+registered section, the `competitive-benchmark` label would find no matching
+`[patterns.*]` trigger and fall back to the default single-agent spawn (a
+generic agent that does NOT write a typed `BenchmarkScorecard`). With it, the
+executor spawns the named `benchmark-agent` with the scorecard-writing contract.
+
+1. Resolve the subject: the converged think-doc path (or the raw idea text).
+2. Spawn `agent` (the pattern's `agent` field — `benchmark-agent`) with the
+   subject. Resolve its `model:` from frontmatter (opus under the quality
+   profile's execution tier).
+3. The agent identifies N (≥1) competitor / prior-art references, scores ≥3
+   dimensions (`selfScore`/`refScore` on 0..10 with backing `sourceRefs`),
+   computes the DERIVED fields (`gap`, `overall`, `refOverall`, `thin`), and
+   writes the `BenchmarkScorecard` TOON block INTO the think doc via an atomic
+   write (`{path}.tmp` → rename). See `protocols/benchmark-scorecard.schema.md`.
+4. Return the `PatternResult` (`type: "benchmark"`), surfacing `thin` so the
+   caller / P4 pre-plan panel can gate on benchmark presence.
+
+**Error handling:** If `benchmark-agent` fails, return an error result with no
+scorecard written — NEVER fall back to a silent no-op, and never write a partial
+(and therefore misleadingly non-`thin`) scorecard. A missing scorecard is itself
+a benchmark-presence finding at the downstream panel.
+
+**Budget:** 1 agent.
+
 ---
 
 ## PatternResult
@@ -136,7 +167,7 @@ Every pattern invocation returns a `PatternResult` to the orchestrator.
 | Field        | Type     | Required | Description                                  |
 |--------------|----------|----------|----------------------------------------------|
 | `pattern`    | string   | yes      | Pattern name from `orchestration.toml`       |
-| `type`       | enum     | yes      | `debate`, `chain`, `vote`, `triage`, `converge`, or `converge-criteria` |
+| `type`       | enum     | yes      | `debate`, `chain`, `vote`, `triage`, `converge`, `converge-criteria`, or `benchmark` |
 | `result`     | string   | yes      | Final output text                            |
 | `agentsUsed` | integer  | yes      | Total agent invocations consumed             |
 | `transcript` | string   | debate   | Compressed argument history                  |
@@ -150,6 +181,9 @@ Every pattern invocation returns a `PatternResult` to the orchestrator.
 | `criteriaDelta` | object | converge-criteria | `{ passing: N, failing: N, frozen: N, total: N }` |
 | `converged`  | boolean  | converge-criteria | True if all blocking criteria pass (frozen excluded) |
 | `frozenConflicts` | integer | converge-criteria | Number of criteria frozen due to reviewer conflicts |
+| `subject`    | string   | benchmark | Think-doc path / idea benchmarked            |
+| `thin`       | boolean  | benchmark | Derived `thin` flag of the written `BenchmarkScorecard` |
+| `scorecardWritten` | boolean | benchmark | Whether the scorecard was written into the think doc |
 
 ---
 
@@ -193,3 +227,4 @@ Every pattern invocation returns a `PatternResult` to the orchestrator.
 | Converge-Criteria | Stall detected     | Halt loop; return partial with stall flag        |
 | Converge-Criteria | Regression detected | Halt loop; return partial with regression flag  |
 | Converge-Criteria | All blocking frozen | Halt loop; return partial with stall flag       |
+| Benchmark | benchmark-agent fails | Return error result; no scorecard written (never a silent no-op or partial card) |

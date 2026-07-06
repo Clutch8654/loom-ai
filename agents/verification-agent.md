@@ -43,7 +43,21 @@ Update at these checkpoints:
 
 Write updates at least every 30 seconds. Each write must increment `checkpointCount` and set `heartbeatAt` to the current time.
 
-Format: `{"taskId", "agent", "wave", "phase", "percentComplete", "currentActivity", "filesWritten", "issuesSoFar", "heartbeatAt", "startedAt", "checkpointCount"}`
+Format (TOON):
+
+```toon
+taskId: <provided>
+agent: verification-agent
+wave: <wave index>
+phase: <initializing | implementing | finalizing>
+percentComplete: <0-100>
+currentActivity: <short description of what you're doing now>
+filesWritten[N]: file1, file2
+issuesSoFar[N]: ...
+heartbeatAt: <ISO-8601 timestamp>
+startedAt: <ISO-8601 timestamp>
+checkpointCount: <n>
+```
 
 If you receive a message during execution (prefixed `MONITORING:`, `REDIRECT:`, or `TIMEOUT_WARNING:`), read it at your next natural breakpoint and act on it. Update your progress file to acknowledge.
 

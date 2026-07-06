@@ -499,7 +499,6 @@ export function main(argv: string[]): number {
 // Only run main when executed as a script (not when imported by tests).
 // Bun sets `import.meta.main` to true for the entry-point module.
 const isEntryPoint =
-  // @ts-expect-error - Bun-specific import.meta extension
   (import.meta.main === true) ||
   (typeof process !== "undefined" &&
     process.argv[1] &&

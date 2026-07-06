@@ -31,6 +31,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { atomicWrite } from "../../lib/index.js";
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -137,13 +139,12 @@ export function encodeSpawnRequestToToon(request: SpawnAgentRequest): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Production atomic-write implementation: write to `.tmp`, then rename.
- * The rename is atomic on POSIX filesystems for files on the same volume.
+ * Production atomic-write implementation — routes through the shared-core
+ * `atomicWrite` (C-02, lib/atomic-fs.ts): write `{path}.tmp`, then atomically
+ * rename onto the target. Atomic on POSIX for same-volume files.
  */
 const defaultWriteFile: WriteFileImpl = ({ absPath, bytes }) => {
-  const tmp = `${absPath}.tmp`;
-  fs.writeFileSync(tmp, bytes);
-  fs.renameSync(tmp, absPath);
+  atomicWrite(absPath, bytes);
 };
 
 /**

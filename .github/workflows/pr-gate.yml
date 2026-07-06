@@ -13,8 +13,8 @@
 #   lint                blocking     bunx eslint . (flat config lands Phase 2b;
 #                                    vacuous pass until the config exists)
 #   changed-file-tests  blocking     bun scripts/ci/changed-files-vitest.ts
-#   hook-drift          warn-only    until Phase 13 (sources known-divergent, defect 10)
-#   docs-drift          warn-only    until Phase 16 (generated-docs markers not yet everywhere)
+#   hook-drift          blocking     Phase 13 reconciled the three sources (defect 10)
+#   docs-drift          blocking     Phase 16 landed generated-docs markers + manifest (defect 12)
 #   library-catalog     blocking     bun scripts/ci/check-library-catalog.ts
 #
 # Every run publishes `.loom-ci/gate-status.toon` as a machine-readable artifact.
@@ -38,9 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      # Error-count baseline: 49 pre-existing errors under hooks/tsconfig.json.
-      # Phase 9 (typecheck-zero) drops this to 0. Ratchet DOWN only.
-      TYPECHECK_ERROR_BASELINE: "25"
+      # Error-count baseline. Phase 9 (typecheck-zero, F-06) drove the count to
+      # 0, so the gate is now zero-tolerance: any type error fails the PR.
+      # Ratchet DOWN only — never raise this.
+      TYPECHECK_ERROR_BASELINE: "0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -135,10 +136,10 @@ jobs:
         with:
           bun-version: latest
 
-      # --warn-only until Phase 13 reconciles the three registration sources
-      # (defect 10). Phase 13 removes the flag and flips this check to blocking.
+      # Phase 13 reconciled the three registration sources (defect 10), so this
+      # check runs blocking: any drift now fails the PR gate.
       - name: Compare the three hook-registration sources
-        run: bun scripts/ci/check-hook-drift.ts --warn-only
+        run: bun scripts/ci/check-hook-drift.ts
 
       - name: Upload drift report
         if: always()
@@ -161,10 +162,10 @@ jobs:
         with:
           bun-version: latest
 
-      # --warn-only until Phase 16 lands generated-docs markers + manifest
-      # everywhere. Phase 16 removes the flag and flips this check to blocking.
+      # Blocking as of Phase 16: check-docs-drift recomputes every generated
+      # section from source and fails if the docs or manifest are stale.
       - name: Recompute generated-docs checksums
-        run: bun scripts/ci/check-docs-drift.ts --check --warn-only
+        run: bun scripts/ci/check-docs-drift.ts --check
 
   library-catalog:
     name: library-catalog
@@ -181,6 +182,61 @@ jobs:
 
       - name: Validate skills/library.yaml
         run: bun scripts/ci/check-library-catalog.ts
+
+  eval-t1:
+    # T1 eval tier (Phase 20, F-20): static / in-process evals that make ZERO
+    # network/LLM calls (llmCalls MUST be 0). Runs on every PR and fails the job
+    # on any red eval. This job is ADDITIVE — the frozen 6-check branch-
+    # protection interface (protocols/ci-gates.contract.md, checks[6]) is left
+    # untouched, so the gate-status table below is unchanged.
+    name: eval-t1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run T1 evals (static, zero LLM calls)
+        run: bun scripts/eval/run-evals.ts --tier t1
+
+  browser-fixture-tests:
+    # Offline browser fixture-parser + browser-skill tests (Phase 9a,
+    # PLAN-browser-e2e). These suites (tests/browser, tests/skills, tests/eval,
+    # skills/browser-skills) are hermetic: every live-Chromium case self-skips
+    # (C-07 actionable skip — no browser is installed in this job), so the job is
+    # green without a daemon while still catching fixture/parser regressions on
+    # every PR.
+    #
+    # This job is ADDITIVE — it is deliberately NOT added to the gate-status
+    # `needs:` block below, so the frozen 6-check branch-protection interface
+    # (protocols/ci-gates.contract.md, checks[6]) is left UNTOUCHED. It mirrors
+    # the eval-t1 additive pattern above: advisory-by-position, never a required
+    # check.
+    name: browser-fixture-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run offline fixture-parser + browser-skill tests (live cases self-skip)
+        run: bunx vitest run tests/browser tests/skills tests/eval skills/browser-skills
 
   gate-status:
     name: gate-status
@@ -210,8 +266,8 @@ jobs:
             typecheck,${{ needs.typecheck.result }},true,
             lint,${{ needs.lint.result }},true,
             changed-file-tests,${{ needs.changed-file-tests.result }},true,
-            hook-drift,${{ needs.hook-drift.result }},false,13
-            docs-drift,${{ needs.docs-drift.result }},false,16
+            hook-drift,${{ needs.hook-drift.result }},true,
+            docs-drift,${{ needs.docs-drift.result }},true,
             library-catalog,${{ needs.library-catalog.result }},true,
           EOF
           mv .loom-ci/gate-status.toon.tmp .loom-ci/gate-status.toon

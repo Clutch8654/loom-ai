@@ -123,8 +123,66 @@ writes, so `/loom-learn` queries and future bugfix runs see qa-loop fixes
 too. Archive after the commit succeeds; include page, ref, symptom,
 confidence, and commitSha.
 
+## Ground-truth outcome eval (planted bugs)
+
+Beyond the live-site loop, `/loom-qa` is graded against a **planted-bug outcome
+eval** — the ground-truth harness ported from gstack (P8a). It answers "does the
+QA drive actually find the bugs it should?" rather than "did the loop run?".
+
+- **Fixtures.** Two deliberately-buggy pages ship under `evals/fixtures/`:
+  `planted-bugs.html` (static: functional + visual + overflow bugs) and
+  `planted-bugs-spa.html` (SPA/flow: console + functional-flow bugs). The tier
+  drives each through the `/loom-browser` daemon (`navigate` + the `css` /
+  `is-visible` / `bounding-box` / `console-log` READ verbs). The visual and
+  overflow categories are detectable **because** those computed-style READ verbs
+  exist — a QA drive can measure contrast and clipped boxes, not just DOM text.
+
+- **Ground truth + thresholds.** `evals/fixtures/qa-ground-truth.toon` catalogs
+  every planted bug by `{category, severity, selector}` and carries the
+  per-category `floor` (minimum `detectionRate`) and `max` (maximum
+  `falsePositives`). Thresholds live in the fixture — versioned alongside the
+  bugs they gate — not in the result.
+
+- **Scoring.** `scripts/eval/tiers/qa-outcome.ts` scores the QA report
+  **per category and per severity**, not as one global pass/fail. It emits an
+  `OutcomeEval` (`protocols/outcome-eval.schema.md`, TOON) whose
+  `perCategory[]{category,severity,detected}` rows drive the assertions
+  `detectionRate >= floor` and `falsePositives <= max` for each category.
+
+- **Opt-in behind `LOOM_EVAL_LLM`.** Interpreting a driven page into issues
+  needs an LLM, so the tier is gated exactly like the T3 judge: with the flag
+  unset it is `skipped` (exit 0) with an actionable reason. The QA reporter is
+  an injected seam so tests mock it — the hermetic test never drives Chromium or
+  hits the network; the live drive runs in the nightly CI job.
+
 ## Non-goals
 
 - No load / performance testing (that's `/loom-benchmark`, M-08 F-27).
 - No security scanning (that's `/loom-cso`, F-19).
 - No visual design review (that's `/loom-design (consultation|html|shotgun)`, M-13).
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+Health-gated fix loop: every patch must pass `/loom-health --quick` without
+regression before its atomic commit, the run emits a `shipReadiness` verdict
+from the before/after health delta, and fixes are archived to
+`.loom/fix-archive/` for `/loom-learn`. gstack's live-QA loop has no health
+gate, ship-readiness signal, or fix archive.
+
+## Backing & enforcement
+
+- **Backing:** the `/loom-browser` daemon (`skills/loom-browser`),
+  `scripts/loom-health.ts` (the health gate), and `agents/fixer-agent.md`.
+- **Behavioral tests:** `tests/backfill/loom-browser-daemon.test.ts` covers the
+  daemon dependency; `tests/backfill/loom-health.test.ts` covers the health gate.
+- **Enforcement:** `/loom-qa` refuses to run without a live `/loom-browser`
+  daemon (exit non-zero), demonstrated by `tests/backfill/loom-browser-daemon.test.ts`.

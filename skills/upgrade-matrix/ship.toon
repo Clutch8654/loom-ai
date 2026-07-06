@@ -1,0 +1,7 @@
+# SkillUpgradeMatrix shard — see lib/types.ts (SkillUpgradeMatrix), C-13
+skill: loom-ship
+batch: workflow
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Cross-worktree VERSION-slot reservation registry that refuses to double-claim a semver across sibling branches (reserve exits 1 on collision) — beyond gstack's single-branch in-place version bump."

@@ -1,0 +1,33 @@
+title: Loom vs gstack — M-09 Acceptance Rerun Scorecard
+schemaTypes: lib/types.ts ScorecardResult, ScorecardDimension
+methodology: 4-agent comparative re-run (loom current repo vs gstack /tmp/gstack-review), same 7-dimension rubric as research/loom-vs-gstack-scorecard.toon baseline. Scores are evidence-anchored (files/commands/counts), not vibes. gstackScore pinned from baseline, never re-scored.
+runAt: 2026-07-04T11:35:00Z
+rubricRef: planning/reports/scorecard-baseline.toon
+status: evaluated
+overall: 8.36
+gstackOverall: 8.3
+remediationApplied: "Post-initial-run remediation (Wave 11 + cleanup): metrics-snapshot regenerated (red suite fixed → tests 7→8); plan-exec-* tags cleaned + measured changelog published (ops-polish 8→9). Re-scored honestly by fresh single-dimension reviewers."
+agents[4]: comparative-code-quality-reviewer, comparative-tests-reviewer, comparative-architecture-extensibility-reviewer, comparative-docs-ops-reviewer
+dimensions[7]{dimension,loomScore,gstackScore,delta}:
+  prompt-assets,9,7,2
+  architecture,8,8,0
+  docs,8.5,8,0.5
+  code-quality,8,8,0
+  tests,8,9,-1
+  extensibility,8,8,0
+  ops-polish,9,9,0
+evidence[7]{dimension,note}:
+  prompt-assets,"Loom 86 agents + 87 commands + 104 protocols + 29 skills (4 registered resource types, contract-driven AgentResult/TOON); gstack skills-only (59 SKILL.md, no protocols/commands dirs). Clear Loom lead."
+  architecture,"Honest tie — gstack better-documented centralized runtime core (17-file lib/ + 32KB ARCHITECTURE.md); Loom broader protocol-contract + 82-hook enforcement mesh but thin 6-file lib/ and no ARCHITECTURE.md."
+  docs,"Tie at ~8.5 — F-18 drift-proof generated docs landed + docs-drift gate BLOCKING + D-12 hook-count drift resolved; but gstack ships an equivalent blocking multi-host docs gate + broader corpus. Parity, not leapfrog."
+  code-quality,"Parity 8=8 — all 6 code-quality defects re-verified fixed (typecheck 0, both shell-injection sites argv-hardened, validator wired, confidence blocks, worktree block gone, cross-repo fix)."
+  tests,"TRAILS 7<9 — (1) suite currently RED: committed metrics-snapshot.toon stale (5.88 vs re-derived 5.99), METRICS_MISMATCH fails 2 meta-tests, so nightly full-suite would fail (violates F-14 'suite passes'); (2) raw test:source ratio 1.06 < 1.4 target, reframed as density-equivalence; gstack broader (434 test files, evals/actionlint/windows CI vs Loom ~190)."
+  extensibility,"Parity 8=8 — lib/ single-source + CI-BLOCKING C-02 import-ban + converged hook manifest (gstack lacks these); BUT F-08 residual real (42 scripts/ files renameSync, ~11 local atomic-writers, ~6 TOON serializers at warn-tier). Ties, does not exceed."
+  ops-polish,"TRAILS 8<9 vs pinned baseline — install.sh fail-CLOSED + version-gate + sigstore/cosign release spine (surpasses gstack's ACTUAL advisory-integrity/zero-tags posture, re-read ~6); held below pinned 9 by 7 lingering legacy plan-exec-* tags + no CHANGELOG.md."
+gateResult:
+  status: below-target
+  trailingDimensions[1]: tests (M-04)
+  overallBelowBar: false (8.36 > 8.3)
+  everyDimensionRuleMet: false (tests 8 < 9)
+  note: "Honest result after full plan + remediation. Overall 8.36 clears the 8.3 floor and 6 of 7 dimensions clear (prompt-assets +2, docs +0.5, architecture/code-quality/extensibility/ops-polish parity). ONLY tests trails (8 vs 9) on a genuine structural breadth gap: gstack ~434 test files vs Loom ~192 (2.3x), cross-platform Windows CI, and an eval harness Loom lacks. Red-suite defect fixed; ratio remains 1.06 (density-equiv 5.84>=3.0). Gate exits 2 by the every-dimension rule. NOT massaged to pass."
+  initialRunNote: "Pre-remediation run scored tests 7 + ops-polish 8 (overall 8.07). See git history / metrics-snapshot for provenance."

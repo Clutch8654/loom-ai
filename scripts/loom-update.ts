@@ -338,7 +338,6 @@ export async function main(deps: MainDeps = {}): Promise<number> {
 // ---------------------------------------------------------------------------
 
 const isEntry =
-  // @ts-expect-error Bun-specific import.meta.main
   import.meta.main === true ||
   import.meta.url === `file://${process.argv[1]}` ||
   // tsx entry detection — process.argv[1] is the script after shebang

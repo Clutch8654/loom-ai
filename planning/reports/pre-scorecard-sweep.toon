@@ -1,0 +1,38 @@
+title: Pre-Scorecard Sweep — M-09 acceptance-gate precondition (F-25 AC)
+purpose: Two gates that must be clean before the scorecard rerun is valid — (a) a C-42 shell-injection sweep across every execSync/execFileSync call site, and (b) a correctness/security code-review of the files changed in this initiative's waves 8-10. The AC requires ZERO outstanding blocking findings.
+sweptAt: 2026-07-04T00:00:00Z
+sweptBy: w10-p25 (implementer-agent)
+diffBase: plan-exec-wave-8-pre
+totalBlocking: 0
+acGate: PASS — zero blocking findings outstanding
+
+security:
+  scope: C-42 injection sweep — every execSync/execFileSync call site in scripts/ hooks/ lib/ inspected for unsanitized interpolation of external/user/dynamic input into a shell string.
+  method: grep enumeration of execSync/execFileSync call sites, then read each dynamic (non-literal-first-arg) site and trace the provenance of every interpolated value.
+  execCallSitesTotal: 50
+  execCallSitesProduction: 35
+  execCallSitesTest: 15
+  dynamicShellStringSites: 2
+  shcInterpolationSites: 1
+  historicalD02Note: The two D-02 shell-injection sites (loom-health.ts and loom-version-slot.ts) were already remediated by F-04 — both now call execFileSync with an argv array (loom-health.ts:56, loom-version-slot.ts:65). Verified still argv-based; no shell string.
+  findings[3]{id,site,class,provenance,severity,blocking,verdict}:
+    SEC-01,scripts/loom-cso.ts:66 execSync(cmd),shell-string-var,cmd is only ever the literal "bun audit --json" or "npm audit --json --audit-level=moderate" (tryRun callers L173/L191); no dynamic input,info,false,safe
+    SEC-02,scripts/loom-worktree-scan.ts:71 execSync(cmd),shell-string-var,sh(cmd) receives hardcoded literals plus `git rev-parse --verify --quiet ${cand}` and `git diff --name-only ${base}...HEAD` where cand/base come only from the hardcoded array ["main" "master" "origin/main" "origin/master"] via baseBranch(); no attacker-influenced value reaches the shell,info,false,safe
+    SEC-03,scripts/lib/doctor/checks/runner-resolution.ts:41 execFileSync("sh" ["-c" `command -v ${runtime}`]),sh-c-interpolation,runtime is typed "bun" | "node" and defaultProbe is only invoked with those two literals; no dynamic value,info,false,safe
+  argvSitesNote: All other production execFileSync sites (git/gh/tar/bunx/npx/tsx invocations) pass arguments as argv arrays with no shell, so repo-derived values (branch names, refs, paths) are never shell-parsed.
+  blockingCount: 0
+
+codeReview:
+  scope: Correctness + security review of code files changed in waves 8-10 (git diff plan-exec-wave-8-pre..HEAD, *.ts under scripts/ hooks/ lib/ skills/).
+  filesReviewed[6]: scripts/eval/run-evals.ts, scripts/eval/tiers/t1-static.ts, scripts/eval/tiers/t2-hermetic.ts, scripts/eval/tiers/t3-judge.ts, skills/loom-canary/rollback-gate.ts, skills/loom-retro/append-guard.ts
+  observations[6]{file,check,verdict}:
+    scripts/eval/run-evals.ts,exec via execFileSync argv + isMain guard + lib serializeToon/atomicWriteText; tier dispatch total over t1/t2/t3,clean
+    scripts/eval/tiers/t1-static.ts,no exec/eval/child_process; pure in-process static checks (free-by-default C-03 upheld),clean
+    scripts/eval/tiers/t2-hermetic.ts,reads fixtures only; llmCalls invariantly 0; missing fixture => EVAL_FIXTURE_MISSING exit 1 (no silent pass),clean
+    scripts/eval/tiers/t3-judge.ts,advisory-only; judge injected via seam (no live call in tests); floor regression is warn-not-block; always exit 0,clean
+    skills/loom-canary/rollback-gate.ts,fail-closed on empty probe batch and first non-2xx/threshold breach; no "mostly healthy" promotion,clean
+    skills/loom-retro/append-guard.ts,append-only prefix check + sequential id allocation; rejects shrink/mutation of historic rows,clean
+  findings[0]{id,file,severity,blocking,summary}:
+  blockingCount: 0
+
+crossBoundaryRequests[0]{file,reason,suggestedChange}:

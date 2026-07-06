@@ -1,6 +1,6 @@
 # .loom/thinks/
 
-This directory holds durable "think docs" produced by `/loom-think` — 5-phase office-hours interviews that sharpen fuzzy problems before they enter the ROADMAP.
+This directory holds durable "think docs" produced by `/loom-think` — 5-phase structured deep-think interviews that sharpen fuzzy problems before they enter the ROADMAP.
 
 ## Filename convention
 

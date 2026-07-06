@@ -121,12 +121,16 @@ describe("plugin.json", () => {
 describe("hooks.json", () => {
   const hooksManifest = readJson(hooksManifestPath) as HooksManifest;
 
-  it("registers SessionStart, PreToolUse, PostToolUse, Stop", () => {
+  it("registers SessionStart, PreToolUse, PostToolUse, Stop, SubagentStop", () => {
+    // SubagentStop (agent-result-validator + status-updater) was added in
+    // Phase 13's hook-registration convergence (commit 2559e7f); keep this
+    // assertion in lockstep with hooks/hooks.json, the source of truth.
     expect(Object.keys(hooksManifest.hooks).sort()).toEqual([
       "PostToolUse",
       "PreToolUse",
       "SessionStart",
       "Stop",
+      "SubagentStop",
     ]);
   });
 

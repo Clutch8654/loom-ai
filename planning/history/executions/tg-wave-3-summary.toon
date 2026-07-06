@@ -1,0 +1,12 @@
+wave: 3
+label: P6a+P6b
+status: success
+agents[2]: w3-p6a,w3-p6b
+filesCreated[1]: tests/e2e/thinking-gate-auto.test.ts
+filesModified[6]: commands/loom-auto.md,commands/loom-do.md,commands/loom-which.md,README.md,docs/reference/agents.md,docs/.generated-manifest.toon
+docsRegen: "generate-docs --write added benchmark-agent to docs/reference/agents.md (docs-keep-pace)"
+verification: pass
+verificationCommand: bunx tsc=0 && vitest tests/scripts tests/commands tests/agents tests/patterns tests/skills tests/e2e && generate-docs --check=0
+testsPass: 865
+testsSkip: 2
+unresolvedIssues[0]:

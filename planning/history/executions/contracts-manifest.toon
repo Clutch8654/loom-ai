@@ -1,0 +1,45 @@
+# Wave 0 contracts manifest — PLAN-browser-e2e Phase 0 (contracts-agent)
+# All shared contracts downstream consumers read. Types/schemas only, no behavior.
+
+wave: 0
+taskId: w0-contracts
+agent: contracts-agent
+
+contracts[8]{file,action,purpose,exports}:
+  protocols/browser-command.schema.md,created,"Closed BrowserCommand verb grammar (READ/WRITE/META), A11yRef (role+name+index), BrowserResult envelope, closed error-code enum with operator message + remediation","BrowserCommand,A11yRef,BrowserResult,BrowserError,BrowserErrorCode,BrowserVerb,BrowserTier"
+  protocols/daemon-preflight.schema.md,created,"Single daemon-down behavior for all consumers (C-07): hard non-zero fail + 'run loom-browser start first'; forbids silent-skip / queue-return-0 (F-03)","daemon-preflight-contract"
+  protocols/outcome-eval.schema.md,created,"Ground-truth outcome-eval result with perCategory[]{category,severity,detected}; floor/max thresholds live in the ground-truth fixture","OutcomeEval,OutcomeCategoryRow"
+  protocols/browser-skill.schema.md,created,"Fixture-tested browser-skill convention (C-04): SKILL.md + script.ts + fixtures/ + script.test.ts; pure parser over captured HTML, throws on missing target","BrowserSkill"
+  protocols/e2e-story.schema.md,appended,"Daemon-mode structured action grammar addendum (C-03): navigate/click/type/assert-text/assert-visible/screenshot; distinct from default free-form prose mode","daemon-action-grammar-addendum"
+  lib/types.ts,appended,"TypeScript source-of-truth interfaces for the browser-e2e contracts (types only, tsc-clean)","BrowserCommand,A11yRef,BrowserResult,BrowserError,BrowserErrorCode,BrowserVerb,BrowserReadVerb,BrowserWriteVerb,BrowserMetaVerb,BrowserTier,BrowserSkill,OutcomeEval,OutcomeCategoryRow,OutcomeEvalStatus,OutcomeSeverity"
+  skills/library.yaml,appended,"Registered the 4 new protocols under library.protocols:","browser-command-schema,daemon-preflight-schema,outcome-eval-schema,browser-skill-schema"
+  .plan-execution/contracts/manifest.toon,created,"This manifest",
+
+# Registered protocols (library.protocols:)
+registeredProtocols[4]: browser-command-schema, daemon-preflight-schema, outcome-eval-schema, browser-skill-schema
+
+# lib/types.ts EvalTier extension note:
+# Wave 0 does NOT edit the existing EvalTier union ("t1"|"t2"|"t3"). P8b owns
+# adding the "qa-outcome" tier id to the union + VALID_TIERS + run-evals.ts.
+# A note-block in lib/types.ts records this intent for the downstream owner.
+evalTierExtension:
+  newTierId: qa-outcome
+  owner: P8b
+  modifiedInWave0: false
+
+# P3 DeltaReport target — REUSE the existing shape, no new writer path (AC #6).
+# Anchors confirmed:
+#   agents/convergence-driver.md:1106-1124  (generic per-tier DeltaReport)
+#   agents/e2e-runner-agent.md:159-183       (e2e-tier DeltaReport; sole writer)
+# P3 (scripts/e2e-daemon-runner.ts) emits this SAME shape to a tempdir in tests —
+# never to .plan-execution/ (it is an internal library for P4a's session mode,
+# not a standalone writer; resolves the sole-writer conflict at e2e-runner-agent.md:155).
+deltaReportReuse:
+  writerPath: none-new
+  reusesShapeFrom[2]: agents/convergence-driver.md:1106-1124, agents/e2e-runner-agent.md:159-183
+  soleWriterOfE2eDeltaReport: e2e-runner-agent
+  p3WritesTo: tempdir-in-tests-only
+  requiredKeys[6]: timestamp, convergenceMode, tier, totalCriteria, passing, failing
+  criteriaTable: "criteria[N]{id,name,type,passed,findingCount,blockingCount,details}"
+  e2eOnlyKeys[2]: screenshotPaths[N], consoleDumpPaths[N]
+  p3MinimumKeys[5]: timestamp, tier=e2e, passing, failing, criteria[N]{...}

@@ -17,7 +17,7 @@ You are the runner for the `e2e` convergence tier (level 1, milestone scope). Th
 You receive via prompt:
 
 1. **E2EStory definitions** -- one or more stories from `.plan-execution/convergence/e2e/stories/` in YAML format (see `protocols/e2e-story.schema.md § YAML Story Format`)
-2. **Session mode** -- `headless` (default) or `chrome-mcp` (when `--chrome` flag is passed to `/loom-converge --e2e --chrome`)
+2. **Session mode** -- `headless` (default), `chrome-mcp` (when `--chrome` is passed to `/loom-converge --e2e --chrome`), or `daemon` (when `--daemon` is passed to `/loom-converge --e2e --daemon` — drives the shared `loom-browser` daemon via the structured-action executor). This is the `--e2e` session-mode routing site: the flag selects which of the three Session Modes below runs.
 3. **Run ID** -- unique identifier for this convergence run (timestamp-based, e.g., `run-20260418-103000`)
 4. **Milestone ref** -- the milestone being verified (e.g., `M-01`)
 5. **Criteria subset** -- which criteria from `criteria-plan.toon` map to e2e stories (provided by convergence-driver)
@@ -57,6 +57,19 @@ In Chrome MCP mode:
 6. Screenshots are captured via `mcp__claude-in-chrome__upload_image` or Playwright's built-in screenshot API
 
 Each story still gets isolated execution -- in Chrome MCP mode this means sequential execution with tab isolation via `mcp__claude-in-chrome__tabs_create_mcp`.
+
+### Daemon Mode (`--daemon`)
+
+When `--daemon` is specified, the agent drives the shared, persistent `loom-browser` Chromium daemon (`skills/loom-browser/SKILL.md`) instead of launching Playwright or attaching Chrome MCP. This mode is for convergence runs that share one long-lived browser across commands (the daemon substrate) and for the feedback-loop / TDD tracer paths that reuse it.
+
+Daemon mode is **structurally distinct** from the prose modes and follows a fixed protocol:
+
+1. **Preflight (mandatory, hard-fail).** Before running any story, run the daemon preflight per `protocols/daemon-preflight.schema.md`. If the daemon is **not running**, fail hard: return `status: failure`, a non-zero `verificationExitCode` (exit code `2`), `errorCode: DAEMON_NOT_RUNNING`, and print `run 'loom-browser start' first` on stderr. Do NOT silent-skip, queue-and-return-0, or auto-start the daemon. Daemon-down is an error, not a warning. (A missing Chromium binary with the daemon up is `CHROMIUM_ABSENT` — also a hard fail at runtime.)
+2. **Structured action grammar only.** Daemon-mode stories use the closed structured action grammar from the e2e-story schema's Daemon-Mode Structured Action Grammar addendum (`navigate <url>`, `click <a11y-ref-json>`, `type <a11y-ref-json> <text>`, `assert-text <text>`, `assert-visible <a11y-ref-json>`, `screenshot`). Each `action` parses deterministically into a `BrowserCommand`. There is NO prose NLP fallback — an unrecognized verb or malformed a11y-ref JSON fails the step with `STORY_PARSE_ERROR`, and subsequent steps are `skipped`.
+3. **Invoke the P3 executor in-process.** The agent parses on-disk YAML daemon stories into the `DaemonStory` shape and calls `runE2EDaemon(stories, session, exec = defaultDaemonExec, { outPath })` from `scripts/e2e-daemon-runner.ts`. That module is an **internal library** — it parses the grammar, drives the daemon through the browser-client exec layer (`execRead`/`execWrite`), evaluates the `assert-*` steps, and returns the standard e2e `DeltaReport` (same shape as the prose modes).
+4. **Sole-writer invariant preserved.** `scripts/e2e-daemon-runner.ts` writes a report **only** when an explicit `outPath` is passed (tests point it at a tempdir). In production the agent lets `runE2EDaemon` return the report and the agent itself performs the canonical atomic write to `.plan-execution/convergence/e2e/delta-report.toon`. The e2e-runner-agent remains the **sole writer** of that path; the P3 runner never writes it directly.
+
+Stories run sequentially in daemon mode (one shared browser, WRITE-sequenced per the `loom-browser` tier contract). Screenshots captured by `screenshot` steps are aggregated into the DeltaReport's `screenshotPaths`.
 
 ## Execution Flow
 
@@ -152,7 +165,7 @@ steps[N]:
 
 ## DeltaReport Integration
 
-**Ownership: the e2e-runner-agent is the sole WRITER of the e2e DeltaReport.** The convergence-driver READS this report but does not write it. Other agents (delta-analyzer, fixer-agent) also READ the DeltaReport downstream.
+**Ownership: the e2e-runner-agent is the sole WRITER of the e2e DeltaReport.** The convergence-driver READS this report but does not write it. Other agents (delta-analyzer, fixer-agent) also READ the DeltaReport downstream. This holds in **all three** session modes — including `daemon`, where `scripts/e2e-daemon-runner.ts` returns the report to this agent (writing only to a caller-supplied tempdir `outPath` in tests) and this agent performs the single canonical write.
 
 After all stories in the run complete, the agent produces a DeltaReport for the e2e tier at `.plan-execution/convergence/e2e/delta-report.toon`:
 
@@ -271,6 +284,8 @@ The runner can also be invoked directly by the orchestrator outside the converge
 
 ## Relationship to Other Agents
 
+- **scripts/e2e-daemon-runner.ts** -- the internal library this agent invokes in `daemon` session mode (`runE2EDaemon`); parses the structured action grammar, drives the `loom-browser` daemon, and returns the e2e DeltaReport without writing the canonical path
+- **skills/loom-browser/SKILL.md** -- the persistent Chromium daemon this agent drives in `daemon` mode; this agent is a registered downstream consumer and MUST run the daemon preflight
 - **convergence-driver.md** -- routes `testTier: e2e` criteria to this agent and reads the DeltaReport
 - **e2e-test-writer-agent.md** -- generates E2EStory definitions (YAML stories + Playwright tests) that this agent executes
 - **fixer-agent** -- receives e2e failures from the convergence-driver and fixes production code

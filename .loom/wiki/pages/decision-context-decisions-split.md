@@ -3,12 +3,12 @@ pageId: decision-context-decisions-split
 category: decision
 tags[4]: CONTEXT.md,DECISIONS.md,glossary,split,F-18-Phase-A
 lastUpdated: 2026-06-26T00:00:00Z
-updatedAt: 2026-06-26T00:00:00Z
-updatedBy: wiki-maintainer-agent
+updatedAt: 2026-07-06T00:00:00Z
+updatedBy: wiki-ingest-agent
 staleness: fresh
 summary: F-18 Phase 1 split CONTEXT.md into an always-loaded 34-term domain glossary and DECISIONS.md holding locked decisions — keeping session context lean while making decisions durable and independently updateable.
-estimatedTokens: 680
-bodySections[4]: Summary,What Each File Holds,Why We Split,Maintenance
+estimatedTokens: 1365
+bodySections[6]: Summary,What Each File Holds,Why We Split,Rationale,Alternatives Considered,Maintenance
 relatedFiles[3]:
   CONTEXT.md
   DECISIONS.md
@@ -51,6 +51,17 @@ Before the split, `CONTEXT.md` was a monolithic file that combined vocabulary, d
 2. **No audit trail:** Decisions mixed with vocabulary made it hard to identify what had been locked vs what was just definitional background.
 
 The split gives vocabulary a fast, lightweight home and decisions a durable, independently updateable record.
+
+## Rationale
+
+The two files have opposite optimization targets. Vocabulary is paid for on every session start, so it must stay short — hence the 50-term ceiling and the CT-06 vocab-diff harness that keeps it earning its place. Locked decisions must persist verbatim and remain auditable across roadmap phases, so they must survive independently of vocabulary churn. Combining them forces one concern to compromise the other: every locked decision permanently inflates per-session context, and touching the glossary risks disturbing decision history. Splitting lets each file be tuned on its own axis — `CONTEXT.md` optimizes for load-cost, `DECISIONS.md` optimizes for durability and an append-only `D-NN` audit trail that plan generation and execution are contractually required to honour. The `<!-- loom:context-split:v2 -->` sentinel makes the migration idempotent and mechanically detectable.
+
+## Alternatives Considered
+
+- **Keep a single monolithic `CONTEXT.md`.** Rejected: decisions accumulated in the always-loaded file, inflating every session's cost even when irrelevant, and mixing vocabulary with locked history left neither independently auditable.
+- **Store decisions only in `decision-*` wiki pages.** Rejected: wiki pages are pulled on demand, not always-loaded, so plan and execution agents could proceed without ever seeing — let alone honouring — a locked decision.
+- **Cap context by trimming old decisions.** Rejected: destroys the audit trail, which is the entire point of locking a decision so it survives later phases.
+- **Inline decisions into ROADMAP.md.** Rejected: couples decision durability to the roadmap's lifecycle and re-runs; decisions must outlive any single roadmap pass.
 
 ## Maintenance
 

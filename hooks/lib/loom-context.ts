@@ -14,12 +14,16 @@ import { findPlanExecutionDir, readPipelineState } from "./context.js";
 
 const subcommand = process.argv[2];
 
-function writeToon(lines: string[]): void {
+// Emits pre-formatted TOON lines to stdout. This is a thin line writer, not a
+// structural serializer — callers hand it already-formatted `key: value` lines
+// (renamed from `writeToon` in Phase 11a so it is not mistaken for a
+// hand-rolled TOON serializer; structured serialization lives in lib/toon.ts).
+function emitLines(lines: string[]): void {
   process.stdout.write(lines.join("\n") + "\n");
 }
 
 function unavailable(reason: string): void {
-  writeToon([`status: unavailable`, `reason: ${reason}`]);
+  emitLines([`status: unavailable`, `reason: ${reason}`]);
 }
 
 /** all-stages: reads all .plan-execution/stage-context/*.toon files, concatenates into TOON. */
@@ -59,7 +63,7 @@ function allStages(): void {
       }
     }
 
-    writeToon(output);
+    emitLines(output);
   } catch (err) {
     unavailable(`error reading stage context: ${err}`);
   }
@@ -80,7 +84,7 @@ function pipelinePosition(): void {
       return;
     }
 
-    writeToon([
+    emitLines([
       `status: ok`,
       `currentStage: ${pipeline.currentStage}`,
       `outerIteration: ${pipeline.outerIteration}`,
@@ -149,7 +153,7 @@ function budgetStatus(): void {
     const totalEstimated = rollingContextTokens + stageContextTokens + 5000; // overhead
     const utilization = agentBudgetCap > 0 ? (totalEstimated / agentBudgetCap).toFixed(2) : "0.00";
 
-    writeToon([
+    emitLines([
       `status: ok`,
       `contextWindow: ${contextWindow}`,
       `agentBudgetCap: ${agentBudgetCap}`,

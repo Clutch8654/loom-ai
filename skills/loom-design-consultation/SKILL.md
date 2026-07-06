@@ -98,3 +98,31 @@ right rail.
 - `skills/loom-design-html/SKILL.md`
 - `skills/loom-design-shotgun/SKILL.md`
 - `.loom/learnings.toon` (domain: design)
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+Cross-project taste carryover: the interview first reads `.loom/learnings.toon`
+(`domain: design`) and surfaces prior decisions so brand choices compound
+across projects, and preferences captured downstream by `/loom-design shotgun`
+time-decay per `protocols/design-preferences.schema.toon` instead of ossifying.
+gstack's design kickoff starts cold every time with no cross-project memory or
+decay.
+
+## Backing & enforcement
+
+- **Backing:** `protocols/design-preferences.schema.toon` (normative taste-memory
+  + time-decay math shared by the `/loom-design` set).
+- **Behavioral tests:** `tests/skills/review-batch.test.ts` asserts the schema
+  defines the decay rule and that this skill cites the shared preamble.
+- **Enforcement:** durable premise artifacts are written atomically to
+  `.loom/design/{slug}-{ts}.md`; the taste-memory decay is applied on every read
+  per the schema.

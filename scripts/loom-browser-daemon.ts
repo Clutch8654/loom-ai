@@ -15,6 +15,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { spawn } from "node:child_process";
+import { atomicWrite, isMain } from "../lib/index.js";
 
 const BROWSER_DIR = path.join(process.cwd(), ".loom", "browser");
 const STATE_FILE = path.join(BROWSER_DIR, "state.toon");
@@ -29,15 +30,43 @@ function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function atomicWrite(filePath: string, content: string) {
-  ensureDir(path.dirname(filePath));
-  const tmp = filePath + ".tmp";
-  fs.writeFileSync(tmp, content);
-  fs.renameSync(tmp, filePath);
-}
-
 function nowISO(): string {
   return new Date().toISOString();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Resolve the REAL CDP WebSocket endpoint of the freshly-spawned Chromium by
+ * polling its DevTools HTTP endpoint (`/json/version` → webSocketDebuggerUrl).
+ *
+ * The `ws://.../devtools/browser/pending` placeholder written at spawn time
+ * never connects; this resolves the concrete `.../devtools/browser/<id>` URL
+ * that `chromium.connectOverCDP()` needs. Returns null if Chromium never
+ * exposes the socket within the deadline (treated as a Chromium-absent path).
+ */
+async function resolveCdpEndpoint(
+  port: number,
+  timeoutMs = 8000,
+  intervalMs = 150
+): Promise<string | null> {
+  const url = `http://127.0.0.1:${port}/json/version`;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const body = (await res.json()) as { webSocketDebuggerUrl?: string };
+        if (body.webSocketDebuggerUrl) return body.webSocketDebuggerUrl;
+      }
+    } catch {
+      // Chromium not listening yet — keep polling until the deadline.
+    }
+    await sleep(intervalMs);
+  }
+  return null;
 }
 
 function detectChromiumBinary(): string | null {
@@ -160,7 +189,7 @@ function statusCmd(): number {
   return 0;
 }
 
-function startCmd(): number {
+async function startCmd(): Promise<number> {
   const existing = readStateFile();
   if (existing && typeof existing["daemonPid"] === "number") {
     const pid = existing["daemonPid"];
@@ -214,18 +243,30 @@ function startCmd(): number {
     if (pid > 0) {
       fs.writeFileSync(PID_FILE, String(pid));
     }
+    // Resolve the REAL cdpEndpoint BEFORE any exec proceeds: poll DevTools
+    // /json/version for webSocketDebuggerUrl and persist it over the
+    // ws://.../pending placeholder (which never connects).
+    const resolved = await resolveCdpEndpoint(port);
     writeState({
       daemonPid: pid,
       daemonPort: port,
       startedAt: nowISO(),
       chromiumBinaryPath: binary,
-      cdpEndpoint: `ws://127.0.0.1:${port}/devtools/browser/pending`,
+      cdpEndpoint: resolved ?? "",
       cookiesLoaded,
       injectionDefenseEnabled: true,
     });
     console.log(`phase: running`);
     console.log(`daemonPid: ${pid}`);
     console.log(`daemonPort: ${port}`);
+    if (resolved) {
+      console.log(`cdpEndpoint: ${resolved}`);
+    } else {
+      console.error(
+        "CHROMIUM_ABSENT — Chromium did not expose a CDP socket on " +
+          `127.0.0.1:${port}. Run 'playwright install chromium', then restart.`
+      );
+    }
     return 0;
   } catch (err) {
     console.error(`BROWSER_SPAWN_FAILED: ${(err as Error).message}`);
@@ -271,12 +312,80 @@ function stopCmd(): number {
   return 0;
 }
 
-function execCmd(args: string[]): number {
+/**
+ * Parse `exec` CLI argv into a BrowserCommand. `target` is JSON-parsed as an
+ * A11yRef when it is a JSON object, else treated as a raw selector string.
+ * Throws STORY_PARSE_ERROR for unknown verbs / malformed a11y-ref JSON.
+ */
+async function parseExecArgs(args: string[]): Promise<import("../lib/index.js").BrowserCommand> {
+  const { classifyVerb, BrowserClientError } = await import("./lib/browser-client.js");
+  const verb = args[0];
+  const tier = classifyVerb(verb);
+  if (tier === null) {
+    throw new BrowserClientError("STORY_PARSE_ERROR", `Unknown verb: ${verb}`);
+  }
+
+  // Verb-specific positional parsing (READ tier — P1a).
+  let target: import("../lib/index.js").A11yRef | string | null = null;
+  const cmdArgs: Record<string, unknown> = {};
+  const rawTarget = args[1];
+  if (rawTarget !== undefined) {
+    const trimmed = rawTarget.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        target = JSON.parse(trimmed) as import("../lib/index.js").A11yRef;
+      } catch {
+        throw new BrowserClientError(
+          "STORY_PARSE_ERROR",
+          `Malformed a11y-ref JSON: ${rawTarget}`
+        );
+      }
+    } else {
+      target = rawTarget;
+    }
+  }
+  if (verb === "css" && args[2] !== undefined) {
+    cmdArgs["property"] = args[2];
+  }
+
+  return {
+    verb: verb as import("../lib/index.js").BrowserVerb,
+    tier: tier as import("../lib/index.js").BrowserTier,
+    target,
+    args: cmdArgs,
+  };
+}
+
+/** Print a BrowserResult as an operator-facing TOON block. */
+function printResult(result: import("../lib/index.js").BrowserResult): void {
+  console.log("result:");
+  console.log(`  ok: ${result.ok}`);
+  console.log(`  verb: ${result.verb}`);
+  console.log(`  tier: ${result.tier}`);
+  console.log(`  exitCode: ${result.exitCode}`);
+  if (result.ok && result.data) {
+    console.log(`  data: ${JSON.stringify(result.data)}`);
+  }
+  if (!result.ok && result.error) {
+    console.log("  error:");
+    console.log(`    code: ${result.error.code}`);
+    console.log(`    message: ${result.error.message}`);
+    console.log(`    remediation: ${result.error.remediation}`);
+    console.error(result.error.remediation);
+  }
+  if (result.durationMs !== undefined) {
+    console.log(`  durationMs: ${result.durationMs}`);
+  }
+}
+
+async function execCmd(args: string[]): Promise<number> {
   if (args.length === 0) {
-    console.error("USAGE: loom-browser exec <cmd> [args...]");
+    console.error("USAGE: loom-browser exec <verb> [target] [args...]");
     return 2;
   }
-  const cmd = args.join(" ");
+
+  // --- Daemon preflight (daemon-preflight.schema.md, C-07) --------------
+  // Daemon-down is a HARD non-zero failure — NEVER silent-skip / queue-return-0.
   const state = readStateFile();
   const running =
     state !== null &&
@@ -284,21 +393,57 @@ function execCmd(args: string[]): number {
     state["daemonPid"] > 0 &&
     isPidAlive(state["daemonPid"]);
   if (!running) {
-    console.error("BROWSER_NOT_RUNNING — command queued");
-    appendQueue(`exec ${cmd}`);
-    return 0;
+    console.error(
+      "DAEMON_NOT_RUNNING: The loom-browser daemon is not running; no Chromium to attach to."
+    );
+    console.error("run 'loom-browser start' first");
+    return 2; // DAEMON_NOT_RUNNING exitCode
   }
-  // Best-effort: without a bundled CDP client we log to queue for a downstream
-  // client to pick up. Real client integration is a follow-on within M-11's
-  // downstream milestones (M-07, M-13).
-  appendQueue(`exec ${cmd}`);
-  console.log(`queued: ${cmd}`);
-  return 0;
+
+  const { connect, execRead, execWrite, execMeta, errorResult, EXIT_CODES } =
+    await import("./lib/browser-client.js");
+
+  // --- Parse the command ------------------------------------------------
+  let command: import("../lib/index.js").BrowserCommand;
+  try {
+    command = await parseExecArgs(args);
+  } catch (err) {
+    const result = errorResult(
+      (args[0] ?? "unknown") as import("../lib/index.js").BrowserVerb,
+      "read",
+      err
+    );
+    printResult(result);
+    return result.exitCode;
+  }
+
+  const cdpEndpoint =
+    typeof state["cdpEndpoint"] === "string" ? state["cdpEndpoint"] : "";
+
+  // --- Attach + dispatch by tier (READ P1a, WRITE/META P1b) -------------
+  let session: Awaited<ReturnType<typeof connect>> | null = null;
+  try {
+    session = await connect(cdpEndpoint);
+    const result =
+      command.tier === "write"
+        ? await execWrite(session, command)
+        : command.tier === "meta"
+          ? await execMeta(session, command)
+          : await execRead(session, command);
+    printResult(result);
+    return result.exitCode;
+  } catch (err) {
+    const result = errorResult(command.verb, command.tier, err);
+    printResult(result);
+    return result.exitCode || EXIT_CODES.CDP_DISCONNECTED;
+  } finally {
+    if (session) await session.dispose();
+  }
 }
 
 // ---------- entry ----------
 
-function main(argv: string[]): number {
+async function main(argv: string[]): Promise<number> {
   const sub = argv[2];
   const rest = argv.slice(3);
   switch (sub) {
@@ -316,4 +461,15 @@ function main(argv: string[]): number {
   }
 }
 
-process.exit(main(process.argv));
+// Guard the entry call so importing this module (e.g. from a backfill test)
+// runs no side effects — only invoke main() when this file is the process
+// entry point. isMain works under bun, plain node, and node+tsx.
+if (isMain(import.meta)) {
+  main(process.argv).then(
+    (code) => process.exit(code),
+    (err) => {
+      console.error(err);
+      process.exit(1);
+    }
+  );
+}

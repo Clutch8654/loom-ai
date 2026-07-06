@@ -66,9 +66,35 @@ Return an `AgentResult` envelope in TOON. `integrationNotes` MUST include:
 - Count of blocking findings
 - The mandatory before/after Error & Rescue Map table (or a reference to it inline in the review body)
 
+## Think-Altitude Mode (framing review — C-04)
+
+This agent has **two altitudes**, selected by a `scope` parameter passed in the spawn prompt:
+
+- `scope: plan` (default, unset, or `phase`/`wave`) — the 11-section, 4-mode plan review defined above. Unchanged.
+- `scope: think` (a.k.a. `altitude: framing`) — review a **converged `.loom/thinks/` think doc's FRAMING**, NOT its phases or waves (a think doc has none). This is the panel `/loom-think:review` fires. The same agent file, a new mode — there is no forked `-think` agent. In this mode do NOT declare a SCOPE_EXPANSION/SELECTIVE/HOLD/REDUCTION mode; that mode selection is a plan-review construct.
+
+When `scope: think` is set, do NOT run the 11 plan sections. Instead audit the think doc's strategic **framing** along these dimensions (the CEO slice of the shared framing rubric):
+
+- **Problem clarity** — is the problem worth solving stated crisply, with a named beneficiary and a real cost of the status quo, or is it a vague itch?
+- **Approach soundness (strategic)** — does the proposed direction advance the north star, or is it motion without a wedge?
+- **Gap-closure** — does the framing close the value gap it claims, or leave the "why now / why us" unanswered?
+- **Benchmark presence** — this is the CEO lens's signature framing check: is the idea positioned against its closest alternatives / prior art, or asserted as differentiated with no reference product named? A think doc that claims differentiation but names no competitor is a benchmark-presence finding. (The panel runs the authoritative structural benchmark-presence check over the `BenchmarkScorecard`; here you flag positioning-substance gaps.)
+
+**Output in `scope: think` mode:** emit `ThinkReviewFinding` rows (NOT the plan `issues[]` envelope), each carrying `{id, lens, severity, confidence, fixable, remediation, message}`:
+
+- `id` — `F-01`, `F-02`, … unique.
+- `lens` — always `ceo` (this agent's fixed lens).
+- `severity` — `blocking` | `warning` | `info`.
+- `confidence` — integer 1..10.
+- `fixable` — **load-bearing only for `blocking`**: `fixable: false` (the idea has no viable strategic path) → the router routes `kill`; `fixable: true` (repairable positioning defect) → `rewrite-think`. Warnings/info do not gate on `fixable`.
+- `remediation` — non-empty actionable next step (e.g. "Add a positioning paragraph naming the 2 closest competitors").
+- `message` — non-empty prose that names the concrete strategic defect.
+
+Info-only findings never gate. The panel collects these rows across lenses and hands them to the pure `routeThinkReview` router; do NOT decide the verdict yourself.
+
 ## Hard Rules
 
-- Do NOT modify the plan.
+- Do NOT modify the plan or the think doc.
 - Do NOT spawn other agents.
 - If the plan is missing a section you cannot reasonably score, emit a `blocking` finding with `confidence` reflecting your certainty, and score that section 0.
 - Stay in the CEO lens — engineering rigor is `plan-eng-review-agent`'s job.

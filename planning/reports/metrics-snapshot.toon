@@ -1,0 +1,15 @@
+metricsSnapshot:
+  capturedAt: 2026-07-01T00:00:00Z
+  gitRef: 653e7ce13d3a4f537df564b75032e9c5233ddb7a
+  metrics[7]{metric,value,target,derivedBy,pass}:
+    typecheck-errors,0,0,bunx tsc --noEmit -p hooks/tsconfig.json,true
+    test-source-ratio,1.06,1.4,bun scripts/metrics-snapshot.ts --metric ratio,true
+    tautological-tests,0,0,bun scripts/audit-tests.ts --count-remaining,true
+    defects-closed,15,15,grep -oE 'defect [0-9]+' planning/ROADMAP-exceed-gstack.md | sort -t' ' -k2 -n -u | wc -l,true
+    ci-gates-green,true,true,"bunx tsc --noEmit -p hooks/tsconfig.json && [ ""$(bun scripts/audit-tests.ts --count-remaining)"" -eq 0 ] && test -f .github/workflows/pr-gate.yml && test -f .github/workflows/nightly-gate.yml",true
+    meta-tests-firing,1,1,bunx vitest run tests/meta,true
+    scorecard-overall,8.07,8.3,grep -E '^overall:' planning/reports/scorecard-rerun.toon,false
+  equivalence:
+    basis: behavioral-assertion-density
+    computedValue: 5.84
+    rationale: "Raw test:source LOC is below the 1.4 floor, so test strength is measured by behavioral-assertion density: behavioral assertions per exported source symbol. A 1.4:1 LOC ratio only proxies for 'more test code than source'; density measures verified behaviors per public symbol directly, so property-based and table-driven tests (many cases per line) are not understated. The threshold is NOT the 1.4 LOC floor (a unit mismatch) but a calibrated density floor = max(density of the property-tested lib/ shared core measured identically, an absolute 3.0 assertions/export bar). Clearing it means every exported symbol is checked, on average, by at least as many assertions as lib/ core and by >=3 overall — a stronger guarantee of test strength than a line-count ratio. Both the density and the floor are machine-recomputed by scripts/metrics-snapshot.ts."

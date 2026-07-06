@@ -30,28 +30,31 @@ import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import {
+  dockerDaemonReachable,
+  dockerE2eOptIn,
+  dockerE2eSkipReason,
+} from "../helpers/docker-e2e-guard.js";
 
 const REPO_ROOT = join(__dirname, "..", "..");
 const HARNESS = join(REPO_ROOT, "test/docker/run-harness.sh");
 const TARBALL = join(REPO_ROOT, "dist/loom-local-test.tar.gz");
 const INSTALL_SH = join(REPO_ROOT, "install.sh");
 
-function hasDocker(): boolean {
-  const r = spawnSync("docker", ["info"], { stdio: "ignore" });
-  return r.status === 0;
-}
-
 function hasCurl(): boolean {
   const r = spawnSync("curl", ["--version"], { stdio: "ignore" });
   return r.status === 0;
 }
 
-const DOCKER_AVAILABLE = hasDocker();
+const DOCKER_AVAILABLE = dockerDaemonReachable();
 const CURL_AVAILABLE = hasCurl();
 const TARBALL_AVAILABLE = existsSync(TARBALL);
 const HARNESS_AVAILABLE = existsSync(HARNESS);
 const DEPS_AVAILABLE =
   DOCKER_AVAILABLE && CURL_AVAILABLE && TARBALL_AVAILABLE && HARNESS_AVAILABLE;
+// The heavy container matrix runs only when its deps are present AND the run is
+// provisioned for it (CI or LOOM_DOCKER_E2E=1). See test/helpers/docker-e2e-guard.ts.
+const RUN_HARNESS = DEPS_AVAILABLE && dockerE2eOptIn();
 
 describe("Phase 11B — curl-install E2E (S-01)", () => {
   it("install.sh is present at repo root (curl install target)", () => {
@@ -62,7 +65,15 @@ describe("Phase 11B — curl-install E2E (S-01)", () => {
     expect(existsSync(HARNESS)).toBe(true);
   });
 
-  it.skipIf(!DEPS_AVAILABLE)(
+  it("clean-machine E2E gate is resolved and documented", () => {
+    const reason = RUN_HARNESS
+      ? "enabled — running the full container harness"
+      : `skipped — ${dockerE2eSkipReason(DEPS_AVAILABLE)}`;
+    console.info(`[curl-install E2E] ${reason}`);
+    expect(typeof RUN_HARNESS).toBe("boolean");
+  });
+
+  it.skipIf(!RUN_HARNESS)(
     "S-01: curl install on fresh container → /loom-doctor --json reports overallStatus=clean and exits 0",
     () => {
       // Delegates to the Phase 8 harness with --mode curl. The harness builds
@@ -91,13 +102,13 @@ describe("Phase 11B — curl-install E2E (S-01)", () => {
     }
   );
 
-  it.skipIf(DEPS_AVAILABLE)(
-    "spec cleanly skips when docker/curl/tarball/harness are absent locally",
+  it.skipIf(RUN_HARNESS)(
+    "spec cleanly skips the heavy harness when not provisioned",
     () => {
-      // Bare-fact: when dependencies are not present, the spec MUST still
-      // pass so local dev iteration is not blocked. CI re-runs with the full
-      // dependency set.
-      expect(DEPS_AVAILABLE).toBe(false);
+      // Bare-fact: when the heavy matrix is gated off (deps absent OR not opted
+      // in), the spec MUST still pass so local dev iteration is not blocked. CI
+      // (CI=true) opts in and re-runs the full container matrix.
+      expect(RUN_HARNESS).toBe(false);
     }
   );
 });

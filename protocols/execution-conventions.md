@@ -687,7 +687,7 @@ The orchestrator spawns `wiki-maintainer-agent` at execution events defined in `
 
 ### Preflight Budget Checks
 
-Before spawning test or convergence agents, the orchestrator runs `hooks/context-budget-test.ts` (`checkTestAgentBudget`) to verify the agent's estimated token usage is within the 100k budget cap. See `context-budget.md` and `stage-context.schema.md` for the budget and stage context specifications.
+Before spawning test or convergence agents, the orchestrator runs `hooks/context-budget-check.ts` (`checkTestAgentBudget`) to verify the agent's estimated token usage is within the 100k budget cap. See `context-budget.md` and `stage-context.schema.md` for the budget and stage context specifications.
 
 ### Planning Taxonomy
 

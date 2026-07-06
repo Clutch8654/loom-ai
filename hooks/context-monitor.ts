@@ -10,6 +10,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { atomicWriteText } from "../lib/index.js";
 import { runHook, allow } from "./lib/run-hook.js";
 import { estimateTokens, estimateFileTokens } from "./lib/token-estimator.js";
 import { findPlanExecutionDir } from "./lib/context.js";
@@ -185,9 +186,7 @@ function writeContextRemainingToStatus(
     }
 
     const updated = lines.join("\n");
-    const tmpPath = statusPath + ".tmp";
-    fs.writeFileSync(tmpPath, updated);
-    fs.renameSync(tmpPath, statusPath);
+    atomicWriteText(statusPath, updated);
   } catch {
     // fail open -- status line is additive, never gating
   }

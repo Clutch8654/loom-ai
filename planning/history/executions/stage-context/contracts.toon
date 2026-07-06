@@ -1,0 +1,10 @@
+stage: contracts
+wave: 0
+completedAt: 2026-07-06T01:39:43Z
+filesChanged[6]: protocols/think-review.schema.md,protocols/benchmark-scorecard.schema.md,lib/types.ts,skills/library.yaml,planning/history/changelog.md,.plan-execution/contracts/manifest.toon
+exportsAdded[12]: ThinkReviewVerdict,ThinkReviewFinding,ThinkReviewLens,ThinkReviewSeverity,ThinkReviewDecision,PrePlanLensPanel,PrePlanLensSelection,ProjectArchetype,BenchmarkScorecard,BenchmarkDimension,BenchmarkReference,LoopBack
+findingsResolved: 0
+findingsRemaining: 0
+summary: "Thinking-gate contracts laid. ThinkReviewVerdict closed enums (lens eng|devex|ceo|design; severity=FindingSeverity blocking|warning|info AgentResult-aligned; fixable+remediation; required nextCommand/decidedBy/revisionCount). Fail-closed C-02 decision table (no MAY; non-fixable-blocking→kill, fixable-blocking|any-warning→rewrite-think, none→proceed, no-quorum→PANEL_INCOMPLETE→rewrite-think). Archetype→lens rule table (6 archetypes, eng always fires). BenchmarkScorecard typed math + thin def. LoopBack audit type. tsc=0."
+keyDecisions[3]: "ThinkReviewSeverity aliased to existing FindingSeverity (single closed set, router+AgentResult validator share it)","archetype→lens rule normative in think-review.schema.md; PrePlanLensPanel is typed shape only (types.ts runtime-free)","PrePlanLensPanel.activeLenses.length = panel size M feeding router quorum ceil(M/2)"
+nextStageHints[4]: "P1: router = pure fn over findings[] implementing C-02 table; quorum ceil(M/2); fail-closed (crashed/empty→rewrite-think never proceed); kill-specific fixture required; import ThinkReviewVerdict/Finding/Decision from lib/types.ts","P2: consume cross-model marker at skills/loom-think/SKILL.md:92/:95 (name non-fable model); divergence→finding for router","P3: 4 lenses archetype-selected via P0 rule table, gated on think-review-not-run; fix bare-4 drift at loom-roadmap/review.md lines 2,7,63,107-115","P5: author agents/benchmark-agent.md (library.yaml entry PRE-REGISTERED by P0 — do NOT touch library.yaml); writes BenchmarkScorecard into think doc; register --benchmark across pattern-executor.md+orchestration-patterns.md+orchestration.toml"

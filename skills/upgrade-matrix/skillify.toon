@@ -1,0 +1,6 @@
+skill: skillify
+batch: ops
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: Backward-direction transcript-to-skill codifier that gates library.yaml registration on a green test (SKILLIFY_TEST_FAIL blocks the write) — no upstream forward-only scaffolder does this.

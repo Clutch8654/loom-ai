@@ -88,3 +88,29 @@ next `predictedTTHW` — this is the boomerang.
 
 - Not a full-blown user-study replacement. TTHW is one signal.
 - Does not modify the install script. Findings are advisory.
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+Measured-vs-predicted TTHW boomerang: the audit re-runs install-to-hello-world
+in a fresh temp dir, computes the delta against
+`agents/plan-devex-review-agent.md`'s `predictedTTHW`, and archives to
+`planning/history/reviews/` so the next plan review is graded and self-corrects.
+gstack's DX review is one-shot with no feedback loop into planning.
+
+## Backing & enforcement
+
+- **Backing:** `agents/plan-devex-review-agent.md` — the planning-time counterpart
+  that emits `predictedTTHW` and reads the archived audit.
+- **Behavioral tests:** `tests/skills/review-batch.test.ts` asserts the plan-time
+  agent exists and that this skill cites the shared preamble.
+- **Enforcement:** an `over-budget` verdict (`|delta| > 25%`) emits an advisory
+  finding and archives the audit that the next `plan-devex-review-agent` run reads.

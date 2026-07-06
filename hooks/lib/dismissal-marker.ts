@@ -14,6 +14,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { atomicWriteText } from "../../lib/index.js";
 import { parseToon } from "./toon-reader.js";
 
 /** Default TTL: 24 hours, in milliseconds. */
@@ -76,16 +77,22 @@ export function writeDismissalMarker(
   now: Date,
   deps: MarkerDeps = {}
 ): void {
-  const writeFile = deps.writeFile ?? defaultWriteFile;
-  const rename = deps.rename ?? defaultRename;
   const mkdir = deps.mkdir ?? defaultMkdir;
-
   mkdir(path.dirname(markerPath));
 
   const body = `dismissedAt: ${now.toISOString()}\n`;
-  const tmp = `${markerPath}.tmp`;
-  writeFile(tmp, body);
-  rename(tmp, markerPath);
+
+  // Test seam: when a caller injects BOTH a write and rename fake, drive the
+  // decomposed tmp→rename path so each step is observable. Production (no
+  // injected write seam) routes through the shared-core atomic writer
+  // (C-02, lib/atomic-fs.ts) — the single sanctioned tmp→rename implementation.
+  if (deps.writeFile && deps.rename) {
+    const tmp = `${markerPath}.tmp`;
+    deps.writeFile(tmp, body);
+    deps.rename(tmp, markerPath);
+    return;
+  }
+  atomicWriteText(markerPath, body);
 }
 
 /**
@@ -110,14 +117,6 @@ export function isFresh(
 
 function defaultReadFile(p: string): string {
   return fs.readFileSync(p, "utf8");
-}
-
-function defaultWriteFile(p: string, contents: string): void {
-  fs.writeFileSync(p, contents, "utf8");
-}
-
-function defaultRename(from: string, to: string): void {
-  fs.renameSync(from, to);
 }
 
 function defaultMkdir(p: string): void {

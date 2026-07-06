@@ -49,7 +49,7 @@ What you actually get when you run Loom on a project:
 - **Convergence loops** that iterate `do work → check work → remediate` until tests pass and reviewers approve, with circuit breakers (stalled, regression, budget-exhausted) instead of infinite spin.
 - **A repo-committed wiki** (`.loom/wiki/`) that captures scope decisions, contracts, scenarios, and per-domain `contract-*` pages — coherent across changes because `/loom-change` mutates atomically.
 - **Given/When/Then scenarios as the canonical testable unit** — the convergence-planner emits verification targets directly from scenarios at four tiers (unit / integration / e2e / qa-review).
-- **Tool-call-level discipline** — eighteen enforcement and monitoring hooks plus a 100k-token context-budget cap per spawn keep long agentic runs predictable and auditable.
+- **Tool-call-level discipline** — <!-- loom:generated:hook-count-summary -->21<!-- /loom:generated:hook-count-summary --> enforcement and monitoring hooks plus a 100k-token context-budget cap per spawn keep long agentic runs predictable and auditable.
 
 ## Quickstart
 
@@ -276,7 +276,7 @@ For a guided 30-minute tour see [`docs/first-30-minutes.md`](docs/first-30-minut
 | **Design & docs (build-time)** | | |
 | Ground-up brand kickoff (typography, color, motion) | `/loom-design consultation` | 5-phase design consultation; writes a durable premise artifact to `.loom/design/` |
 | Parallel UI variants on one route with taste memory | `/loom-design shotgun` | Generate N candidates on distinct axes; capture preference; decay old prefs (90d/180d) |
-| Ship production HTML/CSS from a mockup | `/loom-design html` | Pretext-native rules + anti-AI-slop guards; emits to `docs/design/{slug}/` |
+| Ship production HTML/CSS from a mockup | `/loom-design html` | reflow-native rules + anti-AI-slop guards; emits to `docs/design/{slug}/` |
 | Cold-start Diataxis docs | `/loom-docs generate` | Generates `docs/tutorial`, `docs/how-to`, `docs/reference`, `docs/explanation` with frontmatter |
 | Author an excalidraw triplet from English or mermaid | `/loom-diagram` | Source `.md` + editable `.excalidraw` + rendered `.svg`/`.png` |
 | **Learn & improve (post-ship)** | | |
@@ -349,7 +349,7 @@ The split is the layer they touch:
 | `/loom-which` | (free-text) | Decision-tree router — asks 1–3 questions to recommend the right `/loom-*` command for your current task. Distinct from `/loom-do` (model-facing intent inference) and `/loom-reference` (flat table). |
 | `/loom-deepen` | (flags) `--target`, `--html`, `--limit` | Periodic codebase-health pass — Explore-subagent fan-out, deletion test, surfaces shallow modules with before/after diagrams. Default TOON output; `--html` opt-in with headless fallback. |
 | `/loom-prototype` | `<name> --branch logic\|ui [--adr]` | Author throwaway code as a deliberate phase. `logic` = terminal app, `ui` = parallel UI variants on one route. Completion ceremony writes `prototypes/{name}/answer.toon` and updates the linked ADR. |
-| `/loom-think` | — | Pre-plan meta-step — 5-phase deep-think interview → `.loom/thinks/{slug}-{date}.md`, cross-model second opinion. Precedes `/loom-roadmap init` for fuzzy problems. |
+| `/loom-think` | review | Pre-plan meta-step — 5-phase deep-think interview → `.loom/thinks/{slug}-{date}.md`, cross-model second opinion. Precedes `/loom-roadmap init` for fuzzy problems. `review` = opt-in pre-plan gate over the converged doc → `proceed` \| `rewrite-think` \| `kill` (default-on in `/loom-auto`). |
 | `/loom-spec` | (flags) `--auto-mutate`, `--name <slug>`, `--yes`, `--worktree`, `--from <path>` | Pre-plan meta-step — 5-phase idea → ROADMAP feature block or GH issue; chains into `/loom-roadmap:mutate`; `--worktree` spawns branch. |
 | `/loom-ship` | — | Chief ship-engineer — pre-flight rebase from base + drift detection + VERSION-slot reserve via `scripts/loom-version-slot.ts` + plan-completion audit inline in PR body via `gh pr create`. |
 | `/loom-canary` | — | Progressive deploy with health-check gates and auto-rollback. Reads deploy config from `CLAUDE.md`; wraps `fly` / `vercel` / `wrangler` / `netlify` / `railway` / `render`. |
@@ -379,11 +379,111 @@ Before a roadmap exists there is an idea, and ideas arrive at different levels o
 
 ### /loom-think
 
-`/loom-think <topic>` runs an office-hours-style deep interview for genuinely fuzzy problems: one question per turn, your language carried forward verbatim. The five phases are Problem, Demand Evidence, Status Quo, Target User / Narrowest Wedge, and Synthesis (Constraints + Premises + Approaches A/B + Recommendation), with a cross-model second-opinion pass between phases 3 and 4 that sketches Approach Candidates A/B/C and leaves a `Cross-model review: PENDING` marker as a hook for a later adversarial pass (e.g. `/loom-debate`). Sparse demand evidence is flagged prominently — `Demand evidence: SPARSE` — so a downstream `/loom-roadmap init` treats the doc as a risky input.
+`/loom-think <topic>` runs a rigorous, structured deep interview for genuinely fuzzy problems: one question per turn, your language carried forward verbatim. The five phases are Problem, Demand Evidence, Status Quo, Target User / Narrowest Wedge, and Synthesis (Constraints + Premises + Approaches A/B + Recommendation), with a cross-model second-opinion pass between phases 3 and 4 that sketches Approach Candidates A/B/C and leaves a `Cross-model review: PENDING` marker as a hook for a later adversarial pass (e.g. `/loom-debate`). Sparse demand evidence is flagged prominently — `Demand evidence: SPARSE` — so a downstream `/loom-roadmap init` treats the doc as a risky input.
 
 The result is a durable design doc at `.loom/thinks/{slug}-{timestamp}.md` (frontmatter: slug, datetime, branch, supersedes, `status: DRAFT`; written atomically). Docs chain per topic: a new think on the same `--branch` supersedes the previous one, resolved by frontmatter datetime, so a topic's thinking history stays traceable. Feed the doc forward with `/loom-roadmap init --from <path>` or `/loom-spec --from <path>`.
 
 Use it when you catch yourself saying "I've been thinking about..." with no crisp deliverable, or when a prior roadmap or plan stalled and needs a re-frame. Skip it for a scoped ticket (`/loom-spec`), a clear bug (`/loom-bugfix`), an area an existing roadmap already covers (`/loom-roadmap mutate`), or a specific topic that wants many voices (`/loom-roadmap explore`). Rule of thumb: think = fuzzy problem, one operator converging; explore = specific topic, many voices; spec = crystallize a chosen direction into a ticket.
+
+Once the doc converges, the **suggested next step is `/loom-think:review`** (below) — an optional gate that vets the framing before you cross into `/loom-roadmap init`.
+
+### /loom-think:review — the pre-plan gate
+
+Loom historically had **formality-first gravity**: the first real critique of an idea landed at `/loom-plan review`, *after* a formal roadmap and plan already existed. A framing error — a wrong approach, an unrebutted objection, an idea asserted in a competitive vacuum — survived all the way to a post-draft review that then returned REVISE. `/loom-think:review` closes that gap by putting a lightweight review **at the divergent→formality seam**: it reviews the converged think doc's *framing* (problem clarity, approach soundness, gap-closure, benchmark presence) before any formal artifact is drafted.
+
+The lifecycle is **divergent → gate → formality**:
+
+```
+DIVERGENT (breathing room)                         GATE                 CONVERGENT (rigor)
+ /loom-think · /loom-spec · /loom-prototype   /loom-think:review     /loom-roadmap init → review → sign-off
+ /loom-roadmap explore · --benchmark          {proceed |             /loom-plan create → review → execute
+        │  writes                              rewrite-think |               ▲
+        ▼                                      kill}                         │ proceed
+ .loom/thinks/{slug}-{ts}.md  ─────────────────►  ├──────────────────────────┘
+   (converged doc + optional                      ├─► rewrite-think ─► /loom-think --from <doc>  (re-think, bounded loop)
+    BenchmarkScorecard section)                    └─► kill ─────────► archive the doc; do NOT proceed
+```
+
+`/loom-think:review [<doc>]` resolves the newest `.loom/thinks/` doc on the current branch (or an explicit path), selects an archetype-matched panel of altitude lenses (`eng` always fires; `devex`/`ceo`/`design` per archetype), runs them in **framing-review mode** over the doc, and routes their findings through a deterministic, **fail-closed** router (`protocols/think-review.schema.md` § Decision Table). The router emits exactly one of three decisions and writes a `ThinkReviewVerdict` to `.plan-execution/ephemeral/think-review/verdict.toon`:
+
+- **proceed** — framing is sound; `nextCommand` is `/loom-roadmap init`.
+- **rewrite-think** — a repairable defect (any warning, or a *fixable* blocking finding, or a sub-quorum panel that fails closed); `nextCommand` is `/loom-think --from <doc>`.
+- **kill** — a *non-fixable* blocking approach error; `nextCommand` archives the doc — do NOT proceed to roadmap.
+
+**Opt-in, not a wall.** For humans `/loom-think:review` is optional — a converged doc may go straight to `/loom-roadmap init`. It is **default-on only inside `/loom-auto`**, where the gate runs before roadmap-init and a `kill` HALTs the pipeline while a `rewrite-think` re-enters the think loop up to a bounded number of attempts (see the changelog note below).
+
+#### Worked example (runnable)
+
+This repo's own thinking-gate work carries a real converged doc at `.loom/thinks/thinking-formality-separation-2026-07-04T21-12-44.md` (the doc that motivated this very feature). Loom is a dev-facing CLI, so the detector resolves archetype **`cli`** → panel `eng,devex,ceo` (**M = 3**, quorum ⌈3/2⌉ = **2**). Run:
+
+```
+/loom-think:review
+```
+
+Because the doc's framing is sound — problem clearly stated, approach grounded by the reconciler, all four tensions resolved — every lens passes and the router returns **proceed**. The exact verdict written to `.plan-execution/ephemeral/think-review/verdict.toon`:
+
+```toon
+decision: proceed
+nextCommand: /loom-roadmap init
+decidedBy: think-review-router
+revisionCount: 0
+panelSize: 3
+reportingLenses: 3
+quorumMet: true
+decidedAt: 2026-07-04T21:20:00.000Z
+errorCode:
+findings[0]:
+```
+
+> Verdict: **PROCEED** — framing is sound (panelSize 3 / reportingLenses 3, quorum met). Run `/loom-roadmap init` to formalize. (This is exactly what happened: the doc's own `status:` is now `ROADMAPPED`.)
+
+The same command over a *weaker* draft of that doc — one that asserted differentiation but shipped **no `BenchmarkScorecard`** — trips the benchmark-presence check (a `ceo` warning), so the router returns **rewrite-think**:
+
+```toon
+decision: rewrite-think
+nextCommand: /loom-think --from .loom/thinks/thinking-formality-separation-2026-07-04T21-12-44.md
+decidedBy: think-review-router
+revisionCount: 0
+panelSize: 3
+reportingLenses: 3
+quorumMet: true
+decidedAt: 2026-07-04T21:20:00.000Z
+errorCode:
+findings[1]{id,lens,severity,confidence,fixable,remediation,message}:
+  F-01,ceo,warning,7,true,"Add a competitive benchmark (--benchmark) before formality","No BenchmarkScorecard present in the think doc — the idea is asserted in a vacuum"
+```
+
+> Verdict: **REWRITE-THINK** — one fixable warning. Re-run `/loom-think --from <doc>`, add the benchmark, and re-review.
+
+And a draft whose *approach itself* is fatally wrong — a `blocking` finding with `fixable: false`, which the fail-closed router promotes over everything except a crashed panel — returns **kill**:
+
+```toon
+decision: kill
+nextCommand: "archive the think doc (.loom/thinks/archive/) — do NOT proceed to roadmap"
+decidedBy: think-review-router
+revisionCount: 1
+panelSize: 3
+reportingLenses: 3
+quorumMet: true
+decidedAt: 2026-07-04T21:25:00.000Z
+errorCode:
+findings[1]{id,lens,severity,confidence,fixable,remediation,message}:
+  F-01,eng,blocking,9,false,"Approach contradicts a stated constraint — no fix within this framing; archive and re-scope","A hard gate at peak divergence chills the very phase it protects; the doc's own anti-separation objection is unrebutted"
+```
+
+> Verdict: **KILL** — a non-fixable approach error. Archive the doc to `.loom/thinks/archive/`; do NOT advance to `/loom-roadmap init`. (Precedence: `kill` outranks `rewrite-think`; a sub-quorum/crashed panel outranks both and fails closed to `rewrite-think`, never `proceed`.)
+
+Empty state is a clean, non-zero exit — if no `.loom/thinks/` doc matches the current branch, the command prints `no think doc on branch <X> — run /loom-think first` and exits 1 (it spawns no lenses).
+
+#### Changelog — new `/loom-auto` default
+
+**`/loom-auto` now runs `/loom-think:review` before roadmap-init by default.** When `/loom-auto` starts from a fuzzy idea, the pre-plan gate reviews the converged think doc before `/loom-roadmap init` is spawned:
+
+- **proceed** → the pipeline advances to `/loom-roadmap init` as before.
+- **rewrite-think** → `/loom-roadmap init` is NOT spawned; the doc is re-thought and re-reviewed, bounded to a configurable number of attempts (default 2) before escalating.
+- **kill** → the pipeline HALTs with an operator handoff (a `kill` does not loop — it is terminal, distinct from `rewrite-think`).
+
+Each attempt persists a `LoopBack{attempt,verdict,reason,decidedAt}` record, and the verdict is written to `.plan-execution/ephemeral/think-review/verdict.toon`. Two flags opt out: `--no-think-review` skips the gate entirely, and `--force` proceeds past a non-`proceed` verdict. Because `/loom-auto` runs the gate, `/loom-roadmap review` does not double-run its strategic lenses (it reads the existing verdict artifact). This gate is **opt-in for humans** — running `/loom-roadmap init` by hand never requires it.
 
 ### /loom-spec
 
@@ -515,11 +615,11 @@ The output is a durable premise document at `.loom/design/{slug}-{timestamp}.md`
 
 `/loom-design html` ships production HTML/CSS from a mockup — either a prose description or a path to a mockup image (image analysis happens in dialogue; the agent doesn't silently guess). If a premise exists under `.loom/design/`, it honors that typography and color system. Output is `index.html` + `styles.css` under `docs/design/{slug}/`, validated for structural HTML parse, CSS lint, and contrast.
 
-Two rule sets constrain the output. The Pretext-native rules keep layouts alive rather than pixel-frozen: rem/em units, flexbox/grid, computed heights, `text-wrap: balance`/`pretty`, semantic HTML5, tokenized colors. The anti-AI-slop guards ban the defaults that mark generated UI: gradient overuse, marketing-prose comments, stock palettes, placeholder text. Use it for a single known mockup; for exploring multiple directions, use `shotgun`.
+Two rule sets constrain the output. The reflow-native rules keep layouts alive rather than pixel-frozen: rem/em units, flexbox/grid, computed heights, `text-wrap: balance`/`pretty`, semantic HTML5, tokenized colors. The anti-AI-slop guards ban the defaults that mark generated UI: gradient overuse, marketing-prose comments, stock palettes, placeholder text. Use it for a single known mockup; for exploring multiple directions, use `shotgun`.
 
 ### /loom-design shotgun
 
-`/loom-design shotgun [--n <count>]` generates N UI variants (default 4) of one target route on deliberately distinct axes — defaults: minimalist, dense, brutalist, editorial — each rendered through the `html` pipeline so every variant inherits the Pretext and anti-slop rules. Variants render side-by-side via the `/loom-browser` daemon when it's running; otherwise each variant is written to `.loom/design/shotgun/{slug}/variant-*.html` and the paths are printed.
+`/loom-design shotgun [--n <count>]` generates N UI variants (default 4) of one target route on deliberately distinct axes — defaults: minimalist, dense, brutalist, editorial — each rendered through the `html` pipeline so every variant inherits the reflow and anti-slop rules. Variants render side-by-side via the `/loom-browser` daemon when it's running; otherwise each variant is written to `.loom/design/shotgun/{slug}/variant-*.html` and the paths are printed.
 
 You pick a winner, and the choice is appended to `.loom/design/preferences.toon` (winning axis, rejected axes, `capturedAt` timestamp). Future shotgun runs read those preferences as a soft bias for axis selection — with decay: preferences weight down after 90 days and drop out after 180, so the system develops taste without ossifying around last year's picks.
 
@@ -553,7 +653,7 @@ Loom's browser surfaces run through one persistent daemon rather than per-comman
 
 `/loom-browser start|stop|status|exec "<command>"` manages a persistent Chromium daemon at `.loom/browser/`. `start` boots Chromium (detection order: `$CHROME_PATH`, then platform-standard Chrome / Chromium / Brave / Edge paths), writes `.loom/browser/state.toon`, attaches the prompt-injection defense hook, and loads any cookies from `.loom/browser/cookies/*.toon`. `status` reports `stopped` / `running` / `crashed`; `exec` runs one command against the live daemon. With no browser binary found it degrades to stub mode, logging commands to `.loom/browser/queue.toon` for manual replay.
 
-Commands are tiered: READ operations (screenshots, DOM queries, accessibility snapshots, network-log dumps) are idempotent and parallelizable; WRITE operations (click, type, navigate, submit, upload) are side-effecting and sequenced; META operations (start/stop, config, cookie import) are exclusive. Downstream agents reference page elements by accessibility-tree `{role, name, index}` tuples rather than CSS selectors, which keeps automation stable across style refactors. A page-text hook fires on every load as the prompt-injection defense seam (wired to the LLM-trust reviewer).
+Commands are tiered: READ operations (screenshots, DOM queries, accessibility snapshots, network-log dumps) are idempotent and parallelizable; WRITE operations (click, type, navigate, submit, upload) are side-effecting and sequenced; META operations (start/stop, config, cookie import) are exclusive. Downstream agents reference page elements by accessibility-tree `{role, name, index}` tuples rather than CSS selectors, which keeps automation stable across style refactors. On every navigation a page-text hook (`scanForInjection`) screens the loaded page's visible text for prompt-injection signatures — instruction-override, role-hijack, system-prompt exfiltration, data-exfiltration, destructive directives, and chat-template delimiter injection — and fails closed with `BROWSER_INJECTION_BLOCKED` (exit 8) when a hostile directive is present. This is a standalone runtime detector; it is distinct from and complementary to the `code-llm-trust-review-agent` code-review lens, which audits source diffs rather than live pages.
 
 The daemon is the foundation the other browser-facing surfaces stand on: `/loom-qa`, `/loom-benchmark perf`, `/loom-design shotgun`, and `/loom-devex review` all consume it — and `/loom-qa` deliberately refuses to cold-start it, so `start` the daemon first.
 
@@ -571,7 +671,7 @@ Two remaining surfaces don't fit a lifecycle stage: `/loom-careful` guards every
 
 `/loom-careful` is not a workflow command — it documents and manages the `loom-careful` PreToolUse hook (`hooks/loom-careful.ts`) that intercepts Bash commands before Claude Code runs them and denies the destructive ones: `rm -rf` against `/`, `~`, `.`, or `*`; destructive SQL DDL (`DROP TABLE`, `DROP DATABASE`, `TRUNCATE TABLE`); `git push --force` / `git reset --hard`; `chmod -R 777 .`; raw-device writes (`dd of=/dev/sda`); and filesystem formatters (`mkfs`). A blocked call surfaces to the agent as `CAREFUL_BLOCKED` with the reason.
 
-When a legitimately destructive command must run, the escape hatches are graduated: `LOOM_CAREFUL_OVERRIDE=1 <command>` for one command, `export LOOM_CAREFUL_OVERRIDE=1` for the session, or remove the hook's `PreToolUse` entry from `~/.claude/settings.json` (or unregister via `/loom-library` if kit-installed) to disable it globally. Unlike Loom's per-project enforcement hooks, this one guards the agent session itself — it pairs with, rather than replaces, the 17 per-project hooks described under [Hook enforcement](#hook-enforcement-per-project).
+When a legitimately destructive command must run, the escape hatches are graduated: `LOOM_CAREFUL_OVERRIDE=1 <command>` for one command, `export LOOM_CAREFUL_OVERRIDE=1` for the session, or remove the hook's `PreToolUse` entry from `~/.claude/settings.json` (or unregister via `/loom-library` if kit-installed) to disable it globally. Unlike Loom's task-scoped enforcement hooks, this one guards the agent session itself — it pairs with, rather than replaces, the per-project enforcement hooks described under [Hook enforcement](#hook-enforcement-per-project).
 
 ### /loom-skillify
 
@@ -703,7 +803,7 @@ The curl install also stages inert hook templates under `~/.claude/templates/hoo
 Loom uses a **two-tier install model**:
 
 1. **User-global tier (`~/.claude/`)** — slash commands, agents, statusline, update-checker, and inert hook templates. Installed once by the curl installer.
-2. **Per-project tier (`<repo>/hooks/` + `<repo>/.claude/settings.json`)** — the 17 enforcement hooks (file-ownership, contract-lock, context-budget, deploy-guard, quality-gate, typecheck-on-write, wiki guards, plus ambient monitors; full table in [`docs/hooks.md`](docs/hooks.md)). Installed per-project, opt-in.
+2. **Per-project tier (`<repo>/hooks/` + `<repo>/.claude/settings.json`)** — the <!-- loom:generated:hook-count-tier -->21<!-- /loom:generated:hook-count-tier --> enforcement hooks (file-ownership, contract-lock, context-budget, deploy-guard, quality-gate, typecheck-on-write, wiki guards, plus ambient monitors; full table in [`docs/reference/hooks.md`](docs/reference/hooks.md)). Installed per-project, opt-in.
 
 Claude Code hooks reference `$CLAUDE_PROJECT_DIR/hooks/...`, so the user-global tier alone cannot wire enforcement. The per-project tier is bootstrapped during these commands:
 
@@ -1489,9 +1589,9 @@ Available as direct commands (`/loom-debate`) or flags on any command (`--debate
 
 ## Hooks (Deterministic Enforcement)
 
-Eighteen Claude Code hooks enforce Loom invariants at the tool-call level — file ownership, contract locks, context budgets, deploy guards, wiki integrity. Fail-open on missing state, fail-closed on schema-version mismatches. For the severity convention (which event type to slot a hook into when authoring a kit), see [Install → Hook enforcement](#hook-enforcement-per-project) above.
+<!-- loom:generated:hook-count-section -->21<!-- /loom:generated:hook-count-section --> Claude Code hooks enforce Loom invariants at the tool-call level — file ownership, contract locks, context budgets, deploy guards, wiki integrity. Fail-open on missing state, fail-closed on schema-version mismatches. For the severity convention (which event type to slot a hook into when authoring a kit), see [Install → Hook enforcement](#hook-enforcement-per-project) above.
 
-**Full hook reference, infra scripts, and registration:** see [`docs/hooks.md`](docs/hooks.md).
+**Full hook reference, infra scripts, and registration:** see [`docs/reference/hooks.md`](docs/reference/hooks.md).
 
 ## Per-Project Extensibility
 
@@ -1565,7 +1665,7 @@ scripts/verify-checksums.sh          # exit 1 if drift; suggests the fix
 
 Reference material kept out of the main README to keep it scannable:
 
-- [`docs/hooks.md`](docs/hooks.md) — Full table of the 13 enforcement hooks, infra scripts, and registration.
+- [`docs/reference/hooks.md`](docs/reference/hooks.md) — Full table of the <!-- loom:generated:hook-count-deepdive -->21<!-- /loom:generated:hook-count-deepdive --> enforcement hooks, infra scripts, and registration.
 - [`docs/internals.md`](docs/internals.md) — Wiki maintenance triggers, data formats (TOON), persistence layout, and repo file structure.
 - [`docs/concepts.md`](docs/concepts.md) — The five concepts behind everything Loom does.
 - [`docs/first-30-minutes.md`](docs/first-30-minutes.md) — Narrated walkthrough of your first session.

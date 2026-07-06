@@ -1,7 +1,8 @@
 schemaVersion: 1
 projectName: loom-ai
-entryCount: 1
-lastEntry: 2026-06-17T00:00:00Z
+entryCount: 2
+lastEntry: 2026-07-04T06:00:00Z
 
-entries[1]{timestamp,type,actor,summary,detail,relatedPages}:
+entries[2]{timestamp,type,actor,summary,detail,relatedPages}:
   2026-06-17T00:00:00Z,plan-created,wiki-maintainer-agent,F-15/M-07 Roadmap Convergence Harness plan captured in wiki,Plan ships 3 commands (/loom-roadmap converge/sign-off/status) + 5 entities + 8/6/42 phases/waves/deliverables + 10-state machine + 10 error codes; 4 new wiki pages + 1 cross-ref added,"concept-roadmap-convergence;component-roadmap-converge-driver;component-roadmap-converge-state;decision-sign-off-purity;decision-archetype-rubrics"
+  2026-07-04T06:00:00Z,wave-complete,wiki-maintainer-agent,Wave 8 complete — M-07 evals subsystem + F-22 skill-preamble foundation,P20 ships three-tier eval ladder (T1 PR-blocking/T2 nightly-advisory/T3 opt-in advisory; free-by-default invariant; 4 error codes; injected judge seam; scripts/eval/ + protocols/eval-tier.schema.md + CI wiring; 22/22 tests). P21 ships shared skill preamble protocol (protocols/skill-preamble.md; @loom-include directive; byte-stable markers; mirrors _loom-init-guard.md; registered under library.protocols; 10/10 tests). Advisory contract amendment: eval-t1 not yet in ci-gates.contract.md frozen required-checks set.,"component-eval-framework;protocol-skill-preamble"

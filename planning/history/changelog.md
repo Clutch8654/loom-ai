@@ -1,3 +1,72 @@
+<!-- Release versioning (C-04, F-15): milestone closes emit `## vX.Y.Z` sections
+     via `bun scripts/loom-release.ts --milestone M-NN`, which derives the semver
+     bump from conventional commits since the last `v*` tag. The version-gate CI
+     check (.github/workflows/version-gate.yml → scripts/ci/version-gate.ts) fails
+     a release-worthy change that reaches a milestone boundary without a bump
+     (CG-001) and enforces the semver-only `v*` tag namespace. Metric values are
+     pinned from planning/reports/metrics-snapshot.toon at release close (F-26);
+     until then they read `<pending>`. Schema: protocols/release-versioning.schema.md.
+     Dated `## YYYY-MM-DD` sections below predate this convention and are retained. -->
+
+## 2026-07-06 — version bump: 0.2.0 (manifest)
+
+- Bumped `loomCoreVersion`, `loomHooksVersion` (`skills/library.yaml`) and the plugin manifest (`.claude-plugin/plugin.json`) from `0.1.0` → **`0.2.0`**.
+- Minor bump derived from conventional commits since the last tag (`v0.0.1`): 24 `feat` / 2 `fix` on this branch — headline features are the Thinking-Gate (`/loom-think:review` fail-closed gate, altitude lenses, `--benchmark`, bounded `/loom-auto` gate) and F-39 runtime browser injection detection, plus the browser-e2e capability set.
+- Manifest bump only — not a formal `v*` tag cut. The tag + pinned `MetricsSnapshot` release section are produced by `scripts/loom-release.ts --milestone` at a milestone boundary (per `protocols/release-versioning.schema.md`).
+
+## 2026-07-04 -- M-09 acceptance closed: MEASURED metrics snapshot (BELOW-TARGET)
+
+<!-- loom:measured:M-09 -->
+- Milestone: M-09 (final acceptance gate for the exceed-gstack initiative; C-04 / C-09 / C-12 close-out)
+- Snapshot: `planning/reports/metrics-snapshot.toon` (capturedAt 2026-07-01T00:00:00Z, gitRef 653e7ce13d3a4f537df564b75032e9c5233ddb7a)
+- Acceptance outcome: **BELOW-TARGET** — the M-09 gate did NOT clear the every-dimension bar.
+
+**Honest result — recorded as a fail, not a pass.** The re-run 4-agent comparative scorecard (`planning/reports/scorecard-rerun.toon`, gated by `scripts/scorecard-gate.ts`) returned overall **8.07 versus the pinned gstack floor 8.3** — below target. Five of seven dimensions clear (prompt-assets leads +2, docs +0.5, and architecture / code-quality / extensibility sit at parity), but **tests (7 < 9)** and **ops-polish (8 < 9)** trail the pinned gstack baseline. The exceed-gstack initiative closed the code-quality and extensibility gaps and leads on prompt-assets and docs, but did NOT achieve the acceptance definition of "every dimension ≥ gstack with overall > 8.3". No spin: this milestone is closed BELOW-TARGET, with loop-back to M-04 (tests) and M-05 (ops-polish).
+
+Measured success metrics (pre-registered; values embedded VERBATIM from the snapshot — every claim re-derivable via its `derivedBy` command, no telemetry per C-12):
+- typecheck-errors: 0 (target 0; PASS) — `bunx tsc --noEmit -p hooks/tsconfig.json`
+- test-source-ratio: 1.06 (target 1.4; PASS via the C-21 / IC-001 behavioral-assertion-density equivalence — computedValue 5.84 ≥ the calibrated density floor 3.0, not the raw LOC floor) — `bun scripts/metrics-snapshot.ts --metric ratio`
+- tautological-tests: 0 (target 0; PASS) — `bun scripts/audit-tests.ts --count-remaining`
+- defects-closed: 15 (target 15; PASS) — `grep -oE 'defect [0-9]+' planning/ROADMAP-exceed-gstack.md | sort -t' ' -k2 -n -u | wc -l`
+- ci-gates-green: true (target true; PASS) — deterministic PR-tier gate inputs (typecheck 0 errors + 0 tautological tests) with the `pr-gate.yml` and `nightly-gate.yml` workflows wired; a repo-state signal, not a GitHub-run query (C-12)
+- meta-tests-firing: 1 (target 1; PASS) — `bunx vitest run tests/meta`
+- scorecard-overall: 8.07 (target 8.3; **FAIL** — 8.07 does not exceed the 8.3 floor) — `grep -E '^overall:' planning/reports/scorecard-rerun.toon`
+
+Defect-closure checklist (defects-closed 15/15 — each verified defect mapped to the fix that closed it; the count is machine-derived from the roadmap, not hand-tallied):
+- defect 1 — agent-result-validator silent no-op / C-08 blocking posture (wave 2)
+- defect 2 — two shell-injection sites in loom-health + loom-version-slot, argv-hardened (wave 2)
+- defect 3 — loom-version-slot cross-repo worktree contamination, repo-scoped (wave 2)
+- defect 4 — 49 hooks-tsconfig typecheck errors driven to 0 (foundation; typecheck-errors now 0)
+- defect 5 — no CI ran the vitest suite; tiered pr-gate + nightly-gate CI landed (F-01)
+- defect 6 — 8 untested PR #31 files: entry guards added + behavioral tests backfilled (wave 5)
+- defect 7 — tautological / prompt-grep tests audited, classified, and deleted (wave 5; tautological-tests now 0)
+- defect 8 — divergent primitive duplication strangler-migrated onto the `lib/` shared core (wave 4)
+- defect 9 — stale committed "Worktree Context" block removed from CLAUDE.md (wave 4)
+- defect 10 — hook-registration drift reconciled across settings/hooks.json/manifest (wave 4)
+- defect 11 — AgentResult confidence schema blocking posture reconciled / C-07 (wave 2)
+- defect 12 — docs drift (both enumerable + non-enumerable halves) closed via generated docs + drift gate (wave 5)
+- defect 13 — release/versioning spine: semver milestone tags, version-gate CI, real changelog / C-04
+- defect 14 — install.sh fail-open integrity downgrade made fail-closed with trap-based rollback
+- defect 15 — vitest `fileParallelism:false` workaround retired + Docker-env skip guards (wave 7, Phase 19)
+
+Six of the seven metrics pass; the honest exception is `scorecard-overall` (8.07, below the 8.3 floor). This entry is the durable, re-runnable source of truth: regenerate with `bun scripts/metrics-snapshot.ts --write` and validate with `bun scripts/metrics-snapshot.ts --check` (exit 0 ⇒ report matches repo state). The changelog↔snapshot match is guarded by `tests/scripts/changelog-metrics-match.test.ts`.
+
+## v0.0.1 — M-00 baseline (2026-06-13)
+
+<!-- loom:release:v0.0.1 -->
+- Milestone: M-00
+- Commit range: `(root)..v0.0.1`
+- Status: released
+
+Metrics (pre-registered; repo-derived values pinned at release close per F-26):
+- typecheck-errors: <pending>
+- test-source-ratio: <pending>
+- tautological-tests: <pending>
+- defects-closed: <pending>
+- ci-gates-green: <pending>
+- meta-tests-firing: <pending>
+- scorecard-overall: <pending>
+
 ## 2026-07-02 -- ROADMAP-exceed-gstack: M-10 browser subsystem added (direct Edit)
 
 - Added milestone **M-10: Working browser subsystem** (depends on M-01; independently shippable; does not gate the M-09 scorecard) and constraint **C-14** (make the browser subsystem real, re-authored not forked).
@@ -719,3 +788,36 @@ Key fixes: GEM-01 (awk v3→v2 column collapse), SILENT-01/02/04 (mktemp/awk/cat
 - Criteria plan: .plan-execution/criteria-plan.toon (49 criteria after integrator: 45 + CG-001..004 backfills; C-21 equivalence block per IC-001)
 - Interpretation conflicts: 1 blocking, 5 warning, 1 info — all resolved via fable integrator pass alongside 6 critic-predicted blockers
 - Note: integrator session died post-edit/pre-report; state verified complete by orchestrator re-validation
+
+## 2026-07-05 — R-001 audit: Thinking-Gate Wave 0 contracts landed (PLAN-thinking-gate P0)
+
+- Audit ID: R-001 (Phase 0 / Wave 0 contracts of planning/plans/PLAN-thinking-gate.md)
+- Agent: contracts-agent (opus); taskId w0-contracts. Types + schemas ONLY — no behavior/implementation.
+- **Created (3):**
+  - `protocols/think-review.schema.md` — ThinkReviewVerdict + the deterministic **fail-closed** decision table (C-02, no "MAY"): non-fixable blocking → `kill`; fixable blocking OR any warning → `rewrite-think`; none → `proceed`; no-quorum → `PANEL_INCOMPLETE` (blocking) → `rewrite-think`. Quorum = ⌈M/2⌉ lenses; any-blocking-wins; a crashed/empty panel NEVER proceeds. Closed enums: `lens` (eng|devex|ceo|design), `severity` (blocking|warning|info, **aligned to AgentResult** FindingSeverity), `decision` (proceed|rewrite-think|kill). Carries the normative archetype→lens **selection rule** table (6 archetypes, eng always fires) that P1/P3/P4 all consume.
+  - `protocols/benchmark-scorecard.schema.md` — BenchmarkScorecard math: selfScore/refScore 0..10, `gap = selfScore − refScore`, `overall = mean(selfScore)`, `refOverall = mean(refScore)`, references[] (N) + per-dimension sourceRefs[]. "Thin" defined: `dimensions.length < 3` OR any refScore unsourced.
+  - `.plan-execution/contracts/manifest.toon` — lists every contract file + purpose + exports.
+- **Modified (3):**
+  - `lib/types.ts` — appended section 4 (Thinking-Gate contracts): `ThinkReviewVerdict` (+ `ThinkReviewFinding`, `ThinkReviewLens`, `ThinkReviewSeverity` = FindingSeverity, `ThinkReviewDecision`), `PrePlanLensPanel` (+ `PrePlanLensSelection`, `ProjectArchetype`), `BenchmarkScorecard` (+ `BenchmarkDimension`, `BenchmarkReference`), `LoopBack`. Pure types, zero imports.
+  - `skills/library.yaml` — registered the 2 new protocols under `library.protocols:` (think-review-schema, benchmark-scorecard-schema) and **pre-registered** `benchmark-agent` under `library.agents:` (P5 authors the agent .md + `model:` frontmatter; registered at P0 so later waves never touch library.yaml).
+  - `planning/history/changelog.md` — this R-001 entry.
+- **Verification:** `bunx tsc --noEmit -p hooks/tsconfig.json` exit 0 (lib/types.ts remains standalone, types-only). No behavior shipped — router/panel/agent implementation is P1/P4/P5.
+- Findings severity enum aligned to `protocols/agent-result.schema.md § Findings Row Schema` (closed `blocking|warning|info`); `confidence` retained as the canonical integer 1..10 scale.
+
+## 2026-07-06 — Thinking-Gate SHIPPED (PLAN-thinking-gate; M-14/M-15/M-16/M-17)
+
+- Execution: `PLAN-thinking-gate.md` executed across 4 waves / 8 phases (P0,P1,P2,P3,P5,P4,P6a,P6b); commits `4800c5a` → `98dcbc6` → `99100dd` → `ffbff0a` → `8b8dcf4` (finalize).
+- **Outcome: clean-success.** Verification `865 passed, 2 skipped (prior browser-e2e live-Chromium), tsc=0`.
+- **What shipped:**
+  - `/loom-think:review` — the pre-plan framing gate at the divergent→formality seam. Selects an archetype-matched altitude-lens panel (`eng` always fires; `devex`/`ceo`/`design` per archetype), runs them in framing-review mode over the newest `.loom/thinks/` doc, and routes findings through the deterministic **fail-closed** decision table. Writes a `ThinkReviewVerdict` to `.plan-execution/ephemeral/think-review/verdict.toon` (P1 writes, P3 reads, P6a persists).
+  - **Altitude mode (P4):** the same M-04 review lenses gain a `scope:think` framing-review mode (no forks, per C-04) — reused, not duplicated.
+  - **Cross-model second opinion (P2):** `sonnet` (never fable, per the model-selection rule).
+  - **`--benchmark` pattern (P5):** competitive-benchmark surface writes a typed `BenchmarkScorecard` into the converged think doc; `benchmark-agent` registered.
+  - **Bounded `/loom-auto` gate (P6a):** the gate is default-on only inside `/loom-auto`, where `kill` HALTs the pipeline and `rewrite-think` re-enters the think loop up to `maxThinkRewrites` (default 2). Router fail-closed OUTRANKS kill — the pipeline never terminates on a sub-quorum panel.
+- **Wiring resolved:** new command registered in `install.sh` COMMAND_FILES + `checksums.sha256`; `docs/reference/agents.md` regenerated to include `benchmark-agent`.
+
+## 2026-07-06 — F-39: real `onPageText` browser injection detection (gstack-adoption M-05)
+
+- Commit `61dc9c0`. Replaces the no-op `onPageText` daemon hook (`scripts/lib/browser-client.ts`) with a standalone runtime signature detector (`scanForInjection`): on every navigation it screens the loaded page's visible text for six prompt-injection classes — instruction-override, role-hijack, system-prompt exfiltration, data-exfiltration, destructive-directive, chat-template delimiter injection — and fails closed with `BROWSER_INJECTION_BLOCKED` (exit 8) when a hostile directive is present. High-precision rules; ordinary page copy does not trip them.
+- **BE-10 upgraded** (`tests/browser/injection-defense.test.ts`) from a mock-only fires-check to a real detects-check: hostile fixture blocked, a deliberately tricky clean fixture (isolated words "previous/instructions/delete/files") passes. Verified `tsc=0`, `tests/browser` 32 passed / 2 skipped.
+- **Corrected a category error in the docs:** the runtime hook (`onPageText`, a synchronous per-navigation function) is **complementary to, not dependent on**, the `code-llm-trust-review-agent` code-review lens (F-15, an LLM subagent that audits source diffs). The prior "hook wires to the F-15 agent" note was wrong — a diff-review subagent cannot run per-navigation. Fixed across `library.yaml`, `SKILL.md`, ROADMAP F-39, and README. F-39 tracked + marked SHIPPED under gstack-adoption M-05.

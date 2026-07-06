@@ -1,30 +1,22 @@
-schemaVersion: 1
 wave: 7
-runId: kit-native-skills-20260612-001
-status: success
-gateMode: auto
-phases[1]: 11
-milestone: M-03-terminal
-startedAt: 2026-06-13T00:26:00Z
-completedAt: 2026-06-13T00:27:00Z
-durationMs: 60000
-
-agentResults[1]{taskId,agent,status,durationMs}:
-  wave7-phase11-claude-md-authoring,orchestrator-direct-edit,success,60000
-
-filesCreated[2]: .plan-execution/stage-context/phase-11.toon, .plan-execution/stage-context/wave-7-gate.toon
-filesModified[1]: CLAUDE.md
-
-m03Status: COMPLETE
-ossLaunchPrerequisite: SATISFIED
-
-crossBoundaryRequests:
-  filed: 0
-  resolved: 0
-
-verification:
-  status: pass
-  waveGateStatus: passed
-  acsAll: 9
-
-nextWave: NONE — plan complete
+status: complete
+completedAt: 2026-07-04T03:42:08Z
+phasesComplete[1]: 19
+agentsRun[1]: w7-p19
+commits[1]{sha,phase,summary}:
+  fc91d96,19,retire fileParallelism workaround + Docker-env skip guards
+filesCreated[3]: tests/helpers/isolated-fixture.ts, test/helpers/docker-e2e-guard.ts, .plan-execution/batches/phase-19.toon
+filesModified[6]: vitest.config.ts, test/e2e/curl-install.spec.ts, test/e2e/plugin-install.spec.ts, test/plugin-install-e2e.test.ts, test/plugin-manifest.test.ts, test/worktree-init.test.ts
+verification: pass
+verificationDetail: fileParallelism:false removed; ORCHESTRATOR independently ran 3 consecutive parallel runs — all green (161 files / 2087 pass / 14 skip); agent reported 5/5. tsc 0, eslint 0. quarantine empty.
+rootCauseFinding: "The '~39 load-sensitive specs' estimate did NOT materialize — serial baseline had ZERO parallelism-induced failures. Real 14 failures = 10 stale hooks/dist/** transpiled .test.js duplicates (fixed by **/dist/** exclude) + Docker-env e2e specs (fixed with it.skipIf docker-guard). No shared-state race isolation needed; testTimeout:30_000 already absorbs subprocess coldstart under parallel workers."
+performance:
+  serialBaselineWallSeconds: 185.31
+  parallelWallSeconds: 31.77
+  speedupFactor: 5.83
+  ac222sBaseline: met (31.77 << 222)
+acceptanceNotes[4]{ac,status,note}:
+  F-14.S-01,covered,"suite green across repeated parallel runs (3x independent + agent 5x)"
+  docker-skip,covered,"Docker-only e2e specs it.skipIf clean skip when Docker absent (14 skipped)"
+  quarantine-empty,covered,"no quarantine dir created — flakes root-caused not parked"
+  walltime,covered,"31.77s parallel << 222s serial baseline"

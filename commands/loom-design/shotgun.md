@@ -17,7 +17,7 @@ memory.
 3. Generate N variants on **distinct** axes (minimalist, dense,
    brutalist, editorial by default; other axes if the target calls for
    them). Each variant runs through the F-23 pipeline so it inherits
-   Pretext-native rules and anti-slop guards.
+   reflow-native rules and anti-slop guards.
 4. Render side-by-side:
    - Preferred: hand off to the `/loom-browser` daemon (M-11).
    - Fallback (daemon stopped/crashed/absent): write each variant to

@@ -138,15 +138,55 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      # Phase 20 lands scripts/eval/run-evals.ts; until then this is a stub
-      # invocation that passes vacuously (guarded absence per plan).
-      - name: Run T2 evals (hermetic, zero LLM calls)
+      # Phase 20 (F-20): T2 hermetic tier — replays evals/fixtures/ I/O with
+      # ZERO live LLM calls (llmCalls MUST be 0), then compares the passed-eval
+      # count against the main-branch floor. The floor comparison is ADVISORY
+      # (nightly is never PR-blocking): a regression emits `::warning::`, never a
+      # non-zero exit. The `[ -f ... ]` guard's fall-through stays harmless.
+      - name: Run T2 evals (hermetic, zero LLM calls) with a regression floor vs main
         run: |
-          if [ -f scripts/eval/run-evals.ts ]; then
-            bun scripts/eval/run-evals.ts --tier t2
-          else
-            echo "::notice::eval-t2: scripts/eval/run-evals.ts not yet present (lands Phase 20) — stub pass"
+          set -u
+          if [ ! -f scripts/eval/run-evals.ts ]; then
+            echo "::notice::eval-t2: scripts/eval/run-evals.ts not present (pre-Phase-20) — stub pass"
+            exit 0
           fi
+
+          mkdir -p .loom-ci/eval-current .loom-ci/eval-floor
+
+          # 1) Current commit — hermetic T2 must pass (a red eval fails the job).
+          bun scripts/eval/run-evals.ts --tier t2 --out "$PWD/.loom-ci/eval-current"
+          cur=$(grep -hc ',passed,' .loom-ci/eval-current/*-t2-*.toon 2>/dev/null || echo 0)
+          echo "eval-t2: current passed-eval count = ${cur}"
+
+          # 2) Establish the main-branch floor in a detached worktree (advisory).
+          git fetch --depth=1 origin main || true
+          floor="n/a"
+          if git worktree add --detach .loom-ci/main-tree origin/main 2>/dev/null; then
+            if [ -f .loom-ci/main-tree/scripts/eval/run-evals.ts ]; then
+              (
+                cd .loom-ci/main-tree \
+                  && bun install --frozen-lockfile 2>/dev/null || bun install || true
+                bun scripts/eval/run-evals.ts --tier t2 \
+                  --out "$GITHUB_WORKSPACE/.loom-ci/eval-floor" || true
+              )
+              floor=$(grep -hc ',passed,' .loom-ci/eval-floor/*-t2-*.toon 2>/dev/null || echo 0)
+            fi
+            git worktree remove --force .loom-ci/main-tree || true
+          fi
+          echo "eval-t2: main-branch floor passed-eval count = ${floor}"
+
+          # 3) Advisory regression check — warn only, never block the nightly gate.
+          if [ "${floor}" != "n/a" ] && [ "${cur}" -lt "${floor}" ]; then
+            echo "::warning::eval-t2: T2 passed-eval count ${cur} regressed below main floor ${floor} (advisory; nightly never blocks)"
+          fi
+
+      - name: Upload T2 eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-eval-t2-results
+          path: .loom-ci/eval-current/*.toon
+          if-no-files-found: ignore
 
   quarantine-suite:
     name: quarantine-suite
@@ -199,6 +239,123 @@ jobs:
       # is unavailable.
       - name: Run Docker e2e harness
         run: sh test/docker/run-harness.sh --local-tarball dist/loom-local-test.tar.gz
+
+  daemon-e2e:
+    # Live browser daemon E2E (Phase 9a, PLAN-browser-e2e). Boots the REAL
+    # loom-browser daemon (headless Chromium + CDP) and drives a local fixture.
+    # Follows the docker-e2e pattern: continue-on-error so a live-drive stall
+    # (KNOWN-RUNTIME-GAP: the headless-Chrome <-> pw-core handshake can stall)
+    # NEVER blocks the nightly gate. The suite is opt-in (LOOM_BROWSER_E2E=1)
+    # and every live case self-skips with an actionable reason (C-07) when
+    # Chromium is absent or the CDP handshake fails.
+    name: daemon-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true # per contract: live browser e2e never blocks the nightly gate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install Chromium for the live drive
+        # playwright-core ships the browser installer; degrade cleanly if it is
+        # unavailable — the suite then self-skips on "no Chromium".
+        run: bunx playwright-core install --with-deps chromium || bunx playwright-core install chromium || true
+
+      - name: Run the live daemon-e2e suite (opt-in; self-skips without Chromium/CDP)
+        env:
+          LOOM_BROWSER_E2E: "1"
+        run: bunx vitest run tests/browser/daemon-e2e.test.ts
+
+  qa-outcome:
+    # Ground-truth outcome eval (Phase 9a, PLAN-browser-e2e). Runs the SCORED
+    # qa-outcome path in-process by INJECTING a reporter into runQaOutcome —
+    # `bun scripts/eval/run-evals.ts --tier qa-outcome` advisory-skips because
+    # the CLI wires no reporter, so this job stands up its own scored runner.
+    # runQaOutcome still gates on LOOM_EVAL_LLM: with no live LLM key in CI it
+    # degrades to the DOCUMENTED skip (exit 0), never a silent stub pass.
+    # continue-on-error so the advisory eval never blocks the nightly gate.
+    name: qa-outcome
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true # per contract: outcome eval is advisory, never blocks nightly
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Stand up the in-process scored qa-outcome runner
+        # Writes a runner that injects a REAL reporter (driveFixture over a live
+        # daemon + an LLM interpretation seam) so the scored path is exercised —
+        # not the CLI's no-reporter advisory skip. Ephemeral CI-only file.
+        run: |
+          mkdir -p .loom-ci
+          cat > .loom-ci/qa-outcome-scored.ts <<'TS'
+          // Nightly qa-outcome scored runner (Phase 9a, PLAN-browser-e2e).
+          // Injects a REAL reporter into runQaOutcome so the SCORED path runs,
+          // unlike `run-evals.ts --tier qa-outcome` which advisory-skips (the CLI
+          // wires no reporter). runQaOutcome gates on LOOM_EVAL_LLM: unset =>
+          // the documented skip (exit 0), so this degrades cleanly in CI without
+          // an LLM key rather than silently passing.
+          import {
+            runQaOutcome,
+            driveFixture,
+            type DetectedIssue,
+            type QaReport,
+            type QaReporter,
+          } from "../scripts/eval/tiers/qa-outcome.ts";
+
+          const cdp = process.env.LOOM_BROWSER_CDP;
+
+          // The reporter is only reached when LOOM_EVAL_LLM is set (runQaOutcome
+          // gate). It drives each fixture over the live loom-browser daemon
+          // (driveFixture — the real P8a-deferred path) and hands the raw
+          // observations to an LLM interpretation layer. That interpretation
+          // layer is NOT wired in CI, so a scored run must be explicitly
+          // provisioned (LOOM_BROWSER_CDP + an LLM key); absent that we fail
+          // LOUDLY (caught by continue-on-error) rather than fabricate a pass.
+          const reporter: QaReporter = async ({ fixture }): Promise<QaReport> => {
+            if (!cdp) {
+              throw new Error(
+                "qa-outcome: LOOM_EVAL_LLM is set but LOOM_BROWSER_CDP is not — " +
+                  "point it at a live loom-browser daemon to drive fixtures.",
+              );
+            }
+            await driveFixture(cdp, fixture, []);
+            throw new Error(
+              "qa-outcome: fixture driven, but the LLM interpretation layer is " +
+                "not provisioned in this environment — wire a judge to score.",
+            );
+            // Unreachable; documents the report shape the judge must return.
+            const issues: DetectedIssue[] = [];
+            return { fixture, issues };
+          };
+
+          const out = await runQaOutcome({ reporter });
+          for (const w of out.warnings) console.error(`::warning::${w}`);
+          console.error(
+            `qa-outcome: status=${out.status} llmCalls=${out.llmCalls} ` +
+              `results=${out.results.length}`,
+          );
+          process.exit(out.exitCode);
+          TS
+
+      - name: Run the scored qa-outcome eval (degrades to documented skip without an LLM key)
+        run: bun .loom-ci/qa-outcome-scored.ts
 
   gate-status:
     name: gate-status

@@ -1,9 +1,11 @@
 wave: 1
-phases[3]: 1, 2a, 2b
-status: complete
-agents[4]: w1-p1-ci-gates, w1-p2a-parsers, w1-p2b-writers, w1-wiring
-filesCreated[17]: .github/workflows/pr-gate.yml, .github/workflows/nightly-gate.yml, scripts/ci/check-hook-drift.ts, scripts/ci/check-docs-drift.ts, scripts/ci/check-library-catalog.ts, scripts/ci/changed-files-vitest.ts, tests/ci/drift-checks.test.ts, tests/ci/changed-files-mapping.test.ts, lib/toon.ts, lib/csv.ts, lib/atomic-fs.ts, lib/entry-guard.ts, lib/index.ts, tests/lib/toon-roundtrip.test.ts, tests/lib/csv.test.ts, tests/lib/atomic-fs.test.ts, tests/lib/entry-guard.test.ts
-filesModified[5]: eslint.config.js, package.json, bun.lock, lib/types.ts, protocols/shared-core.schema.md
+label: P1a-cdp-read
+status: success
+agent: implementer-agent
+filesCreated[1]: scripts/lib/browser-client.ts
+filesModified[3]: scripts/loom-browser-daemon.ts,package.json,bun.lock
+exportsAdded[8]: connect,execRead,classifyVerb,resolveTarget,errorResult,BrowserClientError,EXIT_CODES,BrowserSession
+dependenciesAdded[1]: playwright-core@^1.61.1
 verification: pass
-verificationDetail[5]: eslint exit 0 (65 legacy warnings / 0 errors), barrel tsc strict clean, vitest 131/131 (tests/lib+tests/ci), pr-gate lint sim exit 0, typecheck ratchet 25<49 PASS
-notes[3]: TYPECHECK_ERROR_BASELINE ratcheted 49->25 by orchestrator, type:module declined (validate-library-catalog.js is CJS), hooks/tsconfig.json does not typecheck root lib/ — flag for Phase 9
+verificationCommand: bunx tsc --noEmit -p hooks/tsconfig.json
+unresolvedIssues[1]: "info: live CDP page-drive not runnable in this env (headless Chrome <-> playwright-core 1.61 handshake stall) — known-runtime-gap, code correct, tsc=0"

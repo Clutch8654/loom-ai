@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!--
+  planted-bugs-spa.html — SPA/flow ground-truth fixture for the qa-outcome
+  eval (P8a). Unlike the static page, bugs here only surface after driving a
+  multi-step flow (click "Start", then "Next"), so the qa-outcome tier must
+  use WRITE verbs (click) and re-read state — not just a one-shot snapshot.
+
+  DO NOT "fix" these bugs — they back rows in
+  evals/fixtures/qa-ground-truth.toon. Categories exercised here: console,
+  functional (flow).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planted Bugs — SPA Flow Fixture</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; margin: 2rem; }
+    .step { display: none; }
+    .step.active { display: block; }
+  </style>
+</head>
+<body>
+  <h1>SPA Flow Fixture</h1>
+
+  <section id="step-1" class="step active">
+    <p>Step 1 of 2</p>
+    <button id="start-btn" type="button">Start</button>
+  </section>
+
+  <section id="step-2" class="step">
+    <p>Step 2 of 2</p>
+    <!-- PLANTED BUG: functional/major — the "Next" control in the flow is
+         wired to a handler that throws before advancing, so the flow is
+         stuck on step 2. Detected by driving the flow and observing that the
+         expected step-3 state never renders. Selector: #next-step -->
+    <button id="next-step" type="button">Next</button>
+    <!-- PLANTED BUG: console/major — an uncaught error is emitted to the
+         console when the flow reaches step 2. Detected via the `console-log`
+         READ verb (an entry of type "error"). Selector: #load-error -->
+    <div id="load-error" hidden>flow error surface</div>
+  </section>
+
+  <script>
+    var startBtn = document.getElementById("start-btn");
+    var nextBtn = document.getElementById("next-step");
+    var step1 = document.getElementById("step-1");
+    var step2 = document.getElementById("step-2");
+
+    startBtn.addEventListener("click", function () {
+      step1.classList.remove("active");
+      step2.classList.add("active");
+      // PLANTED BUG (console/major): uncaught error logged on reaching step 2.
+      // eslint-disable-next-line no-console
+      console.error("SPA flow: failed to preload step-3 resources (planted).");
+    });
+
+    nextBtn.addEventListener("click", function () {
+      // PLANTED BUG (functional/major): throws instead of advancing the flow.
+      throw new Error("SPA flow: next() crashed before advancing (planted).");
+    });
+  </script>
+</body>
+</html>

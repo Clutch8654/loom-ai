@@ -1,0 +1,6 @@
+skill: spec
+batch: review
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "SpecRecord lifecycle plus roadmap handoff — the drafted->roadmapped->in-progress->merged->closed state machine drives a --auto-mutate --block one-shot into /loom-roadmap mutate that preserves Origin and acceptance verbatim, guarded by the User-Challenge boundary; gstack's spec step only emits ticket prose with no lifecycle or roadmap handoff."

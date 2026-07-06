@@ -1,0 +1,42 @@
+title: Loom vs gstack — Pinned Acceptance-Gate Baseline (M-09 F-25, C-09)
+purpose: Frozen rubric + pinned gstack per-dimension scores + reviewer panel that the M-09 acceptance gate (scripts/scorecard-gate.ts) re-runs against. This file IS the rubric; a rerun whose rubricRef differs from the self-path below is refused.
+schemaTypes: lib/types.ts ScorecardResult, ScorecardDimension, ScorecardStatus
+sourceBaseline: research/loom-vs-gstack-scorecard.toon
+generatedBy: PLAN-exceed-gstack Wave 10 / Phase 25 (w10-p25)
+rubricRefNote: rubricRef is the self path. scorecard-rerun.toon MUST carry rubricRef equal to it exactly or the gate refuses (C-09 anti-drift). Repo-relative, POSIX slashes.
+rubricRef: planning/reports/scorecard-baseline.toon
+gstackOverallNote: gstack baseline overall (~8.3 in the source; pinned as the acceptance floor). Acceptance requires the Loom re-run overall to be strictly greater than this.
+gstackOverall: 8.3
+acceptanceRule: PASS iff every dimension delta (loomScore - pinned gstackScore) >= 0 AND rerun overall > gstackOverall (8.3). Any single trailing dimension fails the gate and loops back to its responsible milestone.
+agentsNote: The 4-agent comparative-review panel. Identity is pinned so the rerun uses the SAME panel (anti-subjectivity, C-09). One lens per agent; dimension->agent map in panelCoverage. The orchestrator's live rerun records these same four identities in scorecard-rerun.toon agents.
+agents[4]: comparative-code-quality-reviewer, comparative-tests-reviewer, comparative-architecture-extensibility-reviewer, comparative-docs-ops-reviewer
+
+panelCoverage:
+  comparative-code-quality-reviewer: code-quality
+  comparative-tests-reviewer: tests
+  comparative-architecture-extensibility-reviewer: architecture, extensibility
+  comparative-docs-ops-reviewer: docs, prompt-assets, ops-polish
+
+dimensionsNote: Seven pinned dimensions. gstackScore is the acceptance anchor per dimension and is NEVER re-scored (copied to the rerun verbatim). recorded=true when the integer survives in the source scorecard; recorded=false when DERIVED here from the source's qualitative verdict (see derivation for the reasoning).
+dimensions[7]{dimension,gstackScore,recorded,verdict}:
+  prompt-assets,7,false,loom-leads
+  architecture,8,false,tie
+  docs,8,false,tie
+  code-quality,8,true,gstack-leads
+  tests,9,true,gstack-leads
+  extensibility,8,true,gstack-leads
+  ops-polish,9,true,gstack-leads
+
+derivationNote: Derivation of the three non-recorded (n/r) gstack integers. Each pinned DEFENSIBLY from the source's qualitative verdict, never invented to flatter Loom.
+derivation:
+  prompt-assets: Source verdict is loom-leads (Loom's agent/prompt/protocol/skill catalog is broader and contract-driven). gstack is pinned at 7 — a real but narrower prompt catalog, held at or below Loom's lead so the acceptance bar here is a genuine lead (Loom must reach >= 7 AND out-score gstack), not a gift.
+  architecture: Source verdict is tie (comparable, both well-factored). Pinned at 8, matching the recorded numeric cluster (code-quality 8, extensibility 8). A tie means Loom must hold parity at >= 8 to avoid regression.
+  docs: Source verdict is tie at baseline (later a Loom exceed target via generated drift-proof docs, F-18). Pinned at 8 to match the tie level; Loom must reach >= 8, and F-18's generated docs are the mechanism by which it clears that bar.
+
+loopBackNote: When a dimension trails (delta < 0), the gate points at the milestone(s) and fix-feature(s) responsible for that dimension's verified defects. Derived from research/loom-vs-gstack-scorecard.toon verifiedDefects fixFeature x ROADMAP-exceed-gstack milestone grouping (M-01..M-06). prompt-assets and architecture carry no defects (Loom leads / tie) so no loop-back row.
+loopBack[5]{dimension,milestone,fixFeatures}:
+  code-quality,M-02,F-03 F-04 F-05 F-06 F-07 (+ F-09 in M-03)
+  tests,M-04,F-11 F-12 F-13 F-14 (+ F-01 CI gate in M-01)
+  extensibility,M-03,F-08 F-10
+  ops-polish,M-05,F-15 F-17
+  docs,M-06,F-18

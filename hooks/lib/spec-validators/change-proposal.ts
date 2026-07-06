@@ -44,6 +44,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { splitCsvLine } from "../../../lib/index.js";
 import {
   changeDir,
   deltasPath,
@@ -474,7 +475,7 @@ function readWikiIndexContractDomains(wikiRoot: string): Set<string> {
       continue;
     }
     if (!pageColumns) continue;
-    const cells = splitCsvRow(line.trim());
+    const cells = splitCsvLine(line.trim());
     const obj: Record<string, string> = {};
     for (let i = 0; i < pageColumns.length; i++) {
       obj[pageColumns[i]] = (cells[i] ?? "").trim();
@@ -611,7 +612,7 @@ function parseDeltasMirror(raw: string): DeltasMirrorRow[] {
     if (!line.startsWith("  ")) break;
     const trimmed = line.trim();
     if (trimmed.length === 0) continue;
-    const cells = splitCsvRow(trimmed);
+    const cells = splitCsvLine(trimmed);
     if (cells.length < 8) continue;
     rows.push({
       domain: cells[0].trim(),
@@ -625,31 +626,6 @@ function parseDeltasMirror(raw: string): DeltasMirrorRow[] {
     });
   }
   return rows;
-}
-
-function splitCsvRow(row: string): string[] {
-  const out: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < row.length; i++) {
-    const ch = row[i];
-    if (ch === '"') {
-      const next = row[i + 1];
-      if (inQuotes && next === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      out.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
-  return out;
 }
 
 function escapeRegex(s: string): string {

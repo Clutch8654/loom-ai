@@ -203,3 +203,31 @@ The `status:` field follows the SpecRecord state machine defined in the gstack-a
 - `/loom-think` — feeds this skill via `--from`.
 - `/loom-roadmap mutate` — consumes the drafted ROADMAP block.
 - `/loom-git pr merge` — honors the auto-close-on-merge contract.
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+SpecRecord lifecycle plus roadmap handoff: the `drafted → roadmapped →
+in-progress → merged → closed` state machine drives a `--auto-mutate --block`
+one-shot into `/loom-roadmap mutate` that preserves Origin and acceptance
+verbatim, and documents auto-close-on-merge. gstack's spec step emits ticket
+prose with no lifecycle or roadmap handoff.
+
+## Backing & enforcement
+
+- **Backing:** `protocols/spec.schema.md` (SpecRecord shape) and
+  `protocols/loom-decision-principles.md` (the User-Challenge boundary).
+- **Behavioral tests:** `tests/skills/review-batch.test.ts` asserts the schema
+  is present and that this skill cites the decision-principles boundary and the
+  shared preamble.
+- **Enforcement:** ROADMAP mutation is never auto-applied without explicit
+  operator confirmation (default path emits to stdout only), honoring the
+  User-Challenge boundary in `protocols/loom-decision-principles.md`.

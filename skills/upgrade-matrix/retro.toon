@@ -1,0 +1,7 @@
+# SkillUpgradeMatrix shard — see lib/types.ts (SkillUpgradeMatrix), C-13
+skill: loom-retro
+batch: workflow
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Append-only, sequentially-keyed learnings/regressions ledgers with a programmatic assertAppendOnly guard (RETRO_APPEND_VIOLATION) that downstream reviewer agents cite — no gstack analogue."

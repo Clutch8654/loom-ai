@@ -97,9 +97,10 @@ Analyze the user's text against known patterns and project state. Use both keywo
 | "review", "check code", "audit code" | `/loom-code review` | Default to `--branch` if on a feature branch |
 | "review plan", "check plan" | `/loom-plan review` | Only if PLAN.md exists |
 | "review roadmap" | `/loom-roadmap review` | Only if ROADMAP.md exists |
+| "review my thinking", "review think doc", "is my think doc sound", "pre-plan gate", "gate my thinking", "vet my think", "should I proceed to roadmap" | `/loom-think:review` | Opt-in pre-plan gate over the newest `.loom/thinks/` doc on the current branch → routes `proceed` \| `rewrite-think` \| `kill`. Only if a `.loom/thinks/` doc exists; else suggest `/loom-think` first |
 | "plan", "create plan", "make a plan" | `/loom-plan create` | Only if ROADMAP.md exists and is approved |
 | "roadmap", "create roadmap", "init roadmap" | `/loom-roadmap init` | Append `--from "{text}"` if text contains a description |
-| "vague idea", "not sure yet", "think through", "help me figure out" | `/loom-think` | Fuzzy problem with no crisp deliverable — precedes roadmap |
+| "vague idea", "not sure yet", "think through", "help me figure out" | `/loom-think` | Fuzzy problem with no crisp deliverable — precedes roadmap. After the doc converges, surface the suggested next step: `/loom-think:review` (optional pre-plan gate) before `/loom-roadmap init` |
 | "spec", "ticket", "write it up", "turn this into an issue" | `/loom-spec "{text}"` | One-sentence idea that needs sharpening into a ROADMAP block or GH issue |
 | "prototype", "throwaway", "spike" | `/loom-prototype` | Between approved roadmap and plan |
 | "build", "execute", "implement", "run plan" | `/loom-plan execute` | Only if PLAN.md exists |

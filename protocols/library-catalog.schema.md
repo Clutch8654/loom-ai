@@ -62,7 +62,7 @@ kits:
 
 ## TOON Exemplar (for schema validators)
 
-Per project convention `skills/library.yaml` itself stays YAML (tooling-config exception). The TOON projection below is the canonical shape the validator (`scripts/validate-toon-schemas.ts`) checks against:
+Per project convention `skills/library.yaml` itself stays YAML (tooling-config exception). The TOON projection below is the canonical shape the catalog validator (`scripts/ci/check-library-catalog.ts`) checks against:
 
 ```toon
 LibraryCatalog:

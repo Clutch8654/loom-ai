@@ -1,0 +1,9 @@
+criteria[8]{phaseId,domain,coveringTasks,status}:
+  P0,contracts + closed enums + archetype rule + benchmark math,w0-contracts,pending
+  P1,loom-think:review command + fail-closed router,w1-p1,pending
+  P2,mandatory named cross-model second opinion,w1-p2,pending
+  P3,conditional strategic lenses at loom-roadmap review,w1-p3,pending
+  P5,--benchmark pattern (3 files) + benchmark-agent,w1-p5,pending
+  P4,think-altitude mode on M-04 lenses + panel wiring,w2-p4,pending
+  P6a,loom-auto bounded gate + kill-halt + override,w3-p6a,pending
+  P6b,router surface + docs,w3-p6b,pending

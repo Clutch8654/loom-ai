@@ -1,7 +1,7 @@
 catalog_version: 4
 repo: https://github.com/launchstack-dev/loom-ai
-loomCoreVersion: 0.1.0
-loomHooksVersion: 0.1.0
+loomCoreVersion: 0.2.0
+loomHooksVersion: 0.2.0
 
 releases:
   - version: 0.1.0
@@ -32,6 +32,10 @@ library:
     - name: toon-format-protocol
       description: TOON (Token-Oriented Object Notation) format specification for all on-disk artifacts and agent communication
       source: protocols/toon-format.md
+
+    - name: skill-preamble
+      description: "Shared skill-preamble prelude cited by reference from every Loom SKILL.md — single authoritative source for the conventions skills repeat (TOON output, atomic writes, exit codes, AgentResult, confidence, model resolution, init guard). Skill-side analogue of commands/_loom-init-guard.md; byte-stable canonical block between LOOM:SKILL-PREAMBLE markers, resolved by the @loom-include directive."
+      source: protocols/skill-preamble.md
 
     - name: pattern-executor-protocol
       description: Reusable pattern runtime protocol for debate, chain, vote, triage orchestration patterns
@@ -245,6 +249,32 @@ library:
       description: "Diagram triplet registry schema at .loom/diagrams/index.toon. Defines diagrams[]{slug,path,source,generatedAt,shaShort} appended by /loom-diagram; shaShort (truncated SHA-256 of the .md source) is the anchor /loom-docs release uses for DIAGRAM_DRIFT_DETECTED drift detection."
       source: protocols/diagram-index.schema.toon
 
+    # Browser-E2E contracts (PLAN-browser-e2e, Phase 0)
+    - name: browser-command-schema
+      description: "Closed command grammar for the loom-browser daemon — READ/WRITE/META verb enum (incl computed-style css/is-visible/bounding-box), A11yRef (role+name+index) targeting, BrowserResult envelope, and the closed error-code enum (DAEMON_NOT_RUNNING, CHROMIUM_ABSENT, CDP_DISCONNECTED, REF_UNRESOLVED, STEP_TIMEOUT, STORY_PARSE_ERROR, BROWSER_INJECTION_BLOCKED) with operator message + remediation per code."
+      source: protocols/browser-command.schema.md
+
+    - name: daemon-preflight-schema
+      description: "Single daemon-down behavior shared by every loom-browser consumer (C-07): hard non-zero fail with DAEMON_NOT_RUNNING + remediation 'run loom-browser start first'. Explicitly forbids silent-skip and queue-return-0 (blocking F-03)."
+      source: protocols/daemon-preflight.schema.md
+
+    - name: outcome-eval-schema
+      description: "Ground-truth planted-bug outcome-eval result (qa-outcome tier). Carries perCategory[]{category,severity,detected} per-category detection (not two scalars); floor/max thresholds live in the ground-truth fixture, not the result."
+      source: protocols/outcome-eval.schema.md
+
+    - name: browser-skill-schema
+      description: "Fixture-tested browser-skill convention (C-04): SKILL.md + script.ts + fixtures/ + script.test.ts, a pure parser over captured HTML (zero network/daemon) that throws (not returns empty) on a missing target."
+      source: protocols/browser-skill.schema.md
+
+    # Thinking-Gate contracts (PLAN-thinking-gate, Phase 0)
+    - name: think-review-schema
+      description: "ThinkReviewVerdict + the deterministic fail-closed decision table (C-02) for the pre-plan thinking-review gate. Closed enums: lens (eng|devex|ceo|design), severity (blocking|warning|info, aligned to AgentResult), decision (proceed|rewrite-think|kill). Non-fixable blocking → kill; fixable blocking OR any warning → rewrite-think; none → proceed; no-quorum → PANEL_INCOMPLETE (blocking) → rewrite-think. Quorum = ceil(M/2) lenses; any-blocking-wins; fail-closed never proceeds. Also carries the archetype→lens selection rule (PrePlanLensPanel) consumed by P1/P3/P4."
+      source: protocols/think-review.schema.md
+
+    - name: benchmark-scorecard-schema
+      description: "BenchmarkScorecard — typed competitive-benchmark math the benchmark-agent writes into a think doc. selfScore/refScore 0..10, gap = selfScore − refScore, overall = mean(selfScore), refOverall = mean(refScore); references[] (N) + per-dimension sourceRefs[]. 'Thin' defined as dimensions.length < 3 OR any refScore unsourced; a missing/thin card is a P4 benchmark-presence finding."
+      source: protocols/benchmark-scorecard.schema.md
+
   # In v4, skills = Claude Code native skills (new, initialized empty at v3→v4 migration)
   skills:
     - name: python-conventions
@@ -284,8 +314,20 @@ library:
       description: Retrospective ceremony — reads git activity, closed PRs, and planning artifacts, then appends structured learnings and regressions to .loom/. 5-phase workflow — gather activity, structured interview, extract learnings with confidence scores, extract anti-patterns, suggest ROADMAP mutations.
       source: skills/loom-retro/SKILL.md
 
+    - name: loom-careful
+      description: "Destructive-command PreToolUse guard — blocks rm -rf /, DROP TABLE, force-push, chmod 777, raw-device writes before Claude Code runs them. Single-command and session bypass via LOOM_CAREFUL_OVERRIDE. Shipped by M-07 (gstack adoption Phase 9)."
+      source: skills/loom-careful/SKILL.md
+
+    - name: loom-health
+      description: "Composite 0-10 quality score with trend history — runs scripts/loom-health.ts across five weighted signals (typecheck, tests, lint, dead-code, shellcheck), prints TOON, and appends a HealthScoreHistory row to .loom/health-history.toon. --quick skips tests + dead-code for in-loop use. Shipped by M-07 (gstack adoption Phase 9)."
+      source: skills/loom-health/SKILL.md
+
+    # loom-think was retired as a skill in P22, then REVIVED by the thinking-gate
+    # work (tg-wave-1) as the front half of the two-phase thinking flow:
+    # /loom-think produces the design doc; /loom-think:review gates it before
+    # /loom-roadmap init. loom-spec (idea → ticket) is a distinct sibling skill.
     - name: loom-think
-      description: 5-phase office-hours deep-think interview for fuzzy problems — Problem, Demand Evidence, Status Quo, Approach Candidates (cross-model review marker), Target User / Narrowest Wedge, Synthesis. Writes a durable design doc to .loom/thinks/{slug}-{ISO-timestamp}.md with a Supersedes chain, feeding /loom-roadmap init --from.
+      description: "5-phase deep-think interview producing a structured design doc under .loom/thinks/, with a cross-model second opinion. Precedes /loom-roadmap init for fuzzy problems; its output framing is gated by /loom-think:review."
       source: skills/loom-think/SKILL.md
 
     - name: loom-spec
@@ -301,7 +343,7 @@ library:
       source: skills/loom-skillify/SKILL.md
 
     - name: loom-browser
-      description: "Persistent Chromium daemon at .loom/browser/ with tiered READ/WRITE/META command semantics, a11y-tree refs (role+name+index), anti-bot stealth stubs, and prompt-injection defense hook that M-05 F-15 wires to code-llm-trust-review-agent. Wraps existing user Chrome install — no binary bundled. Shipped by M-11 (gstack adoption Phase 7)."
+      description: "Persistent Chromium daemon at .loom/browser/ with tiered READ/WRITE/META command semantics, a11y-tree refs (role+name+index), anti-bot stealth stubs, and a runtime prompt-injection defense hook (scanForInjection, F-39) that scans navigated page text and fails closed with BROWSER_INJECTION_BLOCKED. Wraps existing user Chrome install — no binary bundled. Shipped by M-11 (gstack adoption Phase 7)."
       source: skills/loom-browser/SKILL.md
 
     - name: loom-setup-browser-cookies
@@ -345,7 +387,7 @@ library:
       source: skills/loom-design-consultation/SKILL.md
 
     - name: loom-design-html
-      description: "Production HTML/CSS from mockup — Pretext-native rules (rem/em, flexbox/grid, computed heights, text-wrap: balance/pretty, semantic HTML5, tokenized colors) plus Phase 5 F-14 anti-AI-slop guards (no gradient overuse, no marketing-prose comments, no default palettes without customization). Emits docs/design/{slug}/index.html + styles.css atomically. Shipped by M-13 (gstack adoption Phase 13 F-23)."
+      description: "Production HTML/CSS from mockup — reflow-native rules (rem/em, flexbox/grid, computed heights, text-wrap: balance/pretty, semantic HTML5, tokenized colors) plus Phase 5 F-14 anti-AI-slop guards (no gradient overuse, no marketing-prose comments, no default palettes without customization). Emits docs/design/{slug}/index.html + styles.css atomically. Shipped by M-13 (gstack adoption Phase 13 F-23)."
       source: skills/loom-design-html/SKILL.md
 
     - name: loom-design-shotgun
@@ -371,6 +413,11 @@ library:
     - name: loom-diagram
       description: "English or mermaid → excalidraw triplet (source .md + editable .excalidraw + rendered .svg/.png). Registers each triplet in .loom/diagrams/index.toon for drift detection by /loom-docs release. Shipped by M-08 (gstack adoption Phase 9 F-29)."
       source: skills/loom-diagram/SKILL.md
+
+    # Browser-skill (fixture-tested codify pattern, C-04, PLAN-browser-e2e Phase 7)
+    - name: extract-product-listing
+      description: "Reference browser-skill (C-04) — a PURE parser over captured HTML that extracts a product listing (ul.product-list) into typed {sku,name,priceCents,currency} rows. Zero network, zero daemon: script.test.ts runs offline over fixtures/captured.html and throws (not returns empty) on a missing target selector. The copy-me shape for /loom-skillify's codify-scrape flow. Layout: SKILL.md + script.ts + fixtures/ + script.test.ts per protocols/browser-skill.schema.md."
+      source: skills/browser-skills/extract-product-listing/SKILL.md
 
   infrastructure:
     - name: statusline-renderer
@@ -409,7 +456,7 @@ library:
       source: scripts/loom-cso.ts
 
     - name: loom-browser-daemon
-      description: "Persistent Chromium daemon runtime for M-11 F-33. Subcommands start|stop|status|exec. Writes .loom/browser/state.toon per protocols/browser-state.schema.toon. Detects Chrome/Chromium/Brave/Edge binary; falls back to stub mode (queue-only, no hard fail) when no binary is present. Prompt-injection defense hook is a no-op in M-11 and is wired to code-llm-trust-review-agent in M-05 F-15."
+      description: "Persistent Chromium daemon runtime for M-11 F-33. Subcommands start|stop|status|exec. Writes .loom/browser/state.toon per protocols/browser-state.schema.toon. Detects Chrome/Chromium/Brave/Edge binary; falls back to stub mode (queue-only, no hard fail) when no binary is present. Runtime prompt-injection defense hook (scanForInjection, F-39) scans navigated page text and fails closed with BROWSER_INJECTION_BLOCKED — distinct from the F-15 code-review lens, which audits source diffs, not runtime pages."
       source: scripts/loom-browser-daemon.ts
 
     - name: loom-import-cookies
@@ -437,6 +484,15 @@ library:
     - name: feature-coverage-agent
       description: Audits plan schema, API surface, and features against competitors
       source: agents/feature-coverage-agent.md
+
+    # Thinking-Gate agent (PLAN-thinking-gate, P5 — pre-registered at P0)
+    # NOTE: P5 authors agents/benchmark-agent.md itself (system prompt + `model:`
+    # frontmatter). This entry is the registration only, so later waves never
+    # touch library.yaml. Do NOT create the agent .md file at P0.
+    - name: benchmark-agent
+      description: "Competitive-benchmark agent — runs pre-roadmap on a bare idea (unlike the plan-scoped feature-coverage-agent) and writes a typed BenchmarkScorecard (0..10 selfScore/refScore, sourceRefs, N references) into the converged .loom/thinks/ doc. Distinct from the loom-benchmark perf skill. Shipped by PLAN-thinking-gate P5."
+      source: agents/benchmark-agent.md
+      requires: [protocol:benchmark-scorecard-schema, protocol:agent-result-schema]
 
     - name: strategy-agent
       description: Evaluates product strategy across the full lifecycle — positioning and prioritization during planning, drift and scope creep during review
@@ -972,7 +1028,7 @@ library:
       requires: [skill:loom-install, infrastructure:loom-install]
 
     - name: loom-design
-      description: "Design dispatcher — subcommands: consultation (5-phase brand kickoff → .loom/design premise), html (Pretext-native HTML/CSS from mockup with anti-AI-slop guards → docs/design/{slug}/), shotgun (N parallel UI variants on distinct axes, side-by-side render via /loom-browser with file-fallback, time-decaying preference memory at .loom/design/preferences.toon). Shipped by M-13 (gstack adoption Phase 13 F-22, F-23, F-24)."
+      description: "Design dispatcher — subcommands: consultation (5-phase brand kickoff → .loom/design premise), html (reflow-native HTML/CSS from mockup with anti-AI-slop guards → docs/design/{slug}/), shotgun (N parallel UI variants on distinct axes, side-by-side render via /loom-browser with file-fallback, time-decaying preference memory at .loom/design/preferences.toon). Shipped by M-13 (gstack adoption Phase 13 F-22, F-23, F-24)."
       source: commands/loom-design.md
       requires: [skill:loom-design-consultation, skill:loom-design-html, skill:loom-design-shotgun]
 
@@ -981,7 +1037,7 @@ library:
       source: commands/loom-design/consultation.md
 
     - name: loom-design-html
-      description: "Mockup-to-HTML subcommand — accepts prose description or image path, emits docs/design/{slug}/index.html + styles.css with Pretext-native rules and Phase 5 F-14 anti-slop guards, validates structural parse. Shipped by M-13 (gstack adoption Phase 13 F-23)."
+      description: "Mockup-to-HTML subcommand — accepts prose description or image path, emits docs/design/{slug}/index.html + styles.css with reflow-native rules and Phase 5 F-14 anti-slop guards, validates structural parse. Shipped by M-13 (gstack adoption Phase 13 F-23)."
       source: commands/loom-design/html.md
 
     - name: loom-design-shotgun
@@ -1043,7 +1099,7 @@ kits:
         name: code-codex-review-agent
 
   - name: design-build
-    description: "Build-time design kit — ground-up brand consultation, Pretext-native HTML/CSS from mockup with anti-AI-slop guards, and parallel UI variant board with time-decaying taste memory. Shipped by M-13 (gstack adoption Phase 13 F-22/F-23/F-24)."
+    description: "Build-time design kit — ground-up brand consultation, reflow-native HTML/CSS from mockup with anti-AI-slop guards, and parallel UI variant board with time-decaying taste memory. Shipped by M-13 (gstack adoption Phase 13 F-22/F-23/F-24)."
     version: 0.1.0
     minLoomVersion: 4
     includes:

@@ -1,0 +1,6 @@
+skill: devex-review
+batch: review
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Measured-vs-predicted TTHW boomerang — re-runs install-to-hello-world in a fresh temp dir, computes the delta against plan-devex-review-agent's predictedTTHW, and archives to planning/history/reviews so the next plan review is graded and self-corrects; gstack's DX review is one-shot with no feedback loop into planning."

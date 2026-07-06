@@ -5,6 +5,8 @@ description: "Review/search/prune/export learnings from .loom/learnings.toon (fr
 
 # /loom-learn — Learnings Management UI (M-08 F-26)
 
+<!-- @loom-include: protocols/skill-preamble.md -->
+
 Manages the learnings corpus at `.loom/learnings.toon` — the append-only log
 of resolved-issue lessons emitted by `/loom-bugfix`, `/loom-quick`, retros,
 and other Loom flows. Provides interactive search, pruning, and export.
@@ -106,3 +108,13 @@ The user can then run `/loom-learn search "<keyword>"` for the full entry.
 - `0` — subcommand succeeded.
 - `1` — `.loom/learnings.toon` missing or unreadable.
 - `2` — subcommand unrecognized or missing required argument.
+
+## Beyond upstream
+
+gstack keeps lessons as inert prose scattered through docs. `/loom-learn` goes
+**beyond parity** by treating learnings as a queryable, machine-ranked corpus:
+a `--min-confidence` **enforcement filter** in `scripts/loom-learnings-search.ts`
+prunes low-signal entries, results rank by confidence, and matching is proactive
+("didn't we fix this before?" auto-surfaces the top hits). The confidence-floor
+filter is the live enforcement demonstrated by the behavioral test that drives
+the search script as a subprocess.

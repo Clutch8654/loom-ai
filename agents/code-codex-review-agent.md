@@ -27,7 +27,7 @@ This agent file defines **intent, prompt template, and expected AgentResult shap
 1. Read `LOOM_CODEX_VENDOR`, `LOOM_CODEX_MODEL`, `LOOM_CODEX_MAX_COST_CENTS`, `LOOM_CODEX_TIMEOUT_MS` from env.
 2. Load the prompt template below with `{diff}`, `{stack}`, `{convention}` substitutions.
 3. Enforce the cost cap before making the call (dry-run token count).
-4. Call the vendor SDK (OpenAI SDK or `@google/generative-ai`), request structured JSON output matching the AgentResult finding schema.
+4. Call the vendor SDK (OpenAI SDK or `@google/generative-ai`), requesting output as a TOON findings table matching the AgentResult finding schema.
 5. Parse and validate the response; drop malformed findings, count them in `issues`.
 6. Return the AgentResult TOON envelope described below.
 
@@ -50,16 +50,22 @@ provides genuine confidence.
 {diff}
 
 ## Instructions
-Return a JSON array of findings. Each finding MUST have:
+Return findings as a TOON table. Emit exactly this header, then one row per
+finding (set N to the number of findings):
+
+findings[N]{category,file,line,severity,confidence,description,fix}:
+  <category>,<file>,<line>,<severity>,<confidence>,<description>,<fix>
+
+Column semantics:
 - category: string (freeform; suggest bug|design|security|perf|maintainability|llm-trust)
 - file: string (repo-relative path)
 - line: integer (starting line in the changed hunk)
-- severity: "critical" | "warning" | "info"
+- severity: critical | warning | info
 - confidence: integer 1..10 (10 = certain; 1 = weak signal)
 - description: string (what is wrong)
 - fix: string (concrete suggested change)
 
-Return ONLY the JSON array. No prose. No markdown fence.
+Quote any field that contains a comma. Return ONLY the TOON table. No prose. No markdown fence.
 ```
 
 ## Expected AgentResult
@@ -93,7 +99,7 @@ In `/loom-vote`, this agent contributes an independent vendor evaluation of cand
 
 - **Vendor API key missing** — return `status: skipped`, `skippedReason: vendor-unavailable`. Do not fail the parent review.
 - **Cost cap exceeded** — return `status: skipped`, `skippedReason: cost-cap-exceeded`. Include the estimated cost in `issues` for user visibility.
-- **Malformed JSON response** — attempt one repair pass; if still malformed, return `status: failure` with the raw response snippet (truncated to 500 chars) in `issues`.
+- **Malformed TOON response** — attempt one repair pass; if still malformed, return `status: failure` with the raw response snippet (truncated to 500 chars) in `issues`.
 - **Timeout** — return `status: failure`, `issues: [{severity: warning, description: "vendor timed out after {ms}ms"}]`.
 
 ## Non-Goals

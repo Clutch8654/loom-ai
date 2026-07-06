@@ -1,0 +1,6 @@
+skill: cso
+batch: review
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "History-based regression gate — the daily tier blocks the PR (non-zero exit) when the new score drops below the last .loom/security-history.toon entry or below 8/10 across seven lenses, with a separate monthly 2/10 deep scan; gstack's security pass is single-shot advisory with no trend gate."

@@ -1,0 +1,6 @@
+skill: health
+batch: review
+preambleRef: protocols/skill-preamble.md
+testsPresent: true
+enforcementWired: true
+beyondUpstream: "Composite weighted 5-signal score (typecheck 30 / tests 30 / lint 20 / dead-code 10 / shellcheck 10) with graceful missing-tool re-normalization (HEALTH_TOOL_MISSING drops the tool and re-weights) plus an appended .loom/health-history.toon trend row; gstack health is a flat pass/fail with no weighting, trend, or degradation handling."

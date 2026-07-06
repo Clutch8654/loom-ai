@@ -92,12 +92,31 @@ only the symptom. Escalate if the CLI reads from global config that drifts.
 
 ### Rung 4 — Headless browser
 
-The headless browser rung drives Playwright or Puppeteer against a local dev
-server and asserts on DOM state or network response:
+The headless browser rung drives the loom-browser daemon against a URL and
+asserts on rendered DOM text. The daemon-backed assertion ships as a single
+shell-executable command — the `command` field in
+`protocols/feedback-loop.schema.md` already accepts any shell string, so a
+browser rung needs NO schema change:
 
 ```
-bunx playwright test tests/e2e/symptom.spec.ts --headed=false
+bun scripts/loop-browser-rung.ts --url https://app.example/status --selector "#state" --expect Ready
 ```
+
+`scripts/loop-browser-rung.ts` attaches to the running daemon over CDP (P1a
+`connect()` — never launches), navigates to `--url`, reads the DOM text of
+`--selector` (default `body`), and asserts it contains `--expect`. The exit code
+IS the red/green signal: `0` green, `1` red (structured `RUNG4-RED` on stderr),
+`9` when page text can't be obtained (HARNESS — never a false red). That
+taxonomy is what satisfies the TRDA gate: **tight** (one substring assertion),
+**redCapable** (non-zero exit + structured stderr), **deterministic** (pure over
+page text — two runs agree), **agentRunnable** (a fixer runs the `bun` command
+with no HITL).
+
+The assertion is factored behind a text-source boundary: `--mode daemon`
+(default) reads page text over CDP, while `--mode fetch` HTTP-GETs the URL and
+runs the SAME assertion — a page-drive-free path for environments where the live
+Chromium handshake is unavailable. Because both modes share one exit-code path,
+a fetch-mode green is genuine evidence the daemon-mode contract holds.
 
 Tight loops target a single page or flow. Escalate if the E2E suite startup
 is slow (> 30 s) or if screenshots fail TRDA determinism.

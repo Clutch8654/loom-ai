@@ -13,6 +13,8 @@
  * scenario block.
  */
 
+import { splitCsvLine } from "../../lib/index.js";
+
 export type WhenTriggerType = "actor-action" | "system-event" | "api-call";
 
 export type TestTier = "unit" | "integration" | "e2e" | "qa-review";
@@ -372,29 +374,11 @@ function readArrayField(body: string, fieldName: string): string[] {
 
     const valuesStr = match[2];
     if (!valuesStr) return [];
-    return splitCsv(valuesStr).map((s) => stripQuotes(s.trim()));
+    return splitCsvLine(valuesStr, { preserveQuotes: true }).map((s) =>
+      stripQuotes(s.trim())
+    );
   }
   return [];
-}
-
-function splitCsv(row: string): string[] {
-  const out: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (const ch of row) {
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-      current += ch;
-    } else if (ch === "," && !inQuotes) {
-      out.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
-  return out;
 }
 
 function stripQuotes(s: string): string {

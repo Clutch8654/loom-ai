@@ -73,7 +73,7 @@ Write the actual test files to disk within your file ownership boundaries.
 
 ### AgentResult
 
-Return a standard `AgentResult` JSON with:
+Return a standard `AgentResult` TOON with:
 - `filesCreated`: all test files written
 - `exportsAdded`: none (test files don't export)
 - `integrationNotes`: summary of coverage, any gaps, any assumptions made

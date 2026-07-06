@@ -125,3 +125,28 @@ but not a regression).
   a downstream `/loom-code fix` invocation.
 - No runtime dynamic analysis (no fuzzing, no live traffic replay). Those
   belong to `/loom-qa` (F-20).
+
+## Loom conventions
+
+<!-- @loom-include: protocols/skill-preamble.md -->
+
+Loom platform conventions (TOON on disk, atomic writes, AgentResult envelope,
+confidence scoring, model resolution, init guard) apply to this skill **by
+reference** via the directive above — see `protocols/skill-preamble.md`. They
+are not re-inlined here.
+
+## Beyond upstream (vs gstack)
+
+History-based regression gate: the `daily` tier blocks the PR (non-zero exit)
+when the new score drops below the most-recent `.loom/security-history.toon`
+entry or below 8/10, with a separate `monthly` 2/10 deep scan across seven
+lenses. gstack's security pass is single-shot advisory with no trend-aware gate.
+
+## Backing & enforcement
+
+- **Backing script:** `scripts/loom-cso.ts` — gate math, atomic history append,
+  and the four scriptable lenses.
+- **Behavioral tests:** `tests/scripts/loom-cso.test.ts` covers the fast-gate
+  exit semantics and the atomic append.
+- **Enforcement:** `scripts/loom-cso.ts daily` exits non-zero on a regression or
+  a below-floor score, demonstrated by `tests/scripts/loom-cso.test.ts`.

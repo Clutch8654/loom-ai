@@ -5,7 +5,7 @@ status: approved
 created: 2026-06-30
 lastReviewed: 2026-06-30
 targetDate: null
-totalFeatures: 38
+totalFeatures: 39
 totalMilestones: 14
 ---
 
@@ -587,6 +587,48 @@ given[1]: A diff introduces a function that concatenates req.body.text into a pr
 when: /loom-code:review runs on the diff
 whenTriggerType: actor-action
 then[1]: At least one finding MUST have findingCategory "llm-trust"
+tags[1]: happy-path
+automatable: true
+```
+
+### F-39: `onPageText` runtime injection-defense — real detection
+
+**Priority:** P1
+**Milestone:** M-05
+**Status:** SHIPPED 2026-07-06 (standalone runtime signature detector).
+**Description:** Replaces the no-op `onPageText` browser hook (`scripts/lib/browser-client.ts`, formerly always returned `{ok:true,findings:[]}`) with a real standalone signature detector (`scanForInjection`) that scans live page text on every navigation. Deferred from PLAN-browser-e2e (P1b shipped the contract slot + BE-10 fires-check only; full impl pointed here). **Complementary to — not dependent on — F-15**: F-15's `code-llm-trust-review-agent` audits *source diffs* at code-review time (an LLM subagent); F-39 scans *runtime page text* on every navigation (a synchronous function). The original "onPageText wires to the F-15 agent" note was a category error — a diff-review subagent cannot run per-navigation and exposes no runtime rules library. On detection, the daemon exits non-zero with `BROWSER_INJECTION_BLOCKED` per the daemon-preflight contract.
+
+**Entities involved:** InjectionResult, InjectionFinding
+
+**Key behaviors:**
+- `onPageText(pageText, url)` returns `ok:false` with populated `findings[]` when page text carries an injection payload; `ok:true` on clean text.
+- Six high-precision signature classes: instruction-override, role-hijack, system-prompt exfiltration, data-exfiltration, destructive-directive, delimiter-injection.
+- On `ok:false`, `execWrite` exits non-zero with `BROWSER_INJECTION_BLOCKED`.
+
+**Convergence targets:**
+- [x] `onPageText` detects a known injection payload (not just fires); the no-op stub body is removed.
+- [x] BE-10 (`tests/browser/injection-defense.test.ts`) is upgraded from a fires-check to a detects-check: a clean fixture passes, an injection fixture yields `ok:false`.
+
+**Scenarios:**
+
+```toon
+id: S-01
+title: Runtime hook blocks a known injection payload in fetched page text
+given[1]: A fixture page whose visible text contains a prompt-injection payload
+when: the daemon navigates to the fixture and onPageText runs
+whenTriggerType: actor-action
+then[1]: onPageText returns ok:false and execWrite exits non-zero with BROWSER_INJECTION_BLOCKED
+tags[1]: happy-path
+automatable: true
+```
+
+```toon
+id: S-02
+title: Clean page text passes the runtime hook
+given[1]: A fixture page with ordinary content and no injection payload
+when: the daemon navigates to the fixture and onPageText runs
+whenTriggerType: actor-action
+then[1]: onPageText returns ok:true with an empty findings[] and navigation proceeds
 tags[1]: happy-path
 automatable: true
 ```
@@ -1303,7 +1345,7 @@ S-04,backward-compat,"An operator runs /loom-plan review on a PLAN.md draft","pl
 
 ### M-05: Code review lenses
 
-**Features:** F-14, F-15, F-16
+**Features:** F-14, F-15, F-16, F-39
 **Depends on:** M-01
 **Acceptance:** Visual QA, LLM trust-boundary, and cross-vendor review all contribute findings into the `/loom-code review` envelope. F-14 wraps chrome-devtools MCP per C-05.
 **Effort:** M
