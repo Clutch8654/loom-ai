@@ -1,10 +1,9 @@
 stage: execute
-wave: 5
-iteration: 0
-completedAt: 2026-07-05T22:39:07Z
-filesChanged[6]: protocols/convergence-tier.schema.md,agents/tdd-coach.md,tests/agents/tdd-coach-browser-tracer.test.ts,.github/workflows/pr-gate.yml,.github/workflows/nightly-gate.yml,tests/ci/browser-ci-wiring.test.ts
+wave: 3
+completedAt: 2026-07-06T02:09:05Z
+filesChanged[7]: commands/loom-auto.md,tests/e2e/thinking-gate-auto.test.ts,commands/loom-do.md,commands/loom-which.md,README.md,docs/reference/agents.md,docs/.generated-manifest.toon
 findingsResolved: 0
 findingsRemaining: 0
-summary: "P4b: e2e-tier runner scalar->runners[3]{name,sessionMode} array (headless/chrome-mcp/daemon), schemaVersion 2, legacy scalar=headless. P6: tdd-coach RED step documents browser tracer bullet (reuses P5 daemon assertion), red->green ordering test. P9a: CI wiring — additive PR fixture job (NOT in frozen 6-check needs), nightly daemon-e2e + scored qa-outcome jobs (continue-on-error). 442 pass/2 skip, tsc=0. Frozen 6-check untouched."
-keyDecisions[3]: "P9a qa-outcome nightly injects a reporter in-process (scored path runs, not CLI advisory-skip); degrades to documented skip when LOOM_EVAL_LLM unset — never silent pass","P9a fixture job strictly additive; gate-status needs = exactly the frozen 6","P4b legacy scalar runner treated as headless variant (back-compat)"
-nextStageHints[2]: "P9b (Wave 6, final): honest single-dimension tests re-score vs FROZEN gstack rubric anchored to demonstrated capability — write planning/reports/tests-rescore.toon. PASS if >=9 else calibrated-equivalence-at-8 naming residual (raw count + Windows CI per Non-Goals)","Evidence for re-score: daemon drives Chromium via connectOverCDP (P1a); convergence e2e uses it (P4a/P4b); Rung-4 loop red->green (P5); fixture-tested browser-skill (P7); per-category outcome eval in nightly (P8a/P8b/P9a); injection test (P1b BE-10)"
+summary: "P6a: gate wired at loom-auto Step 0.75 (before roadmap init) — bounded rewrite loop (maxThinkRewrites default 2), kill=terminal HALT, --no-think-review/--force, LoopBack{attempt,verdict,reason,decidedAt} per attempt, --think-reviewed wired into roadmap-review (no double-run). 24 e2e tests. P6b: /loom-do + /loom-which route to /loom-think:review (nodes/edges 42/42), README pre-plan-gate section w/ runnable worked example (real branch doc, proceed/rewrite/kill verdicts) + CHANGELOG subsection. Docs regenerated (benchmark-agent → agents.md). Full suite 865 pass/2 skip, tsc=0."
+keyDecisions[2]: "maxThinkRewrites read from [settings.thinkReview] with fallback default 2 (no orchestration.toml edit needed)","CHANGELOG note landed as README subsection (planning/history/changelog.md out of P6b ownership; criterion permits README subsection)"
+nextStageHints[1]: "Plan complete — all 8 phases across 4 waves shipped. Finalize plan + roadmap milestones (M-14/M-15/B)."

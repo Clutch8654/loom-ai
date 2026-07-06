@@ -1,9 +1,12 @@
 ---
 roadmapVersion: 1
 name: "Thinking Gate — divergent/formality separation"
-status: draft
+status: completed
 created: 2026-07-04
 lastReviewed: 2026-07-05
+completedAt: 2026-07-05T22:30:00Z
+planRef: planning/plans/PLAN-thinking-gate.md
+acceptanceNote: "All 4 milestones delivered (M-14 pre-plan judgment gate, M-15 pre-plan + conditional roadmap lenses, M-16 earlier benchmark wired, M-17 integration + bounded auto default). Executed by PLAN-thinking-gate across 4 waves / 5 commits, tsc=0, 865 pass/2 skip. Fail-closed router, altitude panel, --benchmark pattern, and bounded /loom-auto gate (kill-halt + override + LoopBack audit) all live and tested."
 reviewRef: planning/history/reviews/2026-07-05-thinking-gate-review.toon
 seededFrom: .loom/thinks/thinking-formality-separation-2026-07-04T21-12-44.md
 targetDate: null

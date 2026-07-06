@@ -1,9 +1,11 @@
 ---
 planVersion: 2
 name: "Thinking Gate"
-status: draft
+status: completed
 created: 2026-07-04
 lastReviewed: 2026-07-05
+completedAt: 2026-07-05T22:30:00Z
+acceptanceNote: "All 8 phases executed across 4 waves (5 commits: 4800c5a, 98dcbc6, 99100dd, ffbff0a + this). Fully green — tsc=0, 865 pass/2 skip (the 2 skips are the prior browser-e2e plan's live-Chromium tests). Shipped: fail-closed C-02 router (scripts/lib/think-review-router.ts), /loom-think:review file-subcommand, scope:think altitude mode on the 4 M-04 lenses (no forks), activated cross-model marker (sonnet, never fable), conditional strategic lenses on /loom-roadmap review, --benchmark pattern + benchmark-agent, /loom-auto bounded gate at Step 0.75 (kill-halt + override + LoopBack audit), /loom-do+/loom-which routing + README section. Canonical verdict path .plan-execution/ephemeral/think-review/verdict.toon reconciled across P1/P3/P6a."
 reviewRef: planning/history/reviews/2026-07-05-thinking-gate-review.toon
 roadmapRef: planning/ROADMAP-thinking-gate.md
 seededFrom: .loom/thinks/thinking-formality-separation-2026-07-04T21-12-44.md

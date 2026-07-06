@@ -1,0 +1,33 @@
+plan: PLAN-thinking-gate
+phase: 0
+wave: 0
+taskId: w0-contracts
+agent: contracts-agent
+generatedAt: 2026-07-05
+note: "Types + schemas only — no behavior. P5 authors agents/benchmark-agent.md itself (system prompt + model: frontmatter); P0 only pre-registers its library.yaml entry so later waves never touch library.yaml."
+
+contracts[6]{file,kind,purpose,exports}:
+  lib/types.ts,types,"Wave-0 source of truth — Thinking-Gate TypeScript contracts (section 4 appended; pure types, zero imports)","ThinkReviewVerdict,ThinkReviewFinding,ThinkReviewLens,ThinkReviewSeverity,ThinkReviewDecision,PrePlanLensPanel,PrePlanLensSelection,ProjectArchetype,BenchmarkScorecard,BenchmarkDimension,BenchmarkReference,LoopBack"
+  protocols/think-review.schema.md,protocol,"ThinkReviewVerdict envelope + fail-closed C-02 decision table + quorum math + archetype→lens selection rule (consumed by P1/P3/P4)","ThinkReviewVerdict schema,decisionTable,lensSelectionRule,nextCommandMap"
+  protocols/benchmark-scorecard.schema.md,protocol,"BenchmarkScorecard math (0..10 scores, derived gap/overall/refOverall/thin) written by benchmark-agent into the think doc","BenchmarkScorecard schema,derivations,thinRule"
+  skills/library.yaml,registration,"Registered 2 new protocols (think-review-schema, benchmark-scorecard-schema) + pre-registered benchmark-agent","think-review-schema,benchmark-scorecard-schema,benchmark-agent"
+  planning/history/changelog.md,audit,"R-001 audit entry for the Wave-0 contracts landing",R-001
+  .plan-execution/contracts/manifest.toon,manifest,"This file — every contract + purpose + exports",self
+
+closedEnums[4]{name,values,alignedTo}:
+  ThinkReviewLens,"eng|devex|ceo|design",archetype-lens-selection-rule
+  ThinkReviewSeverity,"blocking|warning|info",agent-result.schema.md/FindingSeverity
+  ThinkReviewDecision,"proceed|rewrite-think|kill",C-02-decision-table
+  errorCode,"PANEL_INCOMPLETE|null",exit-codes.md
+
+decisionTable[4]{condition,decision}:
+  "non-fixable blocking present",kill
+  "fixable blocking OR any warning",rewrite-think
+  "no blocking and no warning",proceed
+  "no-quorum (PANEL_INCOMPLETE, fail-closed)",rewrite-think
+
+downstreamOwners[4]{consumer,contract}:
+  "P1 scripts/lib/think-review-router.ts",ThinkReviewFinding[]-to-ThinkReviewVerdict
+  "P1/P3/P4 lens panels",PrePlanLensPanel
+  "P5 benchmark-agent",BenchmarkScorecard
+  "P6a /loom-auto bounded loop",LoopBack
