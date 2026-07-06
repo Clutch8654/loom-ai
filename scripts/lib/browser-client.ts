@@ -706,12 +706,14 @@ export async function injectCookies(
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Injection-defense STUB (C-07). The stable hook contract from
- * skills/loom-browser/SKILL.md:108-124 is `onPageText(pageText, url) =>
- * { ok, findings }`. In M-11 it is a NO-OP (ok:true). Full tainting/signature
- * detection is deferred to M-05/F-15. The contract slot exists NOW so the
- * navigate path can fail closed with BROWSER_INJECTION_BLOCKED once the real
- * hook returns ok:false.
+ * Injection-defense hook (C-07 slot; detection shipped in F-39, gstack-adoption
+ * M-05). The stable hook contract from skills/loom-browser/SKILL.md:108-124 is
+ * `onPageText(pageText, url) => { ok, findings }`. It scans freshly-navigated
+ * page text for prompt-injection signatures and returns ok:false when a hostile
+ * directive is present, so the navigate path fails closed with
+ * BROWSER_INJECTION_BLOCKED. This is a standalone high-precision signature
+ * detector; F-15's llm-trust agent can later be swapped in via execWrite's
+ * `hook` parameter without touching the contract.
  * ──────────────────────────────────────────────────────────────────────── */
 
 /** One flagged span from the injection-defense hook (shape stable for M-05/F-15). */
@@ -734,14 +736,89 @@ export type OnPageText = (
 ) => InjectionResult | Promise<InjectionResult>;
 
 /**
- * NO-OP injection-defense hook (M-11 stub). Always passes. M-05/F-15 replaces
- * the body with the llm-trust untrusted-text tainting rules; callers inject a
- * real hook via execWrite's `hook` parameter. Do not rename (SKILL.md:119).
+ * Prompt-injection signature table. Each rule is high-precision — it matches a
+ * multi-word hostile directive, not incidental prose — so ordinary page copy
+ * does not trip it. Patterns are case-insensitive; `[^.]{0,N}` bridges filler
+ * words (and newlines) between keywords without crossing a sentence boundary.
  */
-export const onPageText: OnPageText = (_pageText: string, _url: string) => ({
-  ok: true,
-  findings: [],
-});
+const INJECTION_SIGNATURES: ReadonlyArray<{
+  code: string;
+  severity: "critical" | "major" | "minor";
+  pattern: RegExp;
+  message: string;
+}> = [
+  {
+    code: "INSTRUCTION_OVERRIDE",
+    severity: "critical",
+    pattern:
+      /\b(ignore|disregard|forget)\b[^.]{0,40}\b(previous|prior|earlier|above|all)\b[^.]{0,24}\b(instruction|instructions|prompt|prompts|context|rules?|guidelines?)\b/i,
+    message: "instruction-override directive (ignore/disregard prior instructions)",
+  },
+  {
+    code: "ROLE_HIJACK",
+    severity: "critical",
+    pattern:
+      /\b(you are now|from now on,?\s+you|pretend to be|act as an?\s+(unrestricted|jailbroken|uncensored)|enter developer mode|new instructions?\s*:)/i,
+    message: "role-hijack / jailbreak directive",
+  },
+  {
+    code: "SYSTEM_PROMPT_LEAK",
+    severity: "major",
+    pattern:
+      /\b(reveal|print|repeat|show|output|disclose|leak)\b[^.]{0,30}\b(system\s+prompt|your\s+(instructions|prompt|rules|system\s+message)|initial\s+prompt)\b/i,
+    message: "system-prompt exfiltration directive",
+  },
+  {
+    code: "DATA_EXFILTRATION",
+    severity: "critical",
+    pattern:
+      /\bexfiltrat|(\b(send|upload|post|leak|forward|transmit)\b[^.]{0,40}\b(cookie|cookies|password|credential|credentials|token|tokens|api\s*key|secret|secrets|session)\b)/i,
+    message: "data-exfiltration directive (send/leak credentials or cookies)",
+  },
+  {
+    code: "DESTRUCTIVE_DIRECTIVE",
+    severity: "critical",
+    pattern:
+      /\brm\s+-rf\b|(\b(delete|remove|wipe|destroy)\b[^.]{0,24}\b(every|all)\b[^.]{0,16}\bfiles?\b)/i,
+    message: "destructive directive (delete/wipe files)",
+  },
+  {
+    code: "DELIMITER_INJECTION",
+    severity: "major",
+    pattern:
+      /<\|(im_start|im_end|system|user|assistant)\|>|\[\/?INST\]|<<SYS>>|###\s*(system|instruction)/i,
+    message: "chat-template delimiter injection",
+  },
+];
+
+/**
+ * Scan page text for prompt-injection signatures. Returns one finding per
+ * distinct rule that matched (deduped by code), highest severity first.
+ */
+export function scanForInjection(pageText: string): InjectionFinding[] {
+  const findings: InjectionFinding[] = [];
+  for (const sig of INJECTION_SIGNATURES) {
+    if (sig.pattern.test(pageText)) {
+      findings.push({ code: sig.code, message: sig.message, severity: sig.severity });
+    }
+  }
+  const rank = { critical: 0, major: 1, minor: 2 } as const;
+  return findings.sort(
+    (a, b) => rank[a.severity ?? "minor"] - rank[b.severity ?? "minor"]
+  );
+}
+
+/**
+ * Injection-defense hook (F-39, gstack-adoption M-05). Scans navigated page text
+ * for prompt-injection signatures; returns ok:false with findings when a hostile
+ * directive is present, so execWrite's navigate path fails closed with
+ * BROWSER_INJECTION_BLOCKED. Callers can inject F-15's llm-trust agent instead
+ * via execWrite's `hook` parameter. Do not rename (SKILL.md:119).
+ */
+export const onPageText: OnPageText = (pageText: string, _url: string) => {
+  const findings = scanForInjection(pageText);
+  return { ok: findings.length === 0, findings };
+};
 
 /**
  * Run the injection-defense hook over freshly-navigated page text and fail

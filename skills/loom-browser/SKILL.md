@@ -107,14 +107,22 @@ explicit **Out of Scope** for M-11 and left to future milestones.
 
 ## Prompt-injection defense hooks
 
-PLACEHOLDER — full integration lands with **M-05 F-15 llm-trust review**
-(see `agents/code-llm-trust-review-agent.md`, shipped in Phase 5).
+The daemon fires a hook on every page load with the extracted page text. It is
+wired to a **standalone signature detector** (`scanForInjection` in
+`scripts/lib/browser-client.ts`, F-39 / gstack-adoption M-05): the WRITE
+`navigate` path pipes `document.body.innerText` through `onPageText`, which
+returns `ok:false` with `findings[]` on a prompt-injection signature —
+instruction-override, role-hijack/jailbreak, system-prompt exfiltration,
+data-exfiltration, destructive directives, and chat-template delimiter
+injection. On `ok:false` the gate surfaces `BROWSER_INJECTION_BLOCKED` (exit 8)
+and fails closed. Rules are high-precision (multi-word directives), so ordinary
+page copy does not trip them.
 
-The daemon exposes a hook point that fires on every page load with the
-extracted page text. In M-11 the hook is wired to a no-op. In M-05 F-15 the
-hook will pipe page text through the llm-trust agent's untrusted-text
-tainting rules and surface `BROWSER_INJECTION_BLOCKED` when a prompt-injection
-signature is detected.
+**Relationship to F-15 (`code-llm-trust-review-agent`):** complementary, not a
+dependency. F-15 audits *source diffs* at code-review time (an LLM subagent);
+this hook scans *runtime page text* per navigation (a synchronous function).
+They share a theme (trust boundaries) but neither calls the other — a
+diff-review subagent cannot run on every page load.
 
 Hook shape (stable contract — do not rename):
 

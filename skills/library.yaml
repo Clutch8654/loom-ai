@@ -330,7 +330,7 @@ library:
       source: skills/loom-skillify/SKILL.md
 
     - name: loom-browser
-      description: "Persistent Chromium daemon at .loom/browser/ with tiered READ/WRITE/META command semantics, a11y-tree refs (role+name+index), anti-bot stealth stubs, and prompt-injection defense hook that M-05 F-15 wires to code-llm-trust-review-agent. Wraps existing user Chrome install — no binary bundled. Shipped by M-11 (gstack adoption Phase 7)."
+      description: "Persistent Chromium daemon at .loom/browser/ with tiered READ/WRITE/META command semantics, a11y-tree refs (role+name+index), anti-bot stealth stubs, and a runtime prompt-injection defense hook (scanForInjection, F-39) that scans navigated page text and fails closed with BROWSER_INJECTION_BLOCKED. Wraps existing user Chrome install — no binary bundled. Shipped by M-11 (gstack adoption Phase 7)."
       source: skills/loom-browser/SKILL.md
 
     - name: loom-setup-browser-cookies
@@ -443,7 +443,7 @@ library:
       source: scripts/loom-cso.ts
 
     - name: loom-browser-daemon
-      description: "Persistent Chromium daemon runtime for M-11 F-33. Subcommands start|stop|status|exec. Writes .loom/browser/state.toon per protocols/browser-state.schema.toon. Detects Chrome/Chromium/Brave/Edge binary; falls back to stub mode (queue-only, no hard fail) when no binary is present. Prompt-injection defense hook is a no-op in M-11 and is wired to code-llm-trust-review-agent in M-05 F-15."
+      description: "Persistent Chromium daemon runtime for M-11 F-33. Subcommands start|stop|status|exec. Writes .loom/browser/state.toon per protocols/browser-state.schema.toon. Detects Chrome/Chromium/Brave/Edge binary; falls back to stub mode (queue-only, no hard fail) when no binary is present. Runtime prompt-injection defense hook (scanForInjection, F-39) scans navigated page text and fails closed with BROWSER_INJECTION_BLOCKED — distinct from the F-15 code-review lens, which audits source diffs, not runtime pages."
       source: scripts/loom-browser-daemon.ts
 
     - name: loom-import-cookies
