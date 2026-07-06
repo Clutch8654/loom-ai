@@ -1,72 +1,59 @@
 ```toon
 pageId: component-eval-framework
-title: Eval Framework (Three-Tier Ladder)
+title: Eval Framework (Tiered Ladder)
 category: component
-domain: code
-createdAt: 2026-07-04T06:00:00Z
-updatedAt: 2026-07-04T06:00:00Z
-createdBy: wiki-maintainer-agent
-updatedBy: wiki-maintainer-agent
-summary: Three-tier eval ladder — T1 static/in-process (PR gate, blocking), T2 hermetic replay (nightly, advisory), T3 LLM-judge (opt-in, never merge-blocking). Free-by-default invariant: T1 and T2 make zero LLM calls.
-estimatedTokens: 1000
-bodySections[6]: Summary, Tiers, CI Wiring, Artifacts, Error Codes, Testability
 subtype:
-sourceRefs[8]: scripts/eval/run-evals.ts, scripts/eval/tiers/t1-static.ts, scripts/eval/tiers/t2-hermetic.ts, scripts/eval/tiers/t3-judge.ts, protocols/eval-tier.schema.md, evals/fixtures/, .github/workflows/pr-gate.yml, .github/workflows/nightly-gate.yml
+domain: code
+summary: Tiered eval ladder — T1 static (PR gate, blocking), T2 hermetic replay (nightly), T3 LLM-judge (opt-in), plus qa-outcome ground-truth tier. Free-by-default: T1/T2 make zero LLM calls.
+estimatedTokens: 1197
+bodySections[6]: Summary, Dependencies, Key Behaviors, Tiers, CI Wiring, Error Codes
+createdAt: 2026-07-04T06:00:00Z
+updatedAt: 2026-07-06T00:00:00Z
+createdBy: wiki-maintainer-agent
+updatedBy: wiki-ingest-agent
+sourceRefs[8]: scripts/eval/run-evals.ts, scripts/eval/tiers/t1-static.ts, scripts/eval/tiers/t2-hermetic.ts, scripts/eval/tiers/t3-judge.ts, scripts/eval/tiers/qa-outcome.ts, protocols/eval-tier.schema.md, .github/workflows/pr-gate.yml, .github/workflows/nightly-gate.yml
 crossRefs[0]{pageId,relationship}:
-tags[6]: eval, tiers, CI, LLM-judge, F-20, F-21
+tags[6]: eval, tiers, CI, LLM-judge, qa-outcome, browser-e2e
 staleness: fresh
 confidence: high
 ```
 
-# Eval Framework (Three-Tier Ladder)
+# Eval Framework (Tiered Ladder)
 
 ## Summary
 
-Shipped in Wave 8, Phase 20 (F-20 + F-21). A three-tier quality evaluation ladder for Loom's meta-orchestration logic. The core invariant is **free-by-default**: T1 and T2 make zero network/LLM calls (`llmCalls` MUST be 0). Only T3 may call an LLM judge, and only when `LOOM_EVAL_LLM` is set. T3 is advisory-only and never merge-blocking (constraint C-03).
+A tiered quality-evaluation ladder for Loom's meta-orchestration logic. Originally three tiers (F-20/F-21, Wave 8); Phase 9a (PLAN-browser-e2e) added a fourth runner tier, **`qa-outcome`**, a ground-truth outcome eval that drives planted-bug fixtures over the live browser daemon. The core invariant is **free-by-default**: T1 and T2 make zero network/LLM calls (`llmCalls` MUST be 0). Only T3 and `qa-outcome` may call an LLM, and only when `LOOM_EVAL_LLM` is set — both are advisory and never merge-blocking (constraint C-03).
 
-Runner: `bun scripts/eval/run-evals.ts --tier <t1|t2|t3>`. Schema: `protocols/eval-tier.schema.md`. Artifact: `evals/results/{runId}.toon` (atomic write).
+Runner: `bun scripts/eval/run-evals.ts --tier <t1|t2|t3|qa-outcome>`. Schema: `protocols/eval-tier.schema.md`. Artifact: `evals/results/{runId}.toon` (atomic write, `runId = {date}-{tier}-{shortsha}`).
+
+## Dependencies
+
+- **`lib/` core** — TOON I/O goes only through `serializeToon` / `atomicWriteText` / `isMain` (constraint C-02, no hand-rolled serializer); types `EvalTier`, `EvalTierResult`, `EvalResultRow` live in `lib/types.ts`.
+- **Tier modules** — `scripts/eval/tiers/{t1-static,t2-hermetic,t3-judge,qa-outcome}.ts`, each returning a uniform `TierRunOutput` the runner stamps into an artifact.
+- **Fixtures** — `evals/fixtures/` (`csv-row-extraction.toon`, `toon-summary-parity.toon`, `qa-ground-truth.toon`, `planted-bugs.html`, `planted-bugs-spa.html`).
+- **CI** — `.github/workflows/pr-gate.yml`, `.github/workflows/nightly-gate.yml`.
+
+## Key Behaviors
+
+- **Free-by-default (C-03).** T1/T2 `llmCalls` MUST be 0; a violation is `EVAL_TIER_CONTRACT_VIOLATION` (exit 1). T3 and `qa-outcome` gate on `LOOM_EVAL_LLM` — unset ⇒ `skipped`, exit 0.
+- **Immutable results.** Terminal states are append-only; a re-run always mints a new `runId`, never mutates one.
+- **Advisory judge.** T3 compares a judged score (0–10) against the `main`-branch floor (`floorRef`); regression/missing-floor are advisory (exit 0). T3 never exits non-zero on judged-score grounds.
+- **`qa-outcome` split.** `run-evals.ts --tier qa-outcome` advisory-skips (the CLI wires no reporter); the nightly job injects a real `QaReporter` into `runQaOutcome` to run the SCORED path against the live daemon.
+- **Testability.** `main()`/`writeResult()` are exported; `RunOptions` seams inject `judge`, override dirs, and pin `date`/`shortSha`/`gitRef` for deterministic `runId`s.
 
 ## Tiers
 
 | Tier | When | Gating | LLM calls | Fixtures |
 |------|------|--------|-----------|----------|
-| T1 — static / in-process | PR gate | Blocking (exit 1 on failure) | 0 | None (deterministic) |
+| T1 — static / in-process | PR gate | Blocking (exit 1) | 0 | none (deterministic) |
 | T2 — hermetic replay | Nightly | Advisory | 0 | `evals/fixtures/*.toon` |
-| T3 — LLM judge | Opt-in | Never merge-blocking | LLM (behind `LOOM_EVAL_LLM`) | Live prompts |
-
-### T1 — Static / In-Process
-
-Deterministic assertions — grammar round-trip and CSV-escape-parity fixtures. Runs entirely in-process; no subprocess or network call. `llmCalls` MUST be 0; any violation is `EVAL_TIER_CONTRACT_VIOLATION` (exit 1).
-
-### T2 — Hermetic Replay
-
-Replays committed TOON fixtures from `evals/fixtures/`. Any attempted live LLM call trips a fetch-trap and emits `EVAL_TIER_CONTRACT_VIOLATION` (exit 1). A missing fixture emits `EVAL_FIXTURE_MISSING` (exit 1) — fix by recording or restoring the fixture.
-
-### T3 — LLM Judge (Opt-In)
-
-Dispatched only when `LOOM_EVAL_LLM` is set. Compares a judged score (0–10) against the `main`-branch floor (`floorRef`). Floor regression emits `EVAL_FLOOR_REGRESSION` (advisory warning, exit 0); missing floor emits `EVAL_FLOOR_MISSING` (advisory, exit 0). T3 always exits 0 on judged-score grounds.
+| T3 — LLM judge | Opt-in (`LOOM_EVAL_LLM`) | Never merge-blocking | LLM | live prompts |
+| qa-outcome — ground-truth | Opt-in (`LOOM_EVAL_LLM`) | Advisory, never blocks | LLM | planted-bug HTML + `qa-ground-truth.toon` |
 
 ## CI Wiring
 
-The pr-gate workflow gained a standalone `eval-t1` job that runs T1 on every PR. The nightly-gate runs T2 and also builds a `main`-branch floor in a detached worktree for T3 floor comparison. T3 is never triggered by CI — developer opt-in only.
-
-Advisory note (contractAmendments[1], Wave 8): `protocols/ci-gates.contract.md` does not yet list `eval-t1` in the frozen required-checks set. Adding it is a follow-up that owns the CI gates contract.
-
-## Artifacts
-
-Each run writes an `EvalTierResult` artifact atomically to `evals/results/{runId}.toon`. The `runId` format is `{date}-{tier}-{shortsha}` (e.g. `2026-07-04-t1-ceefeb9`). Results are append-only — terminal states (passed, failed, error, skipped) are immutable; a new run always produces a new `runId`.
-
-Artifact fields (from `protocols/eval-tier.schema.md`):
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `runId` | string | PK — `{date}-{tier}-{shortsha}` |
-| `tier` | enum | t1 \| t2 \| t3 |
-| `gitRef` | string | Full commit SHA |
-| `status` | enum | pending → running → passed / failed / error / skipped |
-| `llmCalls` | integer | MUST be 0 for t1 and t2 |
-| `floorRef` | string \| null | Main-branch baseline runId (t3 only) |
-| `results[]` | EvalResultRow[] | Per-eval: evalId, outcome, score, judgedScore |
+- **pr-gate** — standalone `eval-t1` job (additive; not in the frozen 6-check required set) plus `browser-fixture-tests` running hermetic `tests/browser tests/skills tests/eval skills/browser-skills` (live-Chromium cases self-skip).
+- **nightly-gate** — `eval-t1`, `eval-t2` (builds a `main`-branch floor in a detached worktree; regression is advisory), `docker-e2e`, `daemon-e2e` (live loom-browser daemon, opt-in `LOOM_BROWSER_E2E=1`), and `qa-outcome` — all `continue-on-error` so advisory jobs never block the nightly gate.
 
 ## Error Codes
 
@@ -76,13 +63,3 @@ Artifact fields (from `protocols/eval-tier.schema.md`):
 | `EVAL_TIER_CONTRACT_VIOLATION` | 1 | Any | LLM call under T1/T2, or illegal state transition |
 | `EVAL_FLOOR_REGRESSION` | 0 | T3 | Advisory — judged score below main-floor baseline |
 | `EVAL_FLOOR_MISSING` | 0 | T3 | Advisory — no main-floor baseline found |
-
-## Testability
-
-The runner's `main()` is exported for in-process testing. Key seams injected via `RunOptions`:
-
-- `judge` — inject a mock LLM judge (tests MUST inject; no live calls in tests)
-- `repoRoot`, `resultsDir`, `fixturesDir` — override default directories
-- `date`, `shortSha`, `gitRef` — produce deterministic `runId` values
-
-Tests: `tests/eval/run-evals.test.ts`, `tests/eval/t3-gating.test.ts`. 22/22 pass (Wave 8 verification).

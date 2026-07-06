@@ -2,11 +2,15 @@
 pageId: concept-execution-pipeline
 title: Execution Pipeline
 category: concept
+subtype:
 domain: code
+summary: Staged, wave-based pipeline for parallel agent work. schemaVersion-2 pipeline-state adds a chained-link trampoline (nextLink cursor + linkHistory) driving verify↔fix loops.
+estimatedTokens: 1154
+bodySections[6]: Summary, Pipeline Stages, Wave-Based Execution, File Ownership, Pipeline State Tracking, Stage Context and Resumability
 createdAt: 2026-04-25T22:00:00Z
-updatedAt: 2026-04-25T22:00:00Z
+updatedAt: 2026-07-06T00:00:00Z
 createdBy: human
-updatedBy: human
+updatedBy: wiki-ingest-agent
 sourceRefs[2]: protocols/execution-conventions.md, protocols/pipeline-state.schema.md
 crossRefs[3]{pageId,relationship}:
   concept-convergence,relates-to
@@ -19,169 +23,47 @@ confidence: high
 
 # Execution Pipeline
 
-The Loom execution pipeline is a staged, wave-based system for coordinating parallel agent work. It provides file ownership enforcement, resumable state, and structured handoffs between stages.
+## Summary
 
-Source: `protocols/execution-conventions.md`, `protocols/pipeline-state.schema.md`
-
----
+The Loom execution pipeline is a staged, wave-based system for coordinating parallel agent work with file-ownership enforcement, resumable state, and structured handoffs. Its state model is now **schemaVersion 2**: the linear stage list gained a **chained-link trampoline** — a `nextLink` cursor plus `linkHistory[]` — that drives bounded `verify`↔`fix` loops without re-entering the whole pipeline. Source: `protocols/execution-conventions.md`, `protocols/pipeline-state.schema.md`.
 
 ## Pipeline Stages
 
-The full `/loom-auto` pipeline runs these stages in order:
-
-```
-roadmap-create → roadmap-review → roadmap-integrate → roadmap-approve
-    ↓
-plan-create
-    ↓
-execute  (Wave 0: contracts → Wave 1+: parallel implementers)
-    ↓
-converge  (optional — match outputs to deterministic targets)
-    ↓
-test
-    ↓
-review-code
-    ↓
-fix-code  (if review found issues)
-    ↓
-done
-```
-
-Each stage transition is recorded in `pipeline-state.toon`. On `--resume`, the orchestrator reads `currentStage` to re-enter at the correct point.
-
----
+`/loom-auto` runs roadmap stages → `plan-create` → `execute` → `converge` (optional) → then the **link trampoline**: `verify` → `fix` (if findings) → `verify` … → `done`. Legacy `test` + `review-code` collapsed into a single `verify` link; `currentStage` values include `link-complete-verify`. Each transition is recorded; on `--resume` the orchestrator reads `currentStage`/`nextLink` and re-enters at the correct point.
 
 ## Wave-Based Execution
 
-The execution stage uses a wave model:
+The `execute` stage uses a wave model:
 
-### Wave 0 — Contracts
-
-`contracts-agent` (opus) runs first, alone. It produces:
-- Shared TypeScript types and interfaces
-- Database schemas
-- API contracts
-- A `manifest.toon` listing all contract files and their exports
-
-Wave 0 must complete successfully before any Wave 1 agents are spawned. This is the critical serialization point — all downstream agents depend on these shared types.
-
-### Wave 1+ — Parallel Implementers
-
-Multiple `implementer-agent` (opus) instances run in parallel. Each receives:
-- The contract files from Wave 0
-- Its specific task from PLAN.md
-- A file ownership list (which files it may create or modify)
-
-**No two agents may write the same file.** File ownership is assigned by the orchestrator before Wave 1 begins and enforced throughout execution. Violations are detected by `verification-agent` after each wave.
-
-If an implementer needs to modify a file owned by another agent, it writes a `crossBoundaryRequest` in its AgentResult. The orchestrator's wiring step processes these after all Wave N agents complete.
-
----
+- **Wave 0 — Contracts.** `contracts-agent` (opus) runs alone first, producing shared TypeScript types, DB schemas, API contracts, and a `manifest.toon`. It must complete before any Wave 1 agent spawns — the critical serialization point all downstream agents depend on.
+- **Wave 1+ — Parallel Implementers.** Multiple `implementer-agent` (opus) instances run in parallel. Each receives the Wave-0 contracts, its PLAN.md task, and a file-ownership list. **No two agents may write the same file.** If an implementer needs a file owned by another agent, it emits a `crossBoundaryRequest` in its AgentResult; the orchestrator's wiring step processes these after the wave.
 
 ## File Ownership
 
-File ownership is the mechanism that prevents merge conflicts in parallel execution:
-
-1. The orchestrator assigns each task a list of files it may create/modify
-2. Agents must not write outside their ownership list
-3. `verification-agent` runs after each wave and detects drift (files modified by agents that don't own them)
-4. Cross-boundary needs are handled via `crossBoundaryRequests` in AgentResult
-
----
+File ownership prevents merge conflicts in parallel execution: the orchestrator assigns each task a create/modify file list; agents must not write outside it; `verification-agent` runs after each wave and detects drift; cross-boundary needs go through `crossBoundaryRequests`. The `contract-lock` PreToolUse hook blocks writes to `contracts/` after Wave 0.
 
 ## Pipeline State Tracking
 
-State is written to `.plan-execution/pipeline-state.toon` at every stage transition (entry as `in_progress`, exit as `succeeded` or `failed`):
+State is written atomically (`.tmp` then rename) to `.plan-execution/pipeline-state.toon` at every transition. Key v2 fields:
 
 ```toon
-schemaVersion: 1
+schemaVersion: 2
 runId: uuid
-mode: auto
-currentStage: fix-code
+currentStage: link-complete-verify
 outerIteration: 2
 maxIterations: 3
 agentsSpawned: 34
 maxAgents: 50
-
+nextLink: fix                     # trampoline cursor (v2)
+trampolineIteration: 6
+maxTrampolineIterations: 20
 stageHistory[N]{stage,status,iteration,startedAt,completedAt,agentsUsed,gateResult}:
-  contracts,succeeded,1,2026-04-06T10:00:00Z,2026-04-06T10:02:30Z,1,proceed
-  execute,succeeded,1,2026-04-06T10:02:30Z,2026-04-06T10:15:00Z,18,proceed
-  ...
+linkHistory[N]{link,status,trampolineIteration,outerIteration,startedAt,completedAt,agentsUsed,nextLink,nextLinkReason}:
+failureLog[N]{iteration,stage,error,resolution}:
 ```
 
-**Atomic writes** are mandatory: write to `pipeline-state.toon.tmp` then rename. Never write directly.
+`outerIteration` counts plan-revision loops (cap `maxIterations`, default 3); `trampolineIteration` counts link hops (cap `maxTrampolineIterations`, default 20). `failureLog` tracks identical-failure patterns — a recurring error trips a circuit breaker and escalates rather than running another fix cycle. `agentsSpawned` is tracked against `maxAgents` (warn at 80%, hard-block at 100%).
 
-The `failureLog` tracks identical-failure patterns across iterations. If the same error recurs, an identical-failure circuit breaker escalates immediately rather than running another fix cycle.
+## Stage Context and Resumability
 
----
-
-## Stage Context and Rolling Context
-
-### Stage Summaries
-
-Every pipeline stage writes a structured `StageContext` summary to `.plan-execution/stage-context/{stage}.toon`. This is the authoritative record of what happened in each stage — what files were touched, what issues were found, what decisions were made.
-
-Writes must be atomic: write to `{path}.tmp`, then `fs.renameSync` to `{path}`.
-
-### Rolling Context
-
-`.plan-execution/rolling-context.md` is a compressed derivative of stage summaries — a human-readable narrative that gives subsequent agents the essential context from prior stages without consuming the full token budget of raw results.
-
-Stage summaries are the **source of truth**. Rolling context is a **compressed derivative**. If they disagree, the stage summary wins.
-
----
-
-## Directory Structure
-
-```
-.plan-execution/
-├── .lock                       # PID lock — prevents concurrent runs
-├── state.toon                  # Execution state (resumable)
-├── pipeline-state.toon         # /loom-auto pipeline state
-├── rolling-context.md          # Compressed narrative of prior waves
-├── contracts/                  # Wave 0 output
-│   ├── manifest.toon           # Contract file registry
-│   └── [contract files]        # types.ts, schema.sql, api-types.ts, etc.
-├── progress/                   # Agent heartbeat files (ephemeral per wave)
-│   └── {taskId}.toon
-├── requests/                   # Cross-boundary requests
-│   └── {taskId}.toon
-├── scope-coverage.toon         # Acceptance criteria coverage matrix
-├── stage-context/              # Structured stage summaries
-│   ├── contracts.toon
-│   ├── execute.toon
-│   ├── test.toon
-│   ├── review.toon
-│   ├── fix.toon
-│   └── converge.toon
-├── conflicts/                  # Interpretation conflict reports
-│   └── {conflictId}.toon
-├── convergence/
-│   ├── iterations/             # Per-iteration summaries
-│   └── e2e/                    # E2E convergence artifacts
-├── wave-0-summary.toon         # Machine-readable wave summary
-├── wave-0-summary.md           # Human-readable wave summary
-└── wave-N-summary.{toon,md}    # Subsequent waves
-```
-
----
-
-## Resumability
-
-The pipeline is fully resumable at any stage boundary:
-
-- On `--resume`, read `currentStage` and `outerIteration` from `pipeline-state.toon`
-- Roadmap stages re-enter at the corresponding roadmap step
-- `execute` delegates to `loom-execute-plan --resume` for wave-level resume
-- `converge` delegates to `loom-converge --resume` for iteration-level resume
-- All other stages restart from the beginning of that stage
-
----
-
-## Agent Budget
-
-The pipeline tracks `agentsSpawned` against `maxAgents` (configured via `--max-agents` flag, default 50):
-
-- Warn at 80% of budget consumed
-- Hard-block new spawns at 100%
-- Each orchestration pattern reports `agentsUsed` to accumulate toward this count
+Every stage writes a structured `StageContext` summary to `.plan-execution/stage-context/{stage}.toon` (atomic write) — the source of truth. `.plan-execution/rolling-context.md` is a compressed, human-readable derivative; if they disagree, the stage summary wins. The pipeline is fully resumable at any stage/link boundary: roadmap stages re-enter at the matching step, `execute` delegates to `loom-execute-plan --resume` for wave-level resume, `converge` to `loom-converge --resume`, and the trampoline resumes from `nextLink`.
