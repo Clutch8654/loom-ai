@@ -29,7 +29,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { parseToon, serializeToon, atomicWrite } from "../../../lib/index.js";
+import { parseToon, serializeToon, atomicWriteText } from "../../../lib/index.js";
 import type {
   OutcomeCategoryRow,
   OutcomeEval,
@@ -294,7 +294,7 @@ export function outcomeToToon(e: OutcomeEval): ToonValue {
 /** Atomically write an OutcomeEval artifact; returns the absolute path. */
 export function writeOutcome(e: OutcomeEval, outDir: string): string {
   const file = path.resolve(outDir, `${e.evalId}.toon`);
-  atomicWrite(file, serializeToon(outcomeToToon(e)));
+  atomicWriteText(file, serializeToon(outcomeToToon(e)));
   return file;
 }
 

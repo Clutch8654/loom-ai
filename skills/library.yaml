@@ -314,9 +314,22 @@ library:
       description: Retrospective ceremony — reads git activity, closed PRs, and planning artifacts, then appends structured learnings and regressions to .loom/. 5-phase workflow — gather activity, structured interview, extract learnings with confidence scores, extract anti-patterns, suggest ROADMAP mutations.
       source: skills/loom-retro/SKILL.md
 
-    # loom-think (skill) retired in P22 — split into loom-spec (crystallize a
-    # chosen direction into a ticket) which is registered below. The
-    # /loom-think prompt entry under library.prompts is unaffected.
+    - name: loom-careful
+      description: "Destructive-command PreToolUse guard — blocks rm -rf /, DROP TABLE, force-push, chmod 777, raw-device writes before Claude Code runs them. Single-command and session bypass via LOOM_CAREFUL_OVERRIDE. Shipped by M-07 (gstack adoption Phase 9)."
+      source: skills/loom-careful/SKILL.md
+
+    - name: loom-health
+      description: "Composite 0-10 quality score with trend history — runs scripts/loom-health.ts across five weighted signals (typecheck, tests, lint, dead-code, shellcheck), prints TOON, and appends a HealthScoreHistory row to .loom/health-history.toon. --quick skips tests + dead-code for in-loop use. Shipped by M-07 (gstack adoption Phase 9)."
+      source: skills/loom-health/SKILL.md
+
+    # loom-think was retired as a skill in P22, then REVIVED by the thinking-gate
+    # work (tg-wave-1) as the front half of the two-phase thinking flow:
+    # /loom-think produces the design doc; /loom-think:review gates it before
+    # /loom-roadmap init. loom-spec (idea → ticket) is a distinct sibling skill.
+    - name: loom-think
+      description: "5-phase deep-think interview producing a structured design doc under .loom/thinks/, with a cross-model second opinion. Precedes /loom-roadmap init for fuzzy problems; its output framing is gated by /loom-think:review."
+      source: skills/loom-think/SKILL.md
+
     - name: loom-spec
       description: 5-phase interview from vague idea to precise ROADMAP feature block or GH issue — Elicit, Sharpen, Classify (bug/feature/enhancement/refactor/debt), Draft, Optional worktree spawn. Emits a SpecRecord TOON envelope; documents auto-close-on-merge for the source GH issue.
       source: skills/loom-spec/SKILL.md

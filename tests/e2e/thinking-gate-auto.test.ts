@@ -33,7 +33,6 @@ import {
   mkdirSync,
   rmSync,
   writeFileSync,
-  renameSync,
   existsSync,
   readFileSync,
   readdirSync,
@@ -44,6 +43,7 @@ import {
   routeThinkReview,
   type RouteThinkReviewOptions,
 } from "../../scripts/lib/think-review-router.js";
+import { atomicWriteText } from "../../lib/index.js";
 import type {
   LoopBack,
   PrePlanLensPanel,
@@ -385,13 +385,6 @@ function serializeLoopBack(row: LoopBack): string {
   ].join("\n");
 }
 
-/** Atomic write: {path}.tmp → rename (CLAUDE.md convention). */
-function atomicWrite(path: string, data: string): void {
-  const tmp = `${path}.tmp`;
-  writeFileSync(tmp, data);
-  renameSync(tmp, path);
-}
-
 describe("e2e smoke — the gate writes bounded audit state and gates roadmap init on disk", () => {
   let workDir = "";
   let reviewDir = "";
@@ -414,13 +407,13 @@ describe("e2e smoke — the gate writes bounded audit state and gates roadmap in
     const r = driveThinkGate({
       ...opts,
       onAttempt: (row) => {
-        atomicWrite(join(dir, `loopback-${row.attempt}.toon`), serializeLoopBack(row));
+        atomicWriteText(join(dir, `loopback-${row.attempt}.toon`), serializeLoopBack(row));
       },
     });
 
     if (r.action === "kill-halt" || r.action === "rewrite-bound-escalation") {
       // Halt state (0.75c / 0.75d) — no roadmap init.
-      atomicWrite(
+      atomicWriteText(
         join(workDir, ".plan-execution", "escalation-report.md"),
         `## Escalation Report\n\nStage: think-gate\nOutcome: ${r.action}\nAttempts: ${r.attempts.length}\n`,
       );

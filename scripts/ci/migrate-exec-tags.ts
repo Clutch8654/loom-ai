@@ -136,11 +136,11 @@ export function migrate(opts: MigrateOptions): number {
   git(repo, ["bundle", "create", backupAbs, "--all"]);
   process.stdout.write(`Backup written: ${backupAbs}\n`);
 
-  // 2. Copy → verify → remove, per tag.
+  // 2. Copy → verify, per tag. Local source tags are NOT deleted here — that
+  //    happens only after copy (+ optional push) fully succeeds, so a failure
+  //    mid-way leaves the source tags intact and the run is re-runnable.
   const migrated: TagMove[] = [];
   for (const m of moves) {
-    // Idempotent: skip if already migrated (target exists at same oid and
-    // source already gone).
     git(repo, ["update-ref", m.target, m.oid]);
     const check = git(repo, ["rev-parse", m.target]).trim();
     if (check !== m.oid) {
@@ -149,20 +149,26 @@ export function migrate(opts: MigrateOptions): number {
       );
       return 1;
     }
-    git(repo, ["tag", "-d", m.tag]);
     migrated.push(m);
-    process.stdout.write(`  moved ${m.tag} -> ${m.target}\n`);
+    process.stdout.write(`  copied ${m.tag} -> ${m.target}\n`);
   }
 
-  process.stdout.write(`Migrated ${migrated.length} tag(s) to ${EXEC_NS}*.\n`);
+  process.stdout.write(`Copied ${migrated.length} tag(s) to ${EXEC_NS}*.\n`);
 
-  // 3. Optional push: publish refs/exec/* and delete the remote tags.
+  // 3. Optional push: publish refs/exec/* and delete the remote tags. If a push
+  //    throws here, we return before deleting any local source tags below.
   if (opts.push) {
     for (const m of migrated) {
       git(repo, ["push", opts.remote, `${m.target}:${m.target}`]);
       git(repo, ["push", opts.remote, `:${m.ref}`]);
     }
     process.stdout.write(`Pushed ${migrated.length} ref move(s) to ${opts.remote}.\n`);
+  }
+
+  // 4. Delete local source tags ONLY after all copies (and any pushes) succeeded.
+  for (const m of migrated) {
+    git(repo, ["tag", "-d", m.tag]);
+    process.stdout.write(`  removed local tag ${m.tag}\n`);
   }
 
   return 0;

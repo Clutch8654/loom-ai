@@ -65,16 +65,18 @@ describe("loom-browser-daemon status (no state → stopped)", () => {
   });
 });
 
-describe("loom-browser-daemon exec (no daemon → queued)", () => {
-  it("queues the command to .loom/browser/queue.toon inside the sandbox", () => {
+describe("loom-browser-daemon exec (no daemon → hard fail)", () => {
+  it("exits non-zero with DAEMON_NOT_RUNNING when the daemon is down (no silent queue)", () => {
     const sandbox = createSandbox({ chdir: false });
     try {
       const r = runDaemon(sandbox.cwd, sandbox.home, ["exec", "navigate", "https://x"]);
-      expect(r.status).toBe(0);
-      expect(r.stderr).toContain("BROWSER_NOT_RUNNING");
+      // Daemon-down is a HARD non-zero failure — the queue-return-0 stub was
+      // removed (execCmd preflight, daemon-preflight.schema.md C-07). It must
+      // never silent-skip / queue-return-0.
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain("DAEMON_NOT_RUNNING");
       const queue = sandbox.read("cwd/.loom/browser/queue.toon");
-      expect(queue).not.toBeNull();
-      expect(queue).toContain("exec navigate https://x");
+      expect(queue).toBeNull();
     } finally {
       sandbox.cleanup();
     }

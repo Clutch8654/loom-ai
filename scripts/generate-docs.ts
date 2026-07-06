@@ -65,7 +65,9 @@ function replaceBlock(fileText: string, section: string, inner: string): string 
 }
 
 export function sha256(text: string): string {
-  return createHash("sha256").update(text).digest("hex");
+  // Normalize CRLF→LF so a Windows checkout (core.autocrlf) hashes identically
+  // to the LF content the generator builds in-memory — avoids false drift.
+  return createHash("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
 }
 
 /* ── Source gathering ────────────────────────────────────────────────────── */
