@@ -782,3 +782,18 @@ Key fixes: GEM-01 (awk v3→v2 column collapse), SILENT-01/02/04 (mktemp/awk/cat
 - Criteria plan: .plan-execution/criteria-plan.toon (49 criteria after integrator: 45 + CG-001..004 backfills; C-21 equivalence block per IC-001)
 - Interpretation conflicts: 1 blocking, 5 warning, 1 info — all resolved via fable integrator pass alongside 6 critic-predicted blockers
 - Note: integrator session died post-edit/pre-report; state verified complete by orchestrator re-validation
+
+## 2026-07-05 — R-001 audit: Thinking-Gate Wave 0 contracts landed (PLAN-thinking-gate P0)
+
+- Audit ID: R-001 (Phase 0 / Wave 0 contracts of planning/plans/PLAN-thinking-gate.md)
+- Agent: contracts-agent (opus); taskId w0-contracts. Types + schemas ONLY — no behavior/implementation.
+- **Created (3):**
+  - `protocols/think-review.schema.md` — ThinkReviewVerdict + the deterministic **fail-closed** decision table (C-02, no "MAY"): non-fixable blocking → `kill`; fixable blocking OR any warning → `rewrite-think`; none → `proceed`; no-quorum → `PANEL_INCOMPLETE` (blocking) → `rewrite-think`. Quorum = ⌈M/2⌉ lenses; any-blocking-wins; a crashed/empty panel NEVER proceeds. Closed enums: `lens` (eng|devex|ceo|design), `severity` (blocking|warning|info, **aligned to AgentResult** FindingSeverity), `decision` (proceed|rewrite-think|kill). Carries the normative archetype→lens **selection rule** table (6 archetypes, eng always fires) that P1/P3/P4 all consume.
+  - `protocols/benchmark-scorecard.schema.md` — BenchmarkScorecard math: selfScore/refScore 0..10, `gap = selfScore − refScore`, `overall = mean(selfScore)`, `refOverall = mean(refScore)`, references[] (N) + per-dimension sourceRefs[]. "Thin" defined: `dimensions.length < 3` OR any refScore unsourced.
+  - `.plan-execution/contracts/manifest.toon` — lists every contract file + purpose + exports.
+- **Modified (3):**
+  - `lib/types.ts` — appended section 4 (Thinking-Gate contracts): `ThinkReviewVerdict` (+ `ThinkReviewFinding`, `ThinkReviewLens`, `ThinkReviewSeverity` = FindingSeverity, `ThinkReviewDecision`), `PrePlanLensPanel` (+ `PrePlanLensSelection`, `ProjectArchetype`), `BenchmarkScorecard` (+ `BenchmarkDimension`, `BenchmarkReference`), `LoopBack`. Pure types, zero imports.
+  - `skills/library.yaml` — registered the 2 new protocols under `library.protocols:` (think-review-schema, benchmark-scorecard-schema) and **pre-registered** `benchmark-agent` under `library.agents:` (P5 authors the agent .md + `model:` frontmatter; registered at P0 so later waves never touch library.yaml).
+  - `planning/history/changelog.md` — this R-001 entry.
+- **Verification:** `bunx tsc --noEmit -p hooks/tsconfig.json` exit 0 (lib/types.ts remains standalone, types-only). No behavior shipped — router/panel/agent implementation is P1/P4/P5.
+- Findings severity enum aligned to `protocols/agent-result.schema.md § Findings Row Schema` (closed `blocking|warning|info`); `confidence` retained as the canonical integer 1..10 scale.

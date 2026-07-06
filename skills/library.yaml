@@ -266,6 +266,15 @@ library:
       description: "Fixture-tested browser-skill convention (C-04): SKILL.md + script.ts + fixtures/ + script.test.ts, a pure parser over captured HTML (zero network/daemon) that throws (not returns empty) on a missing target."
       source: protocols/browser-skill.schema.md
 
+    # Thinking-Gate contracts (PLAN-thinking-gate, Phase 0)
+    - name: think-review-schema
+      description: "ThinkReviewVerdict + the deterministic fail-closed decision table (C-02) for the pre-plan thinking-review gate. Closed enums: lens (eng|devex|ceo|design), severity (blocking|warning|info, aligned to AgentResult), decision (proceed|rewrite-think|kill). Non-fixable blocking → kill; fixable blocking OR any warning → rewrite-think; none → proceed; no-quorum → PANEL_INCOMPLETE (blocking) → rewrite-think. Quorum = ceil(M/2) lenses; any-blocking-wins; fail-closed never proceeds. Also carries the archetype→lens selection rule (PrePlanLensPanel) consumed by P1/P3/P4."
+      source: protocols/think-review.schema.md
+
+    - name: benchmark-scorecard-schema
+      description: "BenchmarkScorecard — typed competitive-benchmark math the benchmark-agent writes into a think doc. selfScore/refScore 0..10, gap = selfScore − refScore, overall = mean(selfScore), refOverall = mean(refScore); references[] (N) + per-dimension sourceRefs[]. 'Thin' defined as dimensions.length < 3 OR any refScore unsourced; a missing/thin card is a P4 benchmark-presence finding."
+      source: protocols/benchmark-scorecard.schema.md
+
   # In v4, skills = Claude Code native skills (new, initialized empty at v3→v4 migration)
   skills:
     - name: python-conventions
@@ -462,6 +471,15 @@ library:
     - name: feature-coverage-agent
       description: Audits plan schema, API surface, and features against competitors
       source: agents/feature-coverage-agent.md
+
+    # Thinking-Gate agent (PLAN-thinking-gate, P5 — pre-registered at P0)
+    # NOTE: P5 authors agents/benchmark-agent.md itself (system prompt + `model:`
+    # frontmatter). This entry is the registration only, so later waves never
+    # touch library.yaml. Do NOT create the agent .md file at P0.
+    - name: benchmark-agent
+      description: "Competitive-benchmark agent — runs pre-roadmap on a bare idea (unlike the plan-scoped feature-coverage-agent) and writes a typed BenchmarkScorecard (0..10 selfScore/refScore, sourceRefs, N references) into the converged .loom/thinks/ doc. Distinct from the loom-benchmark perf skill. Shipped by PLAN-thinking-gate P5."
+      source: agents/benchmark-agent.md
+      requires: [protocol:benchmark-scorecard-schema, protocol:agent-result-schema]
 
     - name: strategy-agent
       description: Evaluates product strategy across the full lifecycle — positioning and prioritization during planning, drift and scope creep during review

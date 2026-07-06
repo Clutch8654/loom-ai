@@ -608,3 +608,230 @@ export interface OutcomeEval {
  * edit). Wave 0 does NOT modify the EvalTier union — it only records the
  * intent here so downstream implementers know the id and the owner.
  * ──────────────────────────────────────────────────────────────────────── */
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 4. Thinking-Gate contracts (PLAN-thinking-gate, Phase 0 / Wave 0)
+ *
+ * Wave-0 source of truth for the pre-plan thinking-review gate at the
+ * divergent→formality seam. Types only — no behavior. Full specs:
+ * protocols/think-review.schema.md and protocols/benchmark-scorecard.schema.md.
+ *
+ * Downstream owners:
+ *   - P1  scripts/lib/think-review-router.ts consumes ThinkReviewFinding[] →
+ *         produces a ThinkReviewVerdict via the C-02 decision table.
+ *   - P1/P3/P4 consume PrePlanLensPanel (the archetype→lens selection rule).
+ *   - P5  benchmark-agent writes a BenchmarkScorecard into the think doc.
+ *   - P6a /loom-auto persists a LoopBack per attempt of the bounded loop.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/* ── ThinkReviewVerdict + closed enums (C-02 fail-closed router output) ───── */
+
+/**
+ * Closed lens enum. A finding is attributed to exactly one of the four M-04
+ * altitude lenses. Unknown lenses are rejected — never widened to `string`.
+ */
+export type ThinkReviewLens = "eng" | "devex" | "ceo" | "design";
+
+/**
+ * Closed severity enum, ALIGNED to AgentResult's `FindingSeverity`
+ * (`blocking | warning | info`) — the same three values, reused verbatim so
+ * the router and the AgentResult validator agree on the closed set. See
+ * protocols/agent-result.schema.md § Findings Row Schema.
+ */
+export type ThinkReviewSeverity = FindingSeverity;
+
+/**
+ * Closed router decision enum (C-02). The router maps findings[] → one of
+ * these three verdicts deterministically (no "MAY"):
+ *   - kill          non-fixable blocking present
+ *   - rewrite-think fixable blocking OR any warning OR no-quorum (fail-closed)
+ *   - proceed       none of the above
+ */
+export type ThinkReviewDecision = "proceed" | "rewrite-think" | "kill";
+
+/**
+ * One finding from a single lens over the converged think doc. `fixable`
+ * splits blocking findings into the kill vs rewrite branches of the C-02
+ * table; `remediation` is the actionable next step surfaced to the operator.
+ */
+export interface ThinkReviewFinding {
+  /** `F-\d{2,}`, unique within the verdict. */
+  id: string;
+  /** Which lens raised it (closed). */
+  lens: ThinkReviewLens;
+  /** Closed severity, aligned to AgentResult (blocking|warning|info). */
+  severity: ThinkReviewSeverity;
+  /**
+   * Integer 1..10 — the canonical AgentResult confidence scale
+   * (agent-result.schema.md § Confidence Semantics). Suppressed 1..4,
+   * caveated 5..6, promoted 7..10.
+   */
+  confidence: number;
+  /**
+   * Whether the defect is repairable by re-thinking (true) vs a fatal
+   * approach error that should be killed (false). Only load-bearing for
+   * `severity: "blocking"` — warnings always route to rewrite regardless.
+   */
+  fixable: boolean;
+  /** Actionable next step: how to fix or why to kill. Non-empty. */
+  remediation: string;
+  /** Prose describing the finding. Non-empty. */
+  message: string;
+}
+
+/**
+ * The deterministic output of the fail-closed router (C-02). Produced from a
+ * lens panel's findings via protocols/think-review.schema.md § Decision Table.
+ */
+export interface ThinkReviewVerdict {
+  /** The routed decision (closed). */
+  decision: ThinkReviewDecision;
+  /**
+   * Required. The exact command the operator/pipeline runs next:
+   *   - proceed       → "/loom-roadmap init"
+   *   - rewrite-think → "/loom-think --from <doc>"
+   *   - kill          → archive guidance
+   */
+  nextCommand: string;
+  /** Required. Who/what produced the verdict (router id or agent name). */
+  decidedBy: string;
+  /** Required. 0-indexed count of prior rewrite loops for this think doc. */
+  revisionCount: number;
+  /** Panel size M — number of lenses expected to report for this archetype. */
+  panelSize: number;
+  /** Number of lenses that actually reported (crashed lenses do NOT count). */
+  reportingLenses: number;
+  /** True iff reportingLenses ≥ ⌈panelSize/2⌉ (quorum). */
+  quorumMet: boolean;
+  /** All findings across the reporting lenses (may be empty ⇒ proceed). */
+  findings: ThinkReviewFinding[];
+  /** ISO 8601 timestamp of the decision. */
+  decidedAt?: string;
+  /**
+   * Fail-closed error code. `PANEL_INCOMPLETE` when quorum is not met (no-quorum
+   * / empty-because-crashed) — this is treated as a synthetic blocking finding
+   * that forces `rewrite-think`, NEVER `proceed`. null on a clean decision.
+   */
+  errorCode?: "PANEL_INCOMPLETE" | null;
+}
+
+/* ── PrePlanLensPanel: the archetype→lens selection rule (P1/P3/P4) ───────── */
+
+/**
+ * Project archetype, matching the roadmap-archetype-detector's closed set.
+ * Drives which of {eng,devex,ceo,design} lenses fire on the think doc.
+ */
+export type ProjectArchetype =
+  | "cli"
+  | "web-app"
+  | "library"
+  | "data-pipeline"
+  | "research"
+  | "default";
+
+/**
+ * One row of the archetype→lens selection rule. The concrete, normative table
+ * (which lenses fire per archetype + the rationale) lives in
+ * protocols/think-review.schema.md § Archetype→Lens Selection Rule — this is
+ * the typed shape P1/P3/P4 all consume. `eng` fires for every archetype
+ * (approach-soundness is never optional).
+ */
+export interface PrePlanLensSelection {
+  archetype: ProjectArchetype;
+  /** Ordered subset of {eng,devex,ceo,design} that fires; ≥1 (always incl eng). */
+  lenses: ThinkReviewLens[];
+  /** Why this archetype selects these lenses. */
+  rationale: string;
+}
+
+/**
+ * The resolved panel for a single think-review run. `selections` carries the
+ * full rule table (the same table documented in the schema); `activeLenses`
+ * is the row selected for `resolvedArchetype`, and its length is the panel
+ * size M used by the router's quorum math (⌈M/2⌉).
+ */
+export interface PrePlanLensPanel {
+  /** The full archetype→lens selection table (all archetypes). */
+  selections: PrePlanLensSelection[];
+  /** The archetype resolved for this run. */
+  resolvedArchetype: ProjectArchetype;
+  /** The lenses fired for resolvedArchetype — panelSize M = activeLenses.length. */
+  activeLenses: ThinkReviewLens[];
+}
+
+/* ── BenchmarkScorecard: typed competitive-benchmark math (P5) ────────────── */
+
+/** One competitor/reference the idea is benchmarked against (N per scorecard). */
+export interface BenchmarkReference {
+  /** `R-\d{2,}`, unique within the scorecard. */
+  id: string;
+  /** Competitor / prior-art name. */
+  name: string;
+  /** Provenance URL, or null when the reference is non-web (e.g. a repo path). */
+  url?: string | null;
+  /** Optional note on why this reference is comparable. */
+  note?: string;
+}
+
+/**
+ * One benchmarked dimension. `gap` is a DERIVED field: `selfScore − refScore`.
+ * `sourceRefs` lists the BenchmarkReference ids backing `refScore`; an empty
+ * `sourceRefs` means `refScore` is UNSOURCED, which makes the whole scorecard
+ * "thin" (see BenchmarkScorecard.thin).
+ */
+export interface BenchmarkDimension {
+  dimension: string;
+  /** 0..10. Loom's self-assessed score on this dimension. */
+  selfScore: number;
+  /** 0..10. The reference/competitor score on this dimension. */
+  refScore: number;
+  /** Derived: selfScore − refScore (range −10..10). */
+  gap: number;
+  /** Reference ids (R-NN) backing refScore; empty ⇒ unsourced ⇒ thin. */
+  sourceRefs: string[];
+}
+
+/**
+ * The typed competitive-benchmark scorecard the benchmark-agent (P5) writes
+ * into the converged think doc. The P4 panel reads it: a missing OR `thin`
+ * scorecard is a benchmark-presence finding. Full spec + formulae:
+ * protocols/benchmark-scorecard.schema.md.
+ */
+export interface BenchmarkScorecard {
+  /** ISO 8601 timestamp. */
+  runAt: string;
+  /** The idea / think doc benchmarked. */
+  subject: string;
+  /** The N references the idea was scored against (≥1 on a non-thin card). */
+  references: BenchmarkReference[];
+  /** Per-dimension scores (≥3 on a non-thin card). */
+  dimensions: BenchmarkDimension[];
+  /** Derived: mean(dimensions[].selfScore), 0..10. */
+  overall: number;
+  /** Derived: mean(dimensions[].refScore), 0..10. */
+  refOverall: number;
+  /**
+   * Derived "thin" flag — true when the scorecard is too weak to be trusted:
+   * `dimensions.length < 3` OR any dimension has an empty `sourceRefs`
+   * (an unsourced refScore). A thin scorecard is a finding at the P4 panel.
+   */
+  thin: boolean;
+}
+
+/* ── LoopBack: per-attempt audit for the P6a bounded loop ─────────────────── */
+
+/**
+ * One audit row per attempt of the /loom-auto bounded rewrite loop (P6a).
+ * Persisted per attempt so the loop is observably bounded (no infinite spin)
+ * and a kill halt is distinguishable from a rewrite escalation on disk.
+ */
+export interface LoopBack {
+  /** 1-indexed attempt number within the bounded loop. */
+  attempt: number;
+  /** The ThinkReviewDecision string for this attempt (proceed|rewrite-think|kill). */
+  verdict: string;
+  /** Why the loop looped/halted on this attempt. */
+  reason: string;
+  /** ISO 8601 timestamp of this attempt's decision. */
+  decidedAt: string;
+}

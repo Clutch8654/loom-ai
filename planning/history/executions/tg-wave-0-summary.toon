@@ -1,0 +1,9 @@
+wave: 0
+label: P0-contracts
+status: success
+agent: contracts-agent
+filesCreated[3]: protocols/think-review.schema.md,protocols/benchmark-scorecard.schema.md,.plan-execution/contracts/manifest.toon
+filesModified[3]: lib/types.ts,skills/library.yaml,planning/history/changelog.md
+exportsAdded[12]: ThinkReviewLens,ThinkReviewSeverity,ThinkReviewDecision,ThinkReviewFinding,ThinkReviewVerdict,ProjectArchetype,PrePlanLensSelection,PrePlanLensPanel,BenchmarkReference,BenchmarkDimension,BenchmarkScorecard,LoopBack
+verification: pass
+unresolvedIssues[0]:
