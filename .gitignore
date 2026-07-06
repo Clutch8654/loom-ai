@@ -31,14 +31,21 @@ Thumbs.db
 # Worktree-local sidecar (written by wt.sh; per-worktree state)
 .worktree.json
 
-# Backup files
+# Backup files (including dated snapshots like foo.md.bak-2026-07-01)
 *.bak
+*.bak-*
 
 # Pre-migration git-ref backups (F-16). The bundle is a local belt-and-suspenders
 # snapshot written by scripts/ci/migrate-exec-tags.ts before it moves plan-exec-*
 # tags; the durable in-repo preservation is refs/exec/*, so the (multi-MB) bundle
 # is not committed.
 *.bundle
+
+# Generated/runtime artifacts (machine-local, regenerated on demand)
+# .loom-ci/ = hook-drift reports written by CI drift checks
+# loom-migration.log.toon = append-only migration evidence (hooks/loom-migration.ts, /loom-doctor --fix)
+.loom-ci/
+.claude/loom-migration.log.toon
 
 # Browser daemon per-project state (M-11 F-33/F-34) — cookies and profile must never ship
 .loom/browser/cookies/
