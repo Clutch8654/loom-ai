@@ -16,7 +16,7 @@
  *                              tests/backfill/loom-browser-daemon.test.ts.
  *   3. Enforcement wired — each skill's claimed gate is demonstrated:
  *        - loom-learn        → --min-confidence filter enforced (subprocess).
- *        - loom-browser      → BROWSER_NOT_RUNNING queue fallback (referenced).
+ *        - loom-browser      → DAEMON_NOT_RUNNING hard-fail, no queue (referenced).
  *        - loom-skillify     → SKILLIFY_TEST_FAIL gates registration (contract).
  *        - loom-benchmark    → daemon-required exit path (contract).
  *        - loom-benchmark-models → vendor-skip / all-missing exit (contract).
@@ -222,13 +222,14 @@ describe("C-13.2/3: loom-browser daemon behavioral coverage is referenced, not d
     expect(existsSync(BACKFILL)).toBe(true);
   });
 
-  it("the referenced test drives the real daemon and its queue-fallback enforcement", () => {
+  it("the referenced test drives the real daemon and its daemon-down hard-fail enforcement", () => {
     const src = readFileSync(BACKFILL, "utf8");
     // It exercises the daemon as a live subprocess (not a source grep)...
     expect(src).toContain("scripts/loom-browser-daemon.ts");
     expect(src).toContain("spawnSync");
-    // ...and demonstrates the BROWSER_NOT_RUNNING queue fallback enforcement.
-    expect(src).toContain("BROWSER_NOT_RUNNING");
+    // ...and demonstrates the DAEMON_NOT_RUNNING hard-fail (C-07 / F-03): no
+    // silent queue-return-0; the queue file is asserted absent.
+    expect(src).toContain("DAEMON_NOT_RUNNING");
     expect(src).toContain("queue.toon");
   });
 });

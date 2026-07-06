@@ -232,15 +232,19 @@ describe("loom-health: created skill references tests/backfill coverage", () => 
 });
 
 // ---------------------------------------------------------------------------
-// 5. Catalog split — loom-cso + loom-spec registered, loom-think retired.
+// 5. Catalog — loom-cso + loom-spec registered; loom-think REVIVED by the
+//    thinking-gate work (P22 retired the skill, but tg-wave-1 restored it as the
+//    front half of the two-phase flow: /loom-think produces the design doc that
+//    /loom-think:review gates. Its SKILL.md is live — P2 edits the cross-model
+//    marker and loom-think-marker.test.ts validates it — so it must ship.)
 // ---------------------------------------------------------------------------
-describe("skills/library.yaml: loom-think → loom-spec split", () => {
+describe("skills/library.yaml: loom-cso/loom-spec + revived loom-think", () => {
   const lib = readFileSync(LIBRARY_PATH, "utf8");
   it("registers loom-cso and loom-spec skills", () => {
     expect(lib).toContain("source: skills/loom-cso/SKILL.md");
     expect(lib).toContain("source: skills/loom-spec/SKILL.md");
   });
-  it("retires the loom-think skill entry", () => {
-    expect(lib).not.toContain("source: skills/loom-think/SKILL.md");
+  it("registers the revived loom-think skill entry (front of the two-phase thinking flow)", () => {
+    expect(lib).toContain("source: skills/loom-think/SKILL.md");
   });
 });
