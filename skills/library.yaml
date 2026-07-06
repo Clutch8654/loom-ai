@@ -1,7 +1,7 @@
 catalog_version: 4
 repo: https://github.com/launchstack-dev/loom-ai
-loomCoreVersion: 0.1.0
-loomHooksVersion: 0.1.0
+loomCoreVersion: 0.2.0
+loomHooksVersion: 0.2.0
 
 releases:
   - version: 0.1.0

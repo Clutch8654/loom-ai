@@ -8,6 +8,12 @@
      until then they read `<pending>`. Schema: protocols/release-versioning.schema.md.
      Dated `## YYYY-MM-DD` sections below predate this convention and are retained. -->
 
+## 2026-07-06 — version bump: 0.2.0 (manifest)
+
+- Bumped `loomCoreVersion`, `loomHooksVersion` (`skills/library.yaml`) and the plugin manifest (`.claude-plugin/plugin.json`) from `0.1.0` → **`0.2.0`**.
+- Minor bump derived from conventional commits since the last tag (`v0.0.1`): 24 `feat` / 2 `fix` on this branch — headline features are the Thinking-Gate (`/loom-think:review` fail-closed gate, altitude lenses, `--benchmark`, bounded `/loom-auto` gate) and F-39 runtime browser injection detection, plus the browser-e2e capability set.
+- Manifest bump only — not a formal `v*` tag cut. The tag + pinned `MetricsSnapshot` release section are produced by `scripts/loom-release.ts --milestone` at a milestone boundary (per `protocols/release-versioning.schema.md`).
+
 ## 2026-07-04 -- M-09 acceptance closed: MEASURED metrics snapshot (BELOW-TARGET)
 
 <!-- loom:measured:M-09 -->
