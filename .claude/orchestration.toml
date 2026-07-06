@@ -69,3 +69,16 @@ roadmap-archetype-detector = "agents/roadmap-archetype-detector.md"
 [settings.decisionPrinciples]
 enabled = true
 path = "protocols/loom-decision-principles.md"
+
+# Competitive-benchmark pattern (PLAN-thinking-gate P5). The `--benchmark` flag
+# on a pre-roadmap think surfaces the semantic label `competitive-benchmark`,
+# which matches this trigger and spawns the single benchmark-agent to write a
+# BenchmarkScorecard into the think doc. Registering it here (plus the matching
+# `### Benchmark` section in protocols/pattern-executor.md and the definition in
+# protocols/orchestration-patterns.md) makes `--benchmark` non-inert: the
+# executor's Trigger Matching finds this pattern instead of falling back to a
+# generic single-agent spawn. Distinct from the `loom-benchmark` perf skill.
+[patterns.benchmark]
+type = "benchmark"
+agent = "benchmark-agent"
+trigger = "competitive-benchmark"

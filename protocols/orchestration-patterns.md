@@ -17,7 +17,7 @@ For step-by-step execution mechanics, see `pattern-executor.md` in this director
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `pattern` | string | yes | Pattern name from orchestration.toml config |
-| `type` | enum | yes | `debate`, `chain`, `vote`, `triage`, `converge`, or `converge-criteria` |
+| `type` | enum | yes | `debate`, `chain`, `vote`, `triage`, `converge`, `converge-criteria`, or `benchmark` |
 | `result` | string | yes | Final output or recommendation |
 | `agentsUsed` | integer | yes | Total agents spawned (for budget tracking) |
 | `transcript` | string | debate | Compressed argument history |
@@ -574,6 +574,51 @@ stages = ["roadmap-create", "plan-create", "execute", "converge-criteria", "conv
 
 ---
 
+## Pattern 7: Benchmark
+
+**Description:** A single agent competitively benchmarks a **bare idea** against N prior-art / competitor references, scoring ≥3 dimensions and writing a typed `BenchmarkScorecard` into the source think doc. Unlike the plan-scoped `feature-coverage-agent` (which audits a PLAN.md), benchmark runs PRE-roadmap — its subject is a converged `.loom/thinks/` doc or a raw idea, before any plan exists.
+
+### When to use
+
+- Pre-roadmap competitive grounding: score an idea against prior art before committing to a plan
+- The `--benchmark` flag on a pre-plan think, which surfaces the `competitive-benchmark` label
+- Any gate that needs a typed, sourced competitive comparison (the P4 pre-plan panel reads the scorecard; a missing or `thin` one is a benchmark-presence finding)
+
+### How it works
+
+1. **Orchestrator resolves** the subject (converged think-doc path, or the raw idea text) and reads the pattern's single `agent` from config.
+2. **Spawn** `benchmark-agent` (model resolved from its frontmatter — opus under the quality profile) with the subject.
+3. **The agent** identifies N (≥1) references, scores ≥3 dimensions (`selfScore`/`refScore` 0..10 with backing `sourceRefs`), computes the DERIVED fields (`gap`, `overall`, `refOverall`, `thin`), and writes the `BenchmarkScorecard` TOON block INTO the think doc via an atomic write.
+4. **Return** the `PatternResult` (`type: "benchmark"`), surfacing `thin`.
+
+**Error handling:** If `benchmark-agent` fails, return an error result with no scorecard written — never a silent no-op and never a partial (misleadingly non-`thin`) card. A missing scorecard is itself a benchmark-presence finding downstream.
+
+**Cost control:** Exactly 1 agent invocation.
+
+**Data flow:**
+```
+benchmark-agent(subject) -> BenchmarkScorecard written into think doc + PatternResult
+```
+
+### orchestration.toml config
+
+```toml
+[patterns.benchmark]
+type = "benchmark"
+agent = "benchmark-agent"
+trigger = "competitive-benchmark"
+```
+
+| Field   | Type          | Required | Description                                              |
+|---------|---------------|----------|----------------------------------------------------------|
+| type    | `"benchmark"` | yes      | Pattern type identifier                                  |
+| agent   | string        | yes      | The single agent that writes the `BenchmarkScorecard` (`benchmark-agent`) |
+| trigger | string        | yes      | Semantic label that activates this pattern (`--benchmark` → `competitive-benchmark`) |
+
+**Name-collision note:** This is `--benchmark` the competitive-benchmark *pattern*, distinct from the `loom-benchmark` perf *skill* (Core Web Vitals regression). They share a stem but are separate resources; the perf skill is untouched by this pattern.
+
+---
+
 ## 4-Tier Convergence Model
 
 Patterns 5 (Converge) and 6 (Criteria Converge) support a **4-tier convergence model** that maps verification scope to the planning hierarchy. The tier model is defined in `convergence-tier.schema.md` and referenced by the convergence-driver (`convergence-driver.md`) and convergence-planner (`convergence-planner-agent.md`).
@@ -621,7 +666,7 @@ All patterns live under the `[patterns]` table in `orchestration.toml`. The gene
 
 ```toml
 [patterns.<pattern-name>]
-type = "debate" | "chain" | "vote" | "triage" | "converge" | "converge-criteria"
+type = "debate" | "chain" | "vote" | "triage" | "converge" | "converge-criteria" | "benchmark"
 trigger = "<event-or-command-name>"
 # ... type-specific fields
 ```
@@ -703,5 +748,6 @@ code-review = true
 | Triage    | Mixed-complexity workloads      | Low-Med  | Low      | Varies     |
 | Converge  | Deterministic target matching   | High     | High     | Highest    |
 | Converge-Criteria | TDD, code review, security gates | Medium-High | High | High |
+| Benchmark | Pre-roadmap competitive grounding of a bare idea | Low | Low | Medium |
 
 *Vote has medium latency because agents run in parallel, despite higher total cost.

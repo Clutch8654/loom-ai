@@ -68,9 +68,19 @@ Ask:
 2. **What are the load-bearing constraints?** Data model, tool boundaries, team boundaries, licenses.
 3. **What have you already ruled out and why?** Capture *why* so we don't relitigate.
 
-### Phase 3.5 — Cross-Model Second Opinion
+### Phase 3.5 — Cross-Model Second Opinion (mandatory, active)
 
-Before proposing approaches, briefly summarize 2–3 candidate directions in your own words. This section is a placeholder for an adversarial review pass — a second model (or the operator playing devil's advocate) will scrutinize these later.
+Before proposing approaches, briefly summarize 2–3 candidate directions in your own words, then run a **real** second-opinion pass with a **named** second model. This is no longer a placeholder — the pass runs here and its result feeds the pre-plan review router.
+
+**Named second model:** `sonnet` — a distinct Claude tier from the opus-tier interview, so the second read is genuinely cross-model rather than a self-echo. **NEVER use `fable`** as the second model: it exhausts usage limits under multi-agent orchestration (memory `feedback_fable_for_planning`). A non-Claude-family model (GPT or Gemini, e.g. via `/loom-benchmark-models`) MAY be substituted for `sonnet`; `fable` MAY NOT.
+
+**How the pass runs (active — never leave it PENDING):**
+
+1. Emit the Approach Candidates block below.
+2. Spawn the named second model (`sonnet`) on the *same* candidates with an adversarial prompt: which candidate does it rank first, and does it see a fatal approach risk the primary (interview) opinion missed? Pass `model: "sonnet"` on the Agent call.
+3. Compare the two opinions:
+   - **Converged** — both rank the same top candidate and neither flags a fatal risk → set the marker to `converged` and emit NO finding (a clean pass contributes to a `proceed` verdict downstream).
+   - **Divergent** — different top candidate, OR the second model surfaces a risk the primary missed → set the marker to `DIVERGENT` and emit a divergence finding (see **§ Divergence Finding** below).
 
 Emit:
 
@@ -89,10 +99,21 @@ Candidate C (optional): <sketch>
   Assumes: <premise>
   Risk if wrong: <what breaks>
 
-Cross-model review: PENDING
+Cross-model review: sonnet — <converged | DIVERGENT>; handler: think-review-router
 ```
 
-Do NOT auto-invoke a cross-model reviewer in this phase — the marker `Cross-model review: PENDING` is a hook for a future adversarial pass. The operator or a downstream skill (e.g. `/loom-debate`) can pick it up.
+#### Divergence Finding (consumed by the router)
+
+On a **DIVERGENT** pass, append a `ThinkReviewFinding` row (typed shape in `lib/types.ts`; schema `protocols/think-review.schema.md`) to the doc so the fail-closed pre-plan router (`scripts/lib/think-review-router.ts`, emitting `decidedBy: think-review-router`) folds the cross-model divergence into its C-02 decision table exactly like any lens finding:
+
+```toon
+findings[1]{id,lens,severity,confidence,fixable,remediation,message}:
+  F-XM,eng,warning,7,true,"Reconcile the two opinions: sonnet ranked Candidate <X> first / flagged <risk> — re-think § Approaches to resolve","Cross-model divergence: primary picked <A>, sonnet picked <B> (or flagged <fatal approach risk>)"
+```
+
+- `lens` is `eng` — cross-model divergence is an approach-soundness signal, and `eng` fires for every archetype.
+- `severity`/`fixable` drive the router branch: a **fatal, unrepairable** approach error the second model surfaces → `blocking` + `fixable:false` (router → `kill`); a repairable divergence → `warning` + `fixable:true` (router → `rewrite-think`). A converged pass emits no finding and does not gate.
+- The router does NOT special-case this row — the cross-model finding rides the same fail-closed table as the lens panel, so divergence is surfaced, not silently dropped.
 
 ### Phase 4 — Target User / Narrowest Wedge
 

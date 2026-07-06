@@ -183,6 +183,7 @@ declare -a COMMAND_FILES=(
   "commands/loom-skillify.md:${CLAUDE_DIR}/commands/loom-skillify.md"
   "commands/loom-spec.md:${CLAUDE_DIR}/commands/loom-spec.md"
   "commands/loom-think.md:${CLAUDE_DIR}/commands/loom-think.md"
+  "commands/loom-think/review.md:${CLAUDE_DIR}/commands/loom-think/review.md"
   "commands/loom-worktree.md:${CLAUDE_DIR}/commands/loom-worktree.md"
 )
 
