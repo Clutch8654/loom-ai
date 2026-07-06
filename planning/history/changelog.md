@@ -797,3 +797,21 @@ Key fixes: GEM-01 (awk v3→v2 column collapse), SILENT-01/02/04 (mktemp/awk/cat
   - `planning/history/changelog.md` — this R-001 entry.
 - **Verification:** `bunx tsc --noEmit -p hooks/tsconfig.json` exit 0 (lib/types.ts remains standalone, types-only). No behavior shipped — router/panel/agent implementation is P1/P4/P5.
 - Findings severity enum aligned to `protocols/agent-result.schema.md § Findings Row Schema` (closed `blocking|warning|info`); `confidence` retained as the canonical integer 1..10 scale.
+
+## 2026-07-06 — Thinking-Gate SHIPPED (PLAN-thinking-gate; M-14/M-15/M-16/M-17)
+
+- Execution: `PLAN-thinking-gate.md` executed across 4 waves / 8 phases (P0,P1,P2,P3,P5,P4,P6a,P6b); commits `4800c5a` → `98dcbc6` → `99100dd` → `ffbff0a` → `8b8dcf4` (finalize).
+- **Outcome: clean-success.** Verification `865 passed, 2 skipped (prior browser-e2e live-Chromium), tsc=0`.
+- **What shipped:**
+  - `/loom-think:review` — the pre-plan framing gate at the divergent→formality seam. Selects an archetype-matched altitude-lens panel (`eng` always fires; `devex`/`ceo`/`design` per archetype), runs them in framing-review mode over the newest `.loom/thinks/` doc, and routes findings through the deterministic **fail-closed** decision table. Writes a `ThinkReviewVerdict` to `.plan-execution/ephemeral/think-review/verdict.toon` (P1 writes, P3 reads, P6a persists).
+  - **Altitude mode (P4):** the same M-04 review lenses gain a `scope:think` framing-review mode (no forks, per C-04) — reused, not duplicated.
+  - **Cross-model second opinion (P2):** `sonnet` (never fable, per the model-selection rule).
+  - **`--benchmark` pattern (P5):** competitive-benchmark surface writes a typed `BenchmarkScorecard` into the converged think doc; `benchmark-agent` registered.
+  - **Bounded `/loom-auto` gate (P6a):** the gate is default-on only inside `/loom-auto`, where `kill` HALTs the pipeline and `rewrite-think` re-enters the think loop up to `maxThinkRewrites` (default 2). Router fail-closed OUTRANKS kill — the pipeline never terminates on a sub-quorum panel.
+- **Wiring resolved:** new command registered in `install.sh` COMMAND_FILES + `checksums.sha256`; `docs/reference/agents.md` regenerated to include `benchmark-agent`.
+
+## 2026-07-06 — F-39: real `onPageText` browser injection detection (gstack-adoption M-05)
+
+- Commit `61dc9c0`. Replaces the no-op `onPageText` daemon hook (`scripts/lib/browser-client.ts`) with a standalone runtime signature detector (`scanForInjection`): on every navigation it screens the loaded page's visible text for six prompt-injection classes — instruction-override, role-hijack, system-prompt exfiltration, data-exfiltration, destructive-directive, chat-template delimiter injection — and fails closed with `BROWSER_INJECTION_BLOCKED` (exit 8) when a hostile directive is present. High-precision rules; ordinary page copy does not trip them.
+- **BE-10 upgraded** (`tests/browser/injection-defense.test.ts`) from a mock-only fires-check to a real detects-check: hostile fixture blocked, a deliberately tricky clean fixture (isolated words "previous/instructions/delete/files") passes. Verified `tsc=0`, `tests/browser` 32 passed / 2 skipped.
+- **Corrected a category error in the docs:** the runtime hook (`onPageText`, a synchronous per-navigation function) is **complementary to, not dependent on**, the `code-llm-trust-review-agent` code-review lens (F-15, an LLM subagent that audits source diffs). The prior "hook wires to the F-15 agent" note was wrong — a diff-review subagent cannot run per-navigation. Fixed across `library.yaml`, `SKILL.md`, ROADMAP F-39, and README. F-39 tracked + marked SHIPPED under gstack-adoption M-05.
