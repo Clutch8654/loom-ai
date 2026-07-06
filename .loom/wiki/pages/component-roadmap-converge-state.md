@@ -4,12 +4,12 @@ title: Roadmap Converge State
 category: component
 domain: code
 createdAt: 2026-06-17T00:00:00Z
-updatedAt: 2026-06-17T00:00:00Z
+updatedAt: 2026-07-06T00:00:00Z
 createdBy: wiki-maintainer-agent
-updatedBy: wiki-maintainer-agent
+updatedBy: wiki-ingest-agent
 summary: Durable per-roadmap state (RoadmapConvergeState) plus lock-file, slug derivation, content-hash, and F-13 migration runtime registration.
-estimatedTokens: 1000
-bodySections[6]: Summary, Entities, On-Disk Layout, Concurrency Lock, Multi-Roadmap Slugging, Migration Runtime
+estimatedTokens: 1943
+bodySections[8]: Summary, Dependencies, Key Behaviors, Entities, On-Disk Layout, Concurrency Lock, Multi-Roadmap Slugging, Migration Runtime
 subtype:
 sourceRefs[7]: planning/plans/PLAN-roadmap-converge-harness.md, protocols/roadmap-converge-state.schema.toon, protocols/roadmap-readiness.schema.toon, protocols/roadmap-archetypes.toon, scripts/roadmap-converge/state-io.ts, scripts/roadmap-converge/lock.ts, scripts/migrators/roadmap-converge-state/index.ts
 crossRefs[4]{pageId,relationship}:
@@ -27,6 +27,28 @@ confidence: high
 ## Summary
 
 The durable side of F-15. Owns the per-roadmap state file, the readiness schema (dimensions + rubric refs), the archetype enumeration, the lock-file concurrency guard, the multi-roadmap slug derivation, and the F-13 migration registration for `RoadmapConvergeState`.
+
+## Dependencies
+
+| Dependency | Role |
+|------------|------|
+| `protocols/roadmap-converge-state.schema.toon` | `RoadmapConvergeState` shape (schemaVersion 1) |
+| `protocols/roadmap-readiness.schema.toon` | Per-archetype dimension taxonomy + rubricRef paths |
+| `protocols/roadmap-archetypes.toon` | Archetype enumeration consumed at cold-start |
+| `scripts/roadmap-converge/state-io.ts` | Atomic read/write of `state.toon` |
+| `scripts/roadmap-converge/lock.ts` | O_EXCL-style lock-file concurrency guard |
+| `scripts/migrators/roadmap-converge-state/` | F-13 `detect.ts` + `migrateToLatest` walker |
+| `component-roadmap-converge-driver` | Primary consumer — reads/writes state each pass |
+| `convention-toon-format` | Atomic `.tmp` + rename write discipline |
+
+## Key Behaviors
+
+- **Atomic state writes.** `state-io.ts` writes `state.toon` and `passes/{round}/reviews.toon` via `{path}.tmp` then `fs.renameSync`, never leaving a partial file.
+- **Exclusive locking.** `lock.ts` writes `{pid, started_at}` with `O_EXCL`-equivalent semantics so a concurrent invocation always observes the lock; stale locks (> 10 min) auto-clear with a stderr advisory.
+- **Hardcoded stale window.** `STALE_AFTER_MS = 10 * 60 * 1000` is a literal in `lock.ts`; `[roadmap.converge].lockStaleSeconds` is documented but not yet wired through to `lock.ts` or `driver.ts`.
+- **Slug derivation.** `slug.ts` strips the extension, takes the basename, and replaces non-alphanumeric characters with `-`; colliding slugs abort the second run with `SLUG_COLLISION`.
+- **Question ceiling.** `open_questions[]` is capped at 5 per dimension per pass (aggregate `5 × |dimensions|`); overflow lands in `suppressedFindings[]`.
+- **Migration safety.** `detect.ts` throws `MigrationDowngradeError` and the driver exits `SCHEMA_VERSION_DRIFT` (exit 2) when `state.toon` is newer than the runtime supports; no downgrade path exists until a v2 lands.
 
 ## Entities
 

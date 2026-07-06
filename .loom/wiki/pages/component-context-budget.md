@@ -2,11 +2,15 @@
 pageId: component-context-budget
 title: Context Budget Hook
 category: component
+subtype: ""
 domain: code
+summary: PreToolUse hook on Agent that estimates a subagent prompt's token size before spawn and blocks spawns exceeding agentBudgetCap, with tier multipliers for test agents. Fail-open.
+estimatedTokens: 923
+bodySections[3]: Summary, Dependencies, Key Behaviors
 createdAt: 2026-04-25T22:00:00Z
-updatedAt: 2026-04-25T22:00:00Z
+updatedAt: 2026-07-06T00:00:00Z
 createdBy: human
-updatedBy: human
+updatedBy: wiki-ingest-agent
 sourceRefs[2]: hooks/context-budget.ts, hooks/lib/token-estimator.ts
 crossRefs[4]{pageId,relationship}:
   component-hooks-system,depends-on
@@ -20,112 +24,37 @@ confidence: high
 
 # Context Budget Hook
 
-`hooks/context-budget.ts` is a PreToolUse hook on the `Agent` tool. It estimates the token size of an incoming agent prompt before the spawn occurs and blocks spawns that would exceed the configured budget cap. For test agents, it applies tier-specific budget multipliers that reduce the effective cap.
+## Summary
 
-This hook was merged from two prior hooks (`context-budget` + `context-budget-test`) to avoid spawning two separate `bun` processes per Agent call. See [decision-hook-merges](decision-hook-merges.md).
+`hooks/context-budget.ts` is a `PreToolUse` hook matched on the `Agent` tool. Before a subagent spawns, it estimates the incoming prompt's token size and blocks spawns that would exceed the configured `agentBudgetCap`. It was merged from two prior hooks (`context-budget` + `context-budget-test`) to avoid spawning two `bun` processes per Agent call — see [decision-hook-merges](decision-hook-merges.md).
 
-## Trigger
+## Dependencies
 
-- **Event**: `PreToolUse`
-- **Matcher**: `Agent`
-- **Entry check**: Exits immediately with `allow()` if `tool_name !== "Agent"` or if the prompt is empty
+- **`hooks/lib/token-estimator.ts`** — `estimateTokens`, `estimateFileTokens`, and `estimateContextBudget` for the prompt breakdown.
+- **`hooks/lib/run-hook.ts`** — `runHook` harness plus `allow`/`block` helpers (fail-open).
+- **`hooks/lib/context.ts`** — `findPlanExecutionDir()` to locate rolling-context and stage-context files.
+- **`.claude/orchestration.toml` `[settings.contextBudget]`** — supplies `contextWindow` and optional `agentBudgetCap`.
 
-## Token Estimation Algorithm
+## Key Behaviors
 
-Token estimation lives in `hooks/lib/token-estimator.ts`.
+**Entry check:** returns `allow()` immediately if `tool_name !== "Agent"` or the prompt is empty.
 
-### String-Based Estimation
+**Token estimation** (`token-estimator.ts`) uses the chars/4 heuristic. `estimateTokens(text)` = `Math.ceil(text.length / 4)`. `estimateFileTokens(path)` = `Math.ceil(statSync(path).size / 4)` (byte size, no read; returns 0 on missing/unreadable = fail-open). `estimateContextBudget()` sums a breakdown:
 
-```typescript
-estimateTokens(text: string): number
-// Math.ceil(text.length / 4)
-```
-
-Uses the **characters / 4** heuristic — one token ≈ 4 characters. This is an approximation; actual tokenization varies by model and content type.
-
-### File-Based Estimation
-
-```typescript
-estimateFileTokens(filePath: string): Promise<number>
-// Math.ceil(fs.statSync(path).size / 4)
-```
-
-Uses the file's byte size (via `stat`) rather than reading the file content. This is faster for large files and avoids unnecessary I/O. Returns 0 if the file does not exist or is unreadable (fail-open).
-
-### Full Prompt Breakdown
-
-`estimateContextBudget()` computes a breakdown across all components:
-
-| Component | Source | Method |
-|-----------|--------|--------|
-| `taskPrompt` | Agent prompt string | chars / 4 |
-| `agentInstructions` | Agent `.md` file path extracted from prompt | file stat / 4 |
-| `rollingContext` | `.plan-execution/rolling-context.md` | file stat / 4 |
-| `stageContext` | `.plan-execution/stage-context/*.toon` | file stat / 4 each |
-| `overhead` | Fixed | 5000 tokens (system prompt + tool defs) |
-
-**Total** = sum of all components.
-
-## Budget Configuration
-
-The hook reads config from `.claude/orchestration.toml` under `[settings.contextBudget]`:
-
-```toml
-[settings.contextBudget]
-contextWindow = 200000          # total context window
-# agentBudgetCap = 100000       # defaults to contextWindow / 2 if omitted
-```
-
-**Defaults**: `contextWindow = 200000`, `agentBudgetCap = 100000` (50% of window).
-
-Config parsing uses regex extraction of the `[settings.contextBudget]` TOML section. A full TOML parser is not used — only `contextWindow` and `agentBudgetCap` integer values are extracted. If the file does not exist or the section is absent, defaults apply.
-
-## Test Agent Tier Multipliers
-
-Certain agent names and stage markers trigger test-specific budget enforcement with reduced effective caps:
-
-### Recognized Test Agents
-
-| Agent Name | Tier |
-|-----------|------|
-| `vitest-runner` | `unit` |
-| `integration-test-agent` | `integration` |
-| `e2e-runner-agent` | `e2e` |
-| `e2e-test-writer-agent` | `e2e` |
-| `qa-review-agent` | `qa-review` |
-
-Also triggered by prompt content matching `stage: e2e` or `stage: qa-review`.
-
-### Tier Budget Multipliers
-
-| Tier | Multiplier | Rationale |
-|------|-----------|-----------|
-| `unit` | 0.6 | Unit test agents need minimal context |
-| `integration` | 0.8 | Integration tests need moderate context |
-| `e2e` | 1.0 | E2E agents need full budget (fixtures, screenshots) |
-| `qa-review` | 0.75 | Review agents need moderate context |
-
-Effective cap = `Math.floor(baseCap * multiplier)`.
-
-## Block vs Warning Behavior
-
-| Condition | Action |
+| Component | Method |
 |-----------|--------|
-| Estimated tokens > effective cap | Block with breakdown message |
-| Estimated tokens 80–100% of cap | Allow with utilization warning |
-| Estimated tokens < 80% of cap | Allow silently |
+| `taskPrompt` | chars / 4 |
+| `agentInstructions` (agent `.md` path scanned from prompt) | file stat / 4 |
+| `rollingContext` (`.plan-execution/rolling-context.md`) | file stat / 4 |
+| `stageContext` (`stage-context/*.toon`) | file stat / 4 each |
+| `overhead` | fixed 5000 |
 
-The block message includes a full breakdown by component to help diagnose which part of the context is oversized.
+**Config parsing:** regex-extracts only `contextWindow` and `agentBudgetCap` from the `[settings.contextBudget]` section (no full TOML parse). Defaults: `contextWindow = 200000`, `agentBudgetCap = 100000` (= `contextWindow / 2` when omitted). Missing file or section → defaults.
 
-## Agent .md Path Resolution
+**Test-agent tier multipliers** reduce the effective cap for recognized test agents (`vitest-runner`→unit, `integration-test-agent`→integration, `e2e-runner-agent`/`e2e-test-writer-agent`→e2e, `qa-review-agent`→qa-review; also prompt markers `stage: e2e` / `stage: qa-review`). Effective cap = `Math.floor(baseCap * multiplier)` with multipliers unit 0.6, integration 0.8, e2e 1.0, qa-review 0.75.
 
-The hook attempts to find the agent's instruction file by scanning the prompt for paths matching patterns like:
-- `~/.claude/agents/*.md`
-- `~/.loom-ai/agents/*.md`
-- `agents/*.md`
+**Block vs warn:** estimate > effective cap → block with a per-component breakdown; 80–100% of cap → allow with utilization warning; < 80% → allow silently.
 
-Resolved paths are validated to stay within expected directories (`~/.claude/agents`, `~/.loom-ai/agents`, `agents/`). Paths outside these directories are rejected for security.
+**Agent `.md` path resolution:** scans the prompt for `~/.claude/agents/*.md`, `~/.loom-ai/agents/*.md`, `agents/*.md` (and `.claude`/`.loom-ai` variants), expands `~`, and validates the resolved path exists. Paths outside expected dirs are rejected.
 
-## Fail-Open Guarantee
-
-Any estimation error allows the spawn. The hook uses the `runHook` harness from `hooks/lib/run-hook.ts`.
+**Fail-open:** any estimation error allows the spawn (via the `runHook` harness).

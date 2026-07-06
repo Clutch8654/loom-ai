@@ -1,8 +1,8 @@
 schemaVersion: 1
-entryCount: 26
+entryCount: 27
 lastEntry: 2026-07-06T00:00:00Z
 
-entries[26]{timestamp,operation,pageId,agent,summary}:
+entries[27]{timestamp,operation,pageId,agent,summary}:
   2026-04-25T22:00:00Z,bootstrap,*,human,Initial wiki bootstrap: 19 pages across 6 categories covering hooks/infrastructure + command dispatch + agents/protocols
   2026-06-17T00:00:00Z,create,concept-roadmap-convergence,wiki-maintainer-agent,F-15/M-07 plan-created — capture roadmap convergence loop shape, dimensions/rubrics, sibling-to-code-convergence framing
   2026-06-17T00:00:00Z,create,component-roadmap-converge-driver,wiki-maintainer-agent,F-15/M-07 plan-created — capture driver pipeline, three /loom-roadmap commands, 10-state machine, 10 error codes, configuration block
@@ -29,3 +29,4 @@ entries[26]{timestamp,operation,pageId,agent,summary}:
   2026-07-04T06:00:00Z,create,component-eval-framework,wiki-maintainer-agent,Wave 8 P20 (F-20+F-21) — three-tier eval ladder: T1 static/in-process (PR gate blocking), T2 hermetic replay (nightly advisory), T3 LLM-judge (opt-in never merge-blocking); free-by-default invariant llmCalls:0 for T1+T2; 4 error codes; injected judge seam; 22/22 tests pass
   2026-07-04T06:00:00Z,create,protocol-skill-preamble,wiki-maintainer-agent,Wave 8 P21 (F-22) — shared skill preamble protocol: 7 conventions cited by reference via @loom-include directive, byte-stable LOOM:SKILL-PREAMBLE:BEGIN/END markers, mirrors _loom-init-guard.md pattern, registered in library.protocols; 10/10 preamble-resolution tests pass
   2026-07-06T00:00:00Z,refresh,*,wiki-ingest-agent,Health-run reconciliation — re-derived 9 debt-flagged pages (install-pipeline/library-catalog/command-creation/structure-command-layout/orchestration-patterns/settings-json/execution-pipeline/eval-framework/model-resolution) against current source; W-013 ledger debt cleared (13 entries reconciled); staleness reset; eval-framework retitled Tiered Ladder for qa-outcome 4th tier
+  2026-07-06T00:00:00Z,author,*,wiki-ingest-agent,W-026 legacy authoring pass — brought 16 pre-schema pages to the summary+required-H2 convention (5 component hooks, concept-convergence, 2 convention, pattern-subcommand-dispatch, structure-agent-taxonomy corrected 60→86 agents, 2 roadmap-converge partial-fill, decision-context-decisions-split; 3 ADR stubs got summary+pointer only). Index staleness corrected: 3 ADR stubs fresh→migrated. 0 W-026 defects remain

@@ -4,12 +4,12 @@ title: Roadmap Converge Driver
 category: component
 domain: code
 createdAt: 2026-06-17T00:00:00Z
-updatedAt: 2026-06-17T00:00:00Z
+updatedAt: 2026-07-06T00:00:00Z
 createdBy: wiki-maintainer-agent
-updatedBy: wiki-maintainer-agent
+updatedBy: wiki-ingest-agent
 summary: Per-pass driver orchestrating content-hash check, per-dimension reviewer fan-out, 5-finding cap, integrator/stall/pass-cap handling, and three user-facing /loom-roadmap commands.
-estimatedTokens: 1100
-bodySections[6]: Summary, Commands, Pipeline, State Machine, Error Codes, Configuration
+estimatedTokens: 2111
+bodySections[8]: Summary, Dependencies, Key Behaviors, Commands, Pipeline, State Machine, Error Codes, Configuration
 subtype:
 sourceRefs[8]: planning/plans/PLAN-roadmap-converge-harness.md, scripts/roadmap-converge/driver.ts, scripts/roadmap-converge/integrator.ts, scripts/roadmap-converge/stall-detector.ts, commands/loom-roadmap/converge.md, commands/loom-roadmap/sign-off.md, commands/loom-roadmap/status.md, agents/roadmap-converge-driver.md
 crossRefs[5]{pageId,relationship}:
@@ -28,6 +28,29 @@ confidence: high
 ## Summary
 
 The driver is the orchestration spine for F-15. It owns the pass loop, dispatches per-dimension reviewer agents, enforces the 5-finding output cap, threads integrator/stall/pass-cap halt logic, and renders the digest. Three user-facing commands sit on top of it; one agent (`roadmap-converge-driver.md`) wraps the entry point; the agent for cold-start archetype detection plugs in via a typed `archetypeDetectionHook` seam.
+
+## Dependencies
+
+| Dependency | Role |
+|------------|------|
+| `scripts/roadmap-converge/driver.ts` | Pass-loop entry point the three commands wrap |
+| `roadmap-converge-reviewer` (agent) | Per-dimension grader fanned out each pass; model `sonnet` |
+| `roadmap-converge-integrator` (agent) | Applies resolved `open_questions[]` back into ROADMAP.md |
+| `scripts/roadmap-converge/stall-detector.ts` | Flags two identical passes with no resolutions → `halted-stalled` |
+| `component-roadmap-converge-state` | Durable state, lock file, slug, content-hash, migration runtime |
+| `roadmap-archetype-detector` (agent) | Cold-start archetype pick via the `archetypeDetectionHook` seam |
+| `.claude/orchestration.toml [roadmap.converge]` | Pass cap, models, lock window, retire-list, rubric overrides |
+
+## Key Behaviors
+
+- **Single-pass loop.** Each `/loom-roadmap converge` runs exactly one pass: lock → content-hash check → reviewer fan-out → 5-finding cap → atomic state write → digest.
+- **Content-hash invalidation.** A manual ROADMAP.md edit between passes is caught by comparing `state.content_hash`; on mismatch every dimension is flagged `delta_since_last = invalidated` with a stderr advisory (exit 0, non-fatal).
+- **5-finding cap per dimension.** Findings beyond five spill to `state.suppressedFindings[]` with a stderr "N suppressed" notice; aggregate ceiling is `5 × |dimensions|`.
+- **Status-conditional rendering.** green emits nothing, yellow inlines the green-band exemplar, red inlines both green- and red-band exemplars — keeping green passes token-cheap.
+- **Integrator re-entry.** Re-invocation after the user answers questions runs the integrator pass, applies surgical edits, increments `round`, and recomputes `content_hash`.
+- **Halt guards.** `round == passLimit` → `halted-pass-cap`; two identical passes with no resolved questions → `halted-stalled`.
+- **Sign-off purity.** The driver can at most set `sign_off_state = eligible`; only `/loom-roadmap sign-off` writes `converged`.
+- **Atomic + resumable.** State is written `.tmp` + rename; every error emits a one-line stderr message plus a structured `last-error.toon` envelope.
 
 ## Commands
 
