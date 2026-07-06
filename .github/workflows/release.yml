@@ -45,6 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
+      tag: ${{ steps.meta.outputs.tag }}
       tarball: ${{ steps.meta.outputs.tarball }}
       version: ${{ steps.meta.outputs.version }}
       dry_run: ${{ steps.meta.outputs.dry_run }}
