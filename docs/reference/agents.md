@@ -11,6 +11,7 @@ Every spawnable Loom agent and its resolved model tier, generated from the
 |---|---|---|
 | `agentic-workflow-agent` | sonnet | Decompose project phases into discrete, context-bounded tasks optimized for AI agent execution. |
 | `auto-dispatcher` | sonnet | Thin lead dispatcher for agent team pipeline mode. |
+| `benchmark-agent` | opus | Competitive-benchmark agent — runs PRE-roadmap on a bare idea (unlike the plan-scoped feature-cover… |
 | `bugfix-analyst-agent` | sonnet | Analyzes bugs with wiki/app context, implements fixes, assesses downstream impact, and archives res… |
 | `context-budget-reviewer` | haiku | Preflight budget checker that estimates a teammate's prompt size and returns proceed/split/reject r… |
 | `contracts-agent` | opus | Wave 0 specialist that creates shared types, interfaces, schemas, and API contracts on disk for dow… |

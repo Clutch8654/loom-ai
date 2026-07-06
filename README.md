@@ -349,7 +349,7 @@ The split is the layer they touch:
 | `/loom-which` | (free-text) | Decision-tree router — asks 1–3 questions to recommend the right `/loom-*` command for your current task. Distinct from `/loom-do` (model-facing intent inference) and `/loom-reference` (flat table). |
 | `/loom-deepen` | (flags) `--target`, `--html`, `--limit` | Periodic codebase-health pass — Explore-subagent fan-out, deletion test, surfaces shallow modules with before/after diagrams. Default TOON output; `--html` opt-in with headless fallback. |
 | `/loom-prototype` | `<name> --branch logic\|ui [--adr]` | Author throwaway code as a deliberate phase. `logic` = terminal app, `ui` = parallel UI variants on one route. Completion ceremony writes `prototypes/{name}/answer.toon` and updates the linked ADR. |
-| `/loom-think` | — | Pre-plan meta-step — 5-phase deep-think interview → `.loom/thinks/{slug}-{date}.md`, cross-model second opinion. Precedes `/loom-roadmap init` for fuzzy problems. |
+| `/loom-think` | review | Pre-plan meta-step — 5-phase deep-think interview → `.loom/thinks/{slug}-{date}.md`, cross-model second opinion. Precedes `/loom-roadmap init` for fuzzy problems. `review` = opt-in pre-plan gate over the converged doc → `proceed` \| `rewrite-think` \| `kill` (default-on in `/loom-auto`). |
 | `/loom-spec` | (flags) `--auto-mutate`, `--name <slug>`, `--yes`, `--worktree`, `--from <path>` | Pre-plan meta-step — 5-phase idea → ROADMAP feature block or GH issue; chains into `/loom-roadmap:mutate`; `--worktree` spawns branch. |
 | `/loom-ship` | — | Chief ship-engineer — pre-flight rebase from base + drift detection + VERSION-slot reserve via `scripts/loom-version-slot.ts` + plan-completion audit inline in PR body via `gh pr create`. |
 | `/loom-canary` | — | Progressive deploy with health-check gates and auto-rollback. Reads deploy config from `CLAUDE.md`; wraps `fly` / `vercel` / `wrangler` / `netlify` / `railway` / `render`. |
@@ -384,6 +384,106 @@ Before a roadmap exists there is an idea, and ideas arrive at different levels o
 The result is a durable design doc at `.loom/thinks/{slug}-{timestamp}.md` (frontmatter: slug, datetime, branch, supersedes, `status: DRAFT`; written atomically). Docs chain per topic: a new think on the same `--branch` supersedes the previous one, resolved by frontmatter datetime, so a topic's thinking history stays traceable. Feed the doc forward with `/loom-roadmap init --from <path>` or `/loom-spec --from <path>`.
 
 Use it when you catch yourself saying "I've been thinking about..." with no crisp deliverable, or when a prior roadmap or plan stalled and needs a re-frame. Skip it for a scoped ticket (`/loom-spec`), a clear bug (`/loom-bugfix`), an area an existing roadmap already covers (`/loom-roadmap mutate`), or a specific topic that wants many voices (`/loom-roadmap explore`). Rule of thumb: think = fuzzy problem, one operator converging; explore = specific topic, many voices; spec = crystallize a chosen direction into a ticket.
+
+Once the doc converges, the **suggested next step is `/loom-think:review`** (below) — an optional gate that vets the framing before you cross into `/loom-roadmap init`.
+
+### /loom-think:review — the pre-plan gate
+
+Loom historically had **formality-first gravity**: the first real critique of an idea landed at `/loom-plan review`, *after* a formal roadmap and plan already existed. A framing error — a wrong approach, an unrebutted objection, an idea asserted in a competitive vacuum — survived all the way to a post-draft review that then returned REVISE. `/loom-think:review` closes that gap by putting a lightweight review **at the divergent→formality seam**: it reviews the converged think doc's *framing* (problem clarity, approach soundness, gap-closure, benchmark presence) before any formal artifact is drafted.
+
+The lifecycle is **divergent → gate → formality**:
+
+```
+DIVERGENT (breathing room)                         GATE                 CONVERGENT (rigor)
+ /loom-think · /loom-spec · /loom-prototype   /loom-think:review     /loom-roadmap init → review → sign-off
+ /loom-roadmap explore · --benchmark          {proceed |             /loom-plan create → review → execute
+        │  writes                              rewrite-think |               ▲
+        ▼                                      kill}                         │ proceed
+ .loom/thinks/{slug}-{ts}.md  ─────────────────►  ├──────────────────────────┘
+   (converged doc + optional                      ├─► rewrite-think ─► /loom-think --from <doc>  (re-think, bounded loop)
+    BenchmarkScorecard section)                    └─► kill ─────────► archive the doc; do NOT proceed
+```
+
+`/loom-think:review [<doc>]` resolves the newest `.loom/thinks/` doc on the current branch (or an explicit path), selects an archetype-matched panel of altitude lenses (`eng` always fires; `devex`/`ceo`/`design` per archetype), runs them in **framing-review mode** over the doc, and routes their findings through a deterministic, **fail-closed** router (`protocols/think-review.schema.md` § Decision Table). The router emits exactly one of three decisions and writes a `ThinkReviewVerdict` to `.plan-execution/ephemeral/think-review/verdict.toon`:
+
+- **proceed** — framing is sound; `nextCommand` is `/loom-roadmap init`.
+- **rewrite-think** — a repairable defect (any warning, or a *fixable* blocking finding, or a sub-quorum panel that fails closed); `nextCommand` is `/loom-think --from <doc>`.
+- **kill** — a *non-fixable* blocking approach error; `nextCommand` archives the doc — do NOT proceed to roadmap.
+
+**Opt-in, not a wall.** For humans `/loom-think:review` is optional — a converged doc may go straight to `/loom-roadmap init`. It is **default-on only inside `/loom-auto`**, where the gate runs before roadmap-init and a `kill` HALTs the pipeline while a `rewrite-think` re-enters the think loop up to a bounded number of attempts (see the changelog note below).
+
+#### Worked example (runnable)
+
+This repo's own thinking-gate work carries a real converged doc at `.loom/thinks/thinking-formality-separation-2026-07-04T21-12-44.md` (the doc that motivated this very feature). Loom is a dev-facing CLI, so the detector resolves archetype **`cli`** → panel `eng,devex,ceo` (**M = 3**, quorum ⌈3/2⌉ = **2**). Run:
+
+```
+/loom-think:review
+```
+
+Because the doc's framing is sound — problem clearly stated, approach grounded by the reconciler, all four tensions resolved — every lens passes and the router returns **proceed**. The exact verdict written to `.plan-execution/ephemeral/think-review/verdict.toon`:
+
+```toon
+decision: proceed
+nextCommand: /loom-roadmap init
+decidedBy: think-review-router
+revisionCount: 0
+panelSize: 3
+reportingLenses: 3
+quorumMet: true
+decidedAt: 2026-07-04T21:20:00.000Z
+errorCode:
+findings[0]:
+```
+
+> Verdict: **PROCEED** — framing is sound (panelSize 3 / reportingLenses 3, quorum met). Run `/loom-roadmap init` to formalize. (This is exactly what happened: the doc's own `status:` is now `ROADMAPPED`.)
+
+The same command over a *weaker* draft of that doc — one that asserted differentiation but shipped **no `BenchmarkScorecard`** — trips the benchmark-presence check (a `ceo` warning), so the router returns **rewrite-think**:
+
+```toon
+decision: rewrite-think
+nextCommand: /loom-think --from .loom/thinks/thinking-formality-separation-2026-07-04T21-12-44.md
+decidedBy: think-review-router
+revisionCount: 0
+panelSize: 3
+reportingLenses: 3
+quorumMet: true
+decidedAt: 2026-07-04T21:20:00.000Z
+errorCode:
+findings[1]{id,lens,severity,confidence,fixable,remediation,message}:
+  F-01,ceo,warning,7,true,"Add a competitive benchmark (--benchmark) before formality","No BenchmarkScorecard present in the think doc — the idea is asserted in a vacuum"
+```
+
+> Verdict: **REWRITE-THINK** — one fixable warning. Re-run `/loom-think --from <doc>`, add the benchmark, and re-review.
+
+And a draft whose *approach itself* is fatally wrong — a `blocking` finding with `fixable: false`, which the fail-closed router promotes over everything except a crashed panel — returns **kill**:
+
+```toon
+decision: kill
+nextCommand: "archive the think doc (.loom/thinks/archive/) — do NOT proceed to roadmap"
+decidedBy: think-review-router
+revisionCount: 1
+panelSize: 3
+reportingLenses: 3
+quorumMet: true
+decidedAt: 2026-07-04T21:25:00.000Z
+errorCode:
+findings[1]{id,lens,severity,confidence,fixable,remediation,message}:
+  F-01,eng,blocking,9,false,"Approach contradicts a stated constraint — no fix within this framing; archive and re-scope","A hard gate at peak divergence chills the very phase it protects; the doc's own anti-separation objection is unrebutted"
+```
+
+> Verdict: **KILL** — a non-fixable approach error. Archive the doc to `.loom/thinks/archive/`; do NOT advance to `/loom-roadmap init`. (Precedence: `kill` outranks `rewrite-think`; a sub-quorum/crashed panel outranks both and fails closed to `rewrite-think`, never `proceed`.)
+
+Empty state is a clean, non-zero exit — if no `.loom/thinks/` doc matches the current branch, the command prints `no think doc on branch <X> — run /loom-think first` and exits 1 (it spawns no lenses).
+
+#### Changelog — new `/loom-auto` default
+
+**`/loom-auto` now runs `/loom-think:review` before roadmap-init by default.** When `/loom-auto` starts from a fuzzy idea, the pre-plan gate reviews the converged think doc before `/loom-roadmap init` is spawned:
+
+- **proceed** → the pipeline advances to `/loom-roadmap init` as before.
+- **rewrite-think** → `/loom-roadmap init` is NOT spawned; the doc is re-thought and re-reviewed, bounded to a configurable number of attempts (default 2) before escalating.
+- **kill** → the pipeline HALTs with an operator handoff (a `kill` does not loop — it is terminal, distinct from `rewrite-think`).
+
+Each attempt persists a `LoopBack{attempt,verdict,reason,decidedAt}` record, and the verdict is written to `.plan-execution/ephemeral/think-review/verdict.toon`. Two flags opt out: `--no-think-review` skips the gate entirely, and `--force` proceeds past a non-`proceed` verdict. Because `/loom-auto` runs the gate, `/loom-roadmap review` does not double-run its strategic lenses (it reads the existing verdict artifact). This gate is **opt-in for humans** — running `/loom-roadmap init` by hand never requires it.
 
 ### /loom-spec
 

@@ -31,6 +31,8 @@ Parse arguments after `auto`:
 - `--light-preflight`: run a lightweight pre-flight (fewer questions, accept more defaults)
 - `--new-contract`: regenerate `scope-contract.toon` even if one already exists
 - `--no-auto-commit`: disable per-wave and per-iteration auto-commits (code accumulates in working tree)
+- `--no-think-review`: skip the pre-plan thinking gate entirely (no `/loom-think:review`, no bounded loop)
+- `--force`: run the thinking gate for the audit trail but do NOT enforce its verdict — proceed to roadmap past any `rewrite-think`/`kill`
 
 ### Protocols
 
@@ -93,6 +95,9 @@ Always read (dual-track planning, 4-tier convergence, and behavioral hardening):
    - `convergeReviewers` from `--reviewers` (default: null — use all)
    - `convergenceEnabled` = true if `convergeTarget` or `convergeConfig` or `convergeCriteria` is set
    - `noAutoCommit` from `--no-auto-commit` (default: false)
+   - `noThinkReview` from `--no-think-review` (default: false)
+   - `force` from `--force` (default: false)
+   - `maxThinkRewrites` from `.claude/orchestration.toml` `[settings.thinkReview] maxRewrites` (default: 2 when the key or file is absent) — the bound on the pre-plan thinking gate's rewrite loop
 
    **Agent team detection.** Check whether `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set in the environment:
    ```
@@ -110,6 +115,7 @@ Always read (dual-track planning, 4-tier convergence, and behavioral hardening):
    ## Pipeline Stages (dry run)
 
    0.5. Pre-flight       -- prompt-refiner + scope-interrogator → scope-contract.toon {skipPreflight ? 'SKIPPED' : ''}
+   0.75. Thinking Gate    -- /loom-think:review on newest .loom/thinks/ doc → bounded rewrite loop (max {maxThinkRewrites}) · kill→HALT {noThinkReview ? 'SKIPPED (--no-think-review)' : force ? 'AUDIT-ONLY (--force)' : ''}
    1. Roadmap Creation    -- loom-roadmap init --auto (reads scope-contract.toon)
    2. Roadmap Review      -- loom-roadmap review
    3. Roadmap Integrate   -- loom-roadmap review-integrate --roadmap
@@ -130,6 +136,7 @@ Always read (dual-track planning, 4-tier convergence, and behavioral hardening):
    14. Fix Link           -- single dispatched link runs fixer (diagnose-before-fix) + quick review + typecheck/tests + stuck detection, then re-dispatch verify (or converge, or planning)
 
    Pre-flight: {skipPreflight ? 'skipped' : lightPreflight ? 'light' : 'full'}
+   Thinking gate: {noThinkReview ? 'skipped' : force ? 'audit-only (not enforced)' : 'enforced, bounded loop max ' + maxThinkRewrites}
    Planning: dual-track (plan-builder + criteria-planner + interpretation-reviewer)
    Convergence tiers: unit (wave) → integration (feature) → e2e (milestone) + qa-review (advisory)
    Convergence: {convergeTarget or convergeConfig or convergeCriteria or 'disabled'}
@@ -226,14 +233,121 @@ Always read (dual-track planning, 4-tier convergence, and behavioral hardening):
    convergeTarget: {convergeTarget or ""}
    convergeConfig: {convergeConfig or ""}
    noAutoCommit: {noAutoCommit}
-   currentStage: roadmap-create
+   noThinkReview: {noThinkReview}
+   force: {force}
+   maxThinkRewrites: {maxThinkRewrites}
+   currentStage: think-gate
 
    stageHistory[0]{stage,status,iteration,startedAt,completedAt,agentsUsed,gateResult}:
 
    failureLog[0]{iteration,stage,error,resolution}:
    ```
 
-7. Update status line and proceed to Step 1.
+7. Update status line and proceed to Step 0.75 (the pre-plan thinking gate runs before roadmap creation).
+
+#### Step 0.75: Pre-plan Thinking Gate (Phase T)
+
+**Runs BEFORE roadmap creation.** This is the divergent→formality seam: if a converged `.loom/thinks/` doc exists on the branch, review it through `/loom-think:review` and route on its verdict **before** any roadmap is created. The gate is **default-on for `/loom-auto`** (opt-in for humans, per `commands/loom-think/review.md`). It writes the canonical `ThinkReviewVerdict` artifact and a per-attempt `LoopBack` audit trail.
+
+Only run this step on the first pass (`outerIteration == 1`). On revision passes (`outerIteration > 1`) the gate has already been decided — skip to Step 1.
+
+Prepare the audit directory once:
+```bash
+mkdir -p .plan-execution/ephemeral/think-review
+```
+
+**0.75a — Skip conditions (no gate, proceed straight to Step 1):**
+
+- **If `noThinkReview == true`:** log `"Thinking gate skipped (--no-think-review)."`, set `thinkReviewed = false`, go to Step 1.
+- **Resolve the newest `.loom/thinks/` doc on the current branch** (same resolution as `commands/loom-think/review.md` § Arguments: filter `.loom/thinks/*.md` by frontmatter `branch:` == current branch, pick newest by frontmatter `datetime:`). **If no doc resolves:** there is nothing to gate — log `"No think doc on branch {branch} — nothing to gate. Proceeding to roadmap."`, set `thinkReviewed = false`, go to Step 1. (This is the `/loom-think:review` empty state; for `/loom-auto` it is a clean no-op skip, NOT an error.)
+
+Otherwise a `thinkDoc` path is resolved — run the bounded loop.
+
+**0.75b — Bounded rewrite loop (max `maxThinkRewrites`, default 2):**
+
+Initialize `attempt = 1`. Loop:
+
+1. **Run the gate.** Spawn a general-purpose agent (model: opus — the M-04 lenses are opus):
+   ```
+   "Read your instructions from ~/.claude/commands/loom-think/review.md first.
+    Run /loom-think:review on the think doc at {thinkDoc}.
+    Pass revisionCount = {attempt - 1}.
+    Write the ThinkReviewVerdict atomically to the canonical path
+    .plan-execution/ephemeral/think-review/verdict.toon.
+    Your AgentResult MUST include verificationStatus."
+   ```
+   Record agents spawned.
+
+2. **Read the verdict.** Read `.plan-execution/ephemeral/think-review/verdict.toon`. Extract `decision` (`proceed` | `rewrite-think` | `kill`) and `nextCommand`.
+
+3. **Write the `LoopBack` audit row** for this attempt (atomic write, `.tmp` → rename) to `.plan-execution/ephemeral/think-review/loopback-{attempt}.toon`, and append the same row to the cumulative `.plan-execution/ephemeral/think-review/loopback.toon` audit trail:
+   ```toon
+   attempt: {attempt}
+   verdict: {decision}
+   reason: {short reason — e.g. "framing sound", "fixable defect, re-thinking", "non-fixable approach error", "--force override", "rewrite bound reached"}
+   decidedAt: {ISO-8601 timestamp}
+   ```
+   (`LoopBack` type — `lib/types.ts`. Writing it per attempt is what makes the loop **observably bounded** and a `kill` halt distinguishable from a `rewrite` escalation on disk.)
+
+4. **Override escape hatch.** **If `force == true`:** the gate runs for the audit trail but is NOT enforced. Log `"--force: proceeding past {decision} verdict (gate not enforced)."`, set `thinkReviewed = true`, break the loop, go to Step 1. (One attempt only — `--force` never loops.)
+
+5. **Branch on `decision` (loop control):**
+
+   | `decision` | Action |
+   |------------|--------|
+   | `proceed` | Framing is sound. Set `thinkReviewed = true`. Break the loop; go to Step 1. |
+   | `kill` | **TERMINAL HALT — does NOT loop.** Do NOT spawn `/loom-roadmap init`. Go to **0.75c (kill halt)**. |
+   | `rewrite-think` | If `attempt >= maxThinkRewrites`: the rewrite bound is exhausted — go to **0.75d (bound escalation)**. Otherwise: re-think (step 6), increment `attempt`, loop again. |
+
+6. **Re-think (rewrite-think, bound not yet reached).** Spawn a general-purpose agent to rewrite the think doc per the verdict's fixable defects (model: opus):
+   ```
+   "Read your instructions from ~/.claude/commands/loom-think.md first.
+    Run /loom-think --from {thinkDoc} to revise the converged think doc.
+    Address these fixable defects from the last /loom-think:review verdict:
+    {the rewrite-think findings' remediation lines from verdict.toon}
+    Write the revised doc back to the .loom/thinks/ branch doc.
+    Your AgentResult MUST include verificationStatus."
+   ```
+   Record agents spawned. Set `attempt = attempt + 1` and return to step 1 of this loop.
+
+The loop is **bounded**: at most `maxThinkRewrites` gate runs before it must resolve to `proceed`, `kill`, or a bound escalation. There is no path that spins indefinitely.
+
+**0.75c — Kill halt (terminal operator handoff):**
+
+`kill` means a non-fixable approach error — no fix within this framing. It is **distinct from `rewrite-think`: it does NOT loop.** Do NOT create a roadmap.
+
+1. Write halt state to `pipeline-state.toon`: `currentStage: escalated`. Append to `failureLog`: `{iteration: 1, stage: "think-gate", error: "think-review verdict: kill (non-fixable approach error)", resolution: "operator handoff — archive or re-scope the think doc"}`.
+2. Write `.plan-execution/escalation-report.md` with the kill context (name the concrete non-fixable defect(s) from `verdict.toon`, and the archive guidance from the verdict's `nextCommand`).
+3. Display the operator handoff:
+   ```
+   ── THINKING GATE: KILL (halt) ──────────────────────────────
+   The converged think doc has a non-fixable approach error — the
+   pipeline will NOT proceed to roadmap creation.
+
+   Doc:      {thinkDoc}
+   Defect:   {the non-fixable blocking finding's message}
+   Next:     {verdict.nextCommand}  (archive the doc — do NOT proceed)
+   Attempts: {attempt} (kill is terminal — it does not loop)
+   ────────────────────────────────────────────────────────────
+   ```
+4. **Stop.** Do not spawn `/loom-roadmap init` or any downstream stage. This is a terminal halt (a human must re-scope or archive).
+
+**0.75d — Rewrite-bound escalation:**
+
+Reached when the loop hit `maxThinkRewrites` `rewrite-think` verdicts without ever resolving to `proceed` or `kill`. The framing keeps failing but is not fatally unfixable — hand off to the operator rather than spin.
+
+1. Write the final `LoopBack` row with `reason: "rewrite bound reached ({maxThinkRewrites} attempts) — escalating"`.
+2. Write halt state to `pipeline-state.toon`: `currentStage: escalated`; append to `failureLog`: `{iteration: 1, stage: "think-gate", error: "rewrite bound reached after {maxThinkRewrites} rewrite-think attempts", resolution: "operator handoff — refine the think doc manually or pass --force to proceed unenforced"}`.
+3. Write `.plan-execution/escalation-report.md` with the accumulated `loopback.toon` history and the last verdict's fixable defects.
+4. Display the handoff (note `--force` and `--no-think-review` as the operator's escape hatches) and **stop**. Do not spawn `/loom-roadmap init`.
+
+**0.75e — Signal downstream (proceed path only).**
+
+When the gate resolved to `proceed` (or was overridden by `--force`), `thinkReviewed = true`. The canonical verdict artifact now exists at `.plan-execution/ephemeral/think-review/verdict.toon`. In Step 1b (Review roadmap), pass `--think-reviewed` to `/loom-roadmap review` so it does NOT double-run the strategic lenses (C-09) — the M-04 lenses already ran at the think seam. The verdict artifact alone is sufficient for that detection, but `/loom-auto` sets the flag explicitly as belt-and-suspenders.
+
+**If `--stop-after roadmap`** is combined with a gate halt (`kill`/bound escalation): the halt takes precedence — the pipeline stops at the gate, before roadmap.
+
+Update `pipeline-state.toon` after the gate resolves. Log the gate result in `stageHistory` (`stage: think-gate`, `gateResult: {decision or "skipped"}`). Check circuit breakers, then proceed to Step 1.
 
 #### Step 1: Roadmap Creation (Phase R)
 
@@ -252,10 +366,10 @@ Always read (dual-track planning, 4-tier convergence, and behavioral hardening):
 1b. **Review roadmap.** Spawn a general-purpose agent:
    ```
    "Read your instructions from ~/.claude/commands/loom-roadmap.md first.
-    Review the roadmap at {roadmapFile}. Save findings to planning/history/reviews/.
+    Review the roadmap at {roadmapFile}{if thinkReviewed: ' --think-reviewed'}. Save findings to planning/history/reviews/.
     Your AgentResult MUST include verificationStatus."
    ```
-   Record agents spawned. Update `currentStage: roadmap-review`.
+   **If `thinkReviewed == true`** (Step 0.75 ran the gate and it proceeded), pass `--think-reviewed` so `/loom-roadmap review` skips its archetype-selected strategic lenses — they already ran in altitude mode at the think seam (C-09). The canonical verdict artifact at `.plan-execution/ephemeral/think-review/verdict.toon` is the fallback signal for the same skip. Record agents spawned. Update `currentStage: roadmap-review`.
 
 1c. **Integrate review findings.** Spawn a general-purpose agent:
    ```
@@ -987,6 +1101,8 @@ Check these conditions before every stage transition. If any triggers, go to Ste
 | **Wave deadlock** | A wave failed 2x AND plan revision did not change that wave's phases | Structural issue in plan decomposition |
 | **Validation failure** | Plan fails validation stages 1-4 after `--review-integrate` | Review recommendations broke the plan |
 | **Interpretation conflict** | Blocking interpretation conflicts between plan-builder and criteria-planner after dual-track generation | Dual-track outputs are incompatible -- human resolution required |
+| **Think-gate kill** | `/loom-think:review` returns `kill` (non-fixable approach error) at Step 0.75 | Fatal framing error — archive/re-scope before any roadmap; terminal, does not loop |
+| **Think-gate rewrite bound** | `maxThinkRewrites` (default 2) `rewrite-think` verdicts without resolving to proceed/kill | The framing keeps failing repair — operator must refine manually or pass `--force` |
 
 When a breaker trips:
 1. Record the breaker name and condition in `pipeline-state.toon` failureLog.
@@ -1014,6 +1130,7 @@ When `--resume` is passed:
 
    | `currentStage` value | Re-entry point |
    |----------------------|----------------|
+   | `think-gate` | Step 0.75 (re-run the pre-plan thinking gate). The gate is idempotent: it re-resolves the newest think doc and re-reads any existing `verdict.toon`/`loopback-*.toon`. A prior `kill`/bound escalation would have set `currentStage: escalated`, so a resume at `think-gate` means the gate had not yet terminally decided. |
    | `roadmap-create` | Step 1, sub-step 1a |
    | `roadmap-review` | Step 1, sub-step 1b |
    | `roadmap-integrate` | Step 1, sub-step 1c |

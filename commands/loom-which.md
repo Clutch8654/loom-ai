@@ -21,7 +21,7 @@ Parse the optional argument after `which`:
 The canonical decision tree. Internal nodes carry a question and branches; leaf nodes carry a command recommendation. Each session starts at **N-01**.
 
 ```toon
-nodes[41]{id,question,branches,leafRecommendation}:
+nodes[42]{id,question,branches,leafRecommendation}:
   N-01,"What kind of task are you on?","[bug, feature, design, planning, quality, ship, retro, audit, runtime, unclear]",null
   N-02,"Bug — do you have a tight, reliably-red reproduction command?","[yes, partial, no]",null
   N-03,"Feature — is there an approved ROADMAP.md entry for it yet?","[yes-approved, drafted-not-approved, no-roadmap]",null
@@ -29,7 +29,7 @@ nodes[41]{id,question,branches,leafRecommendation}:
   N-05,"Planning — do you need to convert a roadmap to a plan, review an existing plan, or execute one?","[convert, review, execute]",null
   N-06,"Audit — what surface are you auditing?","[coverage, attribution, skill-autoload, sediment]",null
   N-07,"Runtime — what state is the Loom installation in?","[upgrade, library-refresh, project-migrate]",null
-  N-08,"No roadmap yet — how crisp is the idea?","[crisp-one-liner, fuzzy, ready-to-structure]",null
+  N-08,"No roadmap yet — how crisp is the idea?","[crisp-one-liner, fuzzy, ready-to-structure, already-thought-want-review]",null
   N-09,"Ship — what do you need?","[pr-pipeline, deploy, dashboard, bare-pr]",null
   N-10,"Quality — which surface?","[live-site, health-score, security, perf]",null
   L-runtime-upgrade,null,null,"/loom-update (channel-aware Loom-runtime upgrade — atomic staging, rollback snapshots)"
@@ -42,6 +42,7 @@ nodes[41]{id,question,branches,leafRecommendation}:
   L-feature-new,null,null,"/loom-roadmap init (idea is structured; go straight to the roadmap)"
   L-feature-spec,null,null,"/loom-spec \"<idea>\" (sharpen the one-liner into a ROADMAP block or GH issue)"
   L-feature-think,null,null,"/loom-think (fuzzy problem — 5-phase deep-think interview first; its doc feeds /loom-roadmap init --from)"
+  L-feature-think-review,null,null,"/loom-think:review (opt-in pre-plan gate over a converged .loom/thinks/ doc — panel routes proceed | rewrite-think | kill; on proceed the doc feeds /loom-roadmap init)"
   L-design-shape,null,null,"/loom-deepen --target <subtree>"
   L-design-decision,null,null,"Write an ADR at docs/adr/{NNNN}-{title}.md per docs/adr/README.md"
   L-design-throwaway,null,null,"/loom-prototype <name> --branch <logic|ui>"
@@ -64,7 +65,7 @@ nodes[41]{id,question,branches,leafRecommendation}:
   L-audit-sediment,null,null,"scripts/sediment-sweep/no-op-test.ts"
   L-unclear-fallback,null,null,"/loom-reference (no clear match; consult the flat reference table)"
 
-edges[41]{fromNode,branch,toNode}:
+edges[42]{fromNode,branch,toNode}:
   N-01,bug,N-02
   N-01,feature,N-03
   N-01,design,N-04
@@ -87,6 +88,7 @@ edges[41]{fromNode,branch,toNode}:
   N-08,crisp-one-liner,L-feature-spec
   N-08,fuzzy,L-feature-think
   N-08,ready-to-structure,L-feature-new
+  N-08,already-thought-want-review,L-feature-think-review
   N-04,shape,L-design-shape
   N-04,decision,L-design-decision
   N-04,throwaway-prototype,L-design-throwaway
