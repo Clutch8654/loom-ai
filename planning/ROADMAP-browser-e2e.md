@@ -1,9 +1,12 @@
 ---
 roadmapVersion: 1
 name: "Leverageable Browser-E2E"
-status: draft
+status: completed
 created: 2026-07-04
 lastReviewed: 2026-07-04
+completedAt: 2026-07-05T21:55:00Z
+planRef: planning/plans/PLAN-browser-e2e.md
+acceptanceNote: "All 5 milestones delivered (M-01 daemon substrate, M-02 convergence integration, M-03 TDD+feedback-loop, M-04 portable gstack patterns, M-05 CI+acceptance). M-05 gate met via signed-off calibrated-equivalence-at-8 (tests re-scored honestly to 8; residuals are pre-declared Non-Goals). User signed off 2026-07-05. Executed by PLAN-browser-e2e across 7 waves / 8 commits, tsc=0, 442 pass/2 skip."
 reviewRef: planning/history/reviews/2026-07-04-review.toon
 targetDate: null
 totalFeatures: 10

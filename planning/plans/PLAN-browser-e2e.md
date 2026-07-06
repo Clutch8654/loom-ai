@@ -1,9 +1,13 @@
 ---
 planVersion: 2
 name: "Leverageable Browser-E2E"
-status: draft
+status: completed
 created: 2026-07-04
 lastReviewed: 2026-07-04
+completedAt: 2026-07-05T21:55:00Z
+acceptanceStatus: calibrated-equivalence-at-8
+acceptanceSignedOff: true
+acceptanceNote: "All 14 phases executed + committed across 7 waves (8 commits, tsc=0, 442 pass/2 skip). tests re-scored honestly to 8 (calibrated-equivalence): eval-harness plank closed + browser subsystem now real+tested (connectOverCDP drive, daemon convergence e2e, Rung-4 red→green, fixture-tested browser-skill, per-category outcome eval in nightly, BE-10 injection test). Below 9 only on the two pre-declared Non-Goals (raw test-file-count parity, Windows/cross-platform CI). User signed off at 8 on 2026-07-05."
 reviewRef: planning/history/reviews/2026-07-04-review.toon
 roadmapRef: planning/ROADMAP-browser-e2e.md
 totalPhases: 14
