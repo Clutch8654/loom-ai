@@ -251,6 +251,59 @@ describe("record — breaker parity trajectories", () => {
   });
 });
 
+describe("document-mode safeguards (C-06 scope guard, C-07 snapshots)", () => {
+  function writeSubject(content: string) {
+    fs.mkdirSync(path.join(tmpDir, "planning"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "planning", "PLAN.md"), content, "utf-8");
+  }
+
+  it("detects integrator-added top-level sections via the subject baseline", () => {
+    writeConfig();
+    writeSubject("# Plan\n### Phase 1 — setup\n");
+    runIteration(1, 5, 10); // captures baseline
+    // Integrator adds a new top-level phase between iterations
+    writeSubject("# Plan\n### Phase 1 — setup\n### Phase 2 — extras\n");
+    const v = runIteration(2, 3, 18);
+    expect(v).toMatchObject({ halt: true, haltReason: "SCOPE_EXPANSION" });
+    expect(v.newSections).toEqual(["### Phase 2 — extras"]);
+  });
+
+  it("does not fire the guard on unchanged structure", () => {
+    writeConfig();
+    writeSubject("# Plan\n### Phase 1 — setup\n");
+    runIteration(1, 5, 10);
+    writeSubject("# Plan\n### Phase 1 — setup\nedited body only\n");
+    const v = runIteration(2, 3, 18);
+    expect(v.halt).toBe(false);
+  });
+
+  it("writes a snapshot before the integrator for iterations >= 2", () => {
+    writeConfig();
+    writeSubject("# Plan\n### Phase 1 — setup\n");
+    const first = runIteration(1, 5, 10);
+    expect(first.snapshotRef).toBeNull(); // iteration 1: no snapshot per spec
+    const second = runIteration(2, 3, 18);
+    expect(second.snapshotRef).toBe(
+      path.join("planning/history/snapshots", "PLAN-pass-2.md")
+    );
+    const meta = fs.readFileSync(
+      path.join(tmpDir, "planning/history/snapshots", "PLAN-pass-2.toon"),
+      "utf-8"
+    );
+    expect(meta).toContain("slug: PLAN");
+    expect(meta).toContain("snapshotChecksum: sha256-");
+  });
+
+  it("skips snapshots when the breaker halts the iteration", () => {
+    writeConfig();
+    writeSubject("# Plan\n### Phase 1 — setup\n");
+    runIteration(1, 3, 10);
+    const v = runIteration(2, 5, 18); // REGRESSION
+    expect(v.halt).toBe(true);
+    expect(v.snapshotRef).toBeNull();
+  });
+});
+
 describe("finalize — convergence-summary.toon (locked C-11)", () => {
   beforeEach(() => writeConfig());
 

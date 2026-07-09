@@ -29,8 +29,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { parseToon, parseToonArray } from "../../../hooks/lib/toon-reader.js";
+import * as crypto from "node:crypto";
+import { resolveAgentModel } from "./model-resolution.js";
 import {
   evaluateBreakers,
+  detectScopeExpansion,
   renderIterationLine,
   renderHaltMessage,
   STATUS_BY_HALT_REASON,
@@ -57,6 +60,7 @@ export interface ConvergeConfig {
   outputPath: string;
   snapshotEnabled: boolean;
   scopeGuardEnabled: boolean;
+  snapshotDir: string;
 }
 
 export function readConvergeConfig(configPath: string): ConvergeConfig {
@@ -78,6 +82,7 @@ export function readConvergeConfig(configPath: string): ConvergeConfig {
     outputPath: String(flat["outputPath"] ?? path.join(outputDir, "findings.toon")),
     snapshotEnabled: flat["snapshotEnabled"] !== false && mode === "document",
     scopeGuardEnabled: flat["scopeGuardEnabled"] !== false && mode === "document",
+    snapshotDir: String(flat["snapshotDir"] ?? "planning/history/snapshots/"),
   };
 }
 
@@ -172,6 +177,8 @@ interface EngineState {
   totalAgentsSpawned: number;
   startedAt: string;
   history: IterationRecord[];
+  /** Subject content as of the last record call — scope-guard baseline (C-06). */
+  subjectBaseline: string | null;
 }
 
 function statePath(config: ConvergeConfig): string {
@@ -187,6 +194,7 @@ export function readEngineState(config: ConvergeConfig): EngineState {
     totalAgentsSpawned: 0,
     startedAt: new Date().toISOString(),
     history: [],
+    subjectBaseline: null,
   };
   try {
     if (!fs.existsSync(p)) return fallback;
@@ -196,6 +204,11 @@ export function readEngineState(config: ConvergeConfig): EngineState {
       iteration: Number(r["iteration"] ?? 0),
       blocking: Number(r["blocking"] ?? 0),
     }));
+    let subjectBaseline: string | null = null;
+    const baselinePath = subjectBaselinePath(config);
+    if (fs.existsSync(baselinePath)) {
+      subjectBaseline = fs.readFileSync(baselinePath, "utf-8");
+    }
     return {
       runId: String(flat["runId"] ?? config.runId),
       mode: (flat["convergenceMode"] as ConvergenceMode) ?? config.convergenceMode,
@@ -203,10 +216,16 @@ export function readEngineState(config: ConvergeConfig): EngineState {
       totalAgentsSpawned: Number(flat["totalAgentsSpawned"] ?? 0),
       startedAt: String(flat["startedAt"] ?? fallback.startedAt),
       history,
+      subjectBaseline,
     };
   } catch {
     return fallback;
   }
+}
+
+/** Sidecar holding the prior subject content for the C-06 scope guard. */
+function subjectBaselinePath(config: ConvergeConfig): string {
+  return path.join(path.dirname(config.outputPath), "subject-baseline.snapshot");
 }
 
 function writeEngineState(config: ConvergeConfig, state: EngineState): void {
@@ -279,15 +298,31 @@ export function preflight(configPath: string, cwd = process.cwd()): number {
     return fail("FINDINGS_SCHEMA_INVALID", "maxIterations must be 1..10");
   }
 
+  // Resume position + integrator model, so the Workflow driver needs no
+  // second bootstrap call. Model chain per CLAUDE.md (toml -> frontmatter ->
+  // inherit) via the shared resolver.
+  const state = readEngineState(config);
+  const integratorAgentFile = fs.existsSync(integratorFile) ? integratorFile : integratorAlt;
+  const integratorModel = resolveAgentModel({
+    agentFile: integratorAgentFile,
+    agentName: config.integrator,
+    cwd,
+  });
+
   emitVerdict({
     ok: true,
     runId: config.runId,
     mode: config.convergenceMode,
+    subject: config.subject,
     harness: config.harness,
     integrator: config.integrator,
+    integratorAgentFile: path.relative(cwd, integratorAgentFile),
+    integratorModel,
     maxIterations: config.maxIterations,
     agentBudget: config.agentBudget,
     outputPath: config.outputPath,
+    nextIteration: state.history.length + 1,
+    totalAgentsSpawned: state.totalAgentsSpawned,
   });
   return 0;
 }
@@ -317,6 +352,20 @@ export function record(opts: {
   state.history.push({ iteration: opts.iteration, blocking: findings.blockingCount });
   state.totalAgentsSpawned = opts.agentsSpawned;
 
+  // Scope-expansion guard (locked C-06): compare the subject's top-level
+  // structural headings against the baseline captured at the previous record
+  // call — the delta is what the integrator added in between.
+  let scopeExpansion = opts.scopeExpansion;
+  let newSections: string[] = [];
+  if (config.scopeGuardEnabled && config.subject && fs.existsSync(config.subject)) {
+    const current = fs.readFileSync(config.subject, "utf-8");
+    if (state.subjectBaseline !== null) {
+      newSections = detectScopeExpansion(state.subjectBaseline, current);
+      if (newSections.length > 0) scopeExpansion = true;
+    }
+    atomicWrite(subjectBaselinePath(config), current);
+  }
+
   const verdict = evaluateBreakers({
     mode: config.convergenceMode,
     iteration: opts.iteration,
@@ -324,11 +373,48 @@ export function record(opts: {
     agentBudget: config.agentBudget,
     totalAgentsSpawned: opts.agentsSpawned,
     history: state.history,
-    scopeExpansionDetected: opts.scopeExpansion && config.scopeGuardEnabled,
+    scopeExpansionDetected: scopeExpansion && config.scopeGuardEnabled,
     allBlockingFrozen: opts.allBlockingFrozen,
   });
   state.consecutiveStalls = verdict.consecutiveStalls;
   writeEngineState(config, state);
+
+  // Auto-snapshot writer (locked C-07): before the integrator runs, for
+  // iterations >= 2 in document mode. `record` sits between harness and
+  // integrator in the loop, so this is the spec'd insertion point.
+  let snapshotRef: string | null = null;
+  if (
+    config.snapshotEnabled &&
+    config.subject &&
+    !verdict.halt &&
+    opts.iteration >= 2 &&
+    fs.existsSync(config.subject)
+  ) {
+    try {
+      const ext = path.extname(config.subject);
+      const slug = path.basename(config.subject, ext); // W-02: final extension only
+      const snapPath = path.join(config.snapshotDir, `${slug}-pass-${opts.iteration}${ext}`);
+      const content = fs.readFileSync(config.subject, "utf-8");
+      atomicWrite(snapPath, content);
+      const checksum = crypto.createHash("sha256").update(content).digest("hex");
+      atomicWrite(
+        path.join(config.snapshotDir, `${slug}-pass-${opts.iteration}.toon`),
+        [
+          `sourcePath: ${config.subject}`,
+          `snapshotPath: ${snapPath}`,
+          `snapshotChecksum: sha256-${checksum}`,
+          `iteration: ${opts.iteration}`,
+          `timestamp: ${new Date().toISOString()}`,
+          `slug: ${slug}`,
+          ``,
+        ].join("\n")
+      );
+      snapshotRef = snapPath;
+    } catch (err) {
+      // SNAPSHOT_WRITE_FAILED: warn and continue — never halt (schema rule).
+      process.stderr.write(`SNAPSHOT_WRITE_FAILED: ${(err as Error).message}\n`);
+    }
+  }
 
   const prev = prior ? prior.blocking : findings.blockingCount;
   const fixed = Math.max(0, prev - findings.blockingCount);
@@ -356,6 +442,7 @@ export function record(opts: {
       `advisoryCount: ${findings.advisoryCount}`,
       `stalled: ${verdict.consecutiveStalls > 0}`,
       `haltReason: ${verdict.haltReason ?? ""}`,
+      `snapshotRef: ${snapshotRef ?? ""}`,
       `summary: iteration ${opts.iteration} — blocking ${prev} -> ${findings.blockingCount}.${haltSuffix}`,
       ``,
     ].join("\n")
@@ -380,6 +467,8 @@ export function record(opts: {
     new: fresh,
     consecutiveStalls: verdict.consecutiveStalls,
     totalAgentsSpawned: opts.agentsSpawned,
+    snapshotRef,
+    newSections,
   });
   return 0;
 }

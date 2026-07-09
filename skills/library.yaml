@@ -338,6 +338,17 @@ library:
       source: hooks/wiki-impact-warner.ts
       target: hooks/wiki-impact-warner.ts
 
+    # engine — executable drivers (Fable Readiness M-2, C-04)
+    - name: engine-step-recorder
+      description: "Engine CLI owning the locked convergence semantics — preflight, record (findings validation + breakers + iter-N.toon), finalize (convergence-summary.toon)"
+      source: scripts/lib/engine/iterate.ts
+      target: scripts/lib/engine/iterate.ts
+
+    - name: loom-converge-workflow
+      description: "Workflow engine driver for /loom-converge (standard/minimal profiles) — pure choreography over the step-recorder CLI; markdown driver remains the strict fallback"
+      source: workflows/loom-converge.mjs
+      target: workflows/loom-converge.mjs
+
   agents:
     # Planning agents
     - name: feature-coverage-agent
@@ -810,6 +821,10 @@ kits:
     version: 1.0.0
     minLoomVersion: 4
     includes:
+      - type: infrastructure
+        name: engine-step-recorder
+      - type: infrastructure
+        name: loom-converge-workflow
       - type: agent
         name: contracts-agent
       - type: agent
