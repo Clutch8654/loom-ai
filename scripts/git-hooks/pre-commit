@@ -42,24 +42,33 @@ STAGED_PATHS=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | so
 # Intersection. `comm -12` shows lines common to both, requires sorted input.
 TOUCHED=$(comm -12 <(echo "${TRACKED_PATHS}") <(echo "${STAGED_PATHS}"))
 
-if [ -z "${TOUCHED}" ]; then
-  # No tracked file in this commit. Manifest can't have drifted via this commit.
-  exit 0
+# NOTE: no early exit here — later sections (distribution completeness,
+# quality gates) must run even when no manifest-tracked file is staged.
+# A hooks.json or install.sh edit is not itself a manifest entry, and the
+# early-exit form silently skipped the completeness check for exactly
+# those files (found 2026-07-09).
+#
+# install.sh staged also triggers the generator: it discovers new fetch
+# targets and appends them to the manifest, so adding a file to install.sh
+# self-completes at commit time.
+if echo "${STAGED_PATHS}" | grep -qx 'install.sh'; then
+  TOUCHED="${TOUCHED}${TOUCHED:+$'\n'}install.sh"
 fi
+if [ -n "${TOUCHED}" ]; then
+  echo "[checksums] regenerating manifest (tracked files staged):"
+  echo "${TOUCHED}" | sed 's/^/  /'
 
-echo "[checksums] regenerating manifest (tracked files staged):"
-echo "${TOUCHED}" | sed 's/^/  /'
+  if ! "${GENERATOR}"; then
+    echo "[checksums] ERROR: regeneration failed — commit aborted." >&2
+    echo "[checksums] Inspect the error above, then re-stage and retry." >&2
+    exit 1
+  fi
 
-if ! "${GENERATOR}"; then
-  echo "[checksums] ERROR: regeneration failed — commit aborted." >&2
-  echo "[checksums] Inspect the error above, then re-stage and retry." >&2
-  exit 1
-fi
-
-# Re-stage the manifest if it changed.
-if ! git diff --quiet -- "${MANIFEST}"; then
-  git add -- "${MANIFEST}"
-  echo "[checksums] checksums.sha256 updated and re-staged"
+  # Re-stage the manifest if it changed.
+  if ! git diff --quiet -- "${MANIFEST}"; then
+    git add -- "${MANIFEST}"
+    echo "[checksums] checksums.sha256 updated and re-staged"
+  fi
 fi
 
 # ── Distribution completeness (fail-closed) ───────────────────────────
