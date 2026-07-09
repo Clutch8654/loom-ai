@@ -138,10 +138,10 @@ Layer membership (authoritative list maintained in `skills/library.yaml`):
 
 ## Milestones
 
-### M-1: Discipline profile + kit split
+### M-1: Discipline profile + kit split ✅ (shipped 2026-07-09)
 Config plumbing (`[settings.discipline]`, shared `discipline.ts` reader, doctor probe + `--resolve-profile`), three-kit split in `library.yaml`, hook self-bail wiring, tier-override floors, `strict`-default migration for existing installs. Exit: metrics "single conditional seam", "no-surprise migration", "per-agent tier override" pass.
 
-### M-2: Engine port to Workflow + Track A guarantees
+### M-2: Engine port to Workflow + Track A guarantees ✅ (shipped 2026-07-09; map-freshness gate dormant until Track B maps exist)
 Convergence loop first (all three modes on the uniform harness contract, parameterized shape per C-07), then wave execution (Wave-0 contracts, parallel implementers via worktree isolation where available, serial wiring/verification). Track A guarantees land here: acceptance re-validation stop-gate replaces quality-gate, map-freshness gate wired as plan/converge precondition, adversarial-reviewer and coverage matrix join the default convergence participants, goal-backward verification added as a convergence criterion. Markdown drivers labeled `fallback`, frozen. Exit: metrics "engine determinism", "circuit-breaker parity", "protocol corpus reduction", "self-certification impossible", "shape is model-chosen", "goal-backward convergence" pass.
 
 ### M-3: Scaffold deprecation
