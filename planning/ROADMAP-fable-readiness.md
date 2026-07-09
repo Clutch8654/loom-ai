@@ -78,6 +78,18 @@ This is a platform-survival initiative, not a feature. Without it, Loom's scaffo
 **Alternatives considered:** Auto-upgrade everyone on next update (rejected — silent behavior change in an enforcement product is a trust violation).
 **Impact:** medium
 
+### C-07 (proposed, M-1): Tier seam is `LOOM_AGENT_TIER` + fail-strict resolution
+**Decision:** Hooks learn the active agent tier from a `LOOM_AGENT_TIER` env var set by orchestrators on spawn; `state.toon` gains no mandatory tier field in M-1. Separately, any unparseable/invalid discipline config resolves to `strict` (fail-strict), unlike the hooks' fail-open convention for operational errors.
+**Rationale:** Hook stdin carries no agent identity today; an env contract is the minimal deterministic seam and is directly testable. Fail-strict because a config error silently disabling enforcement is the worst failure mode for an enforcement product.
+**Alternatives considered:** Tier column in `state.toon` tasks (deferred — additive, can land with M-2 wave-execution port); parsing agent frontmatter at hook time (rejected — slow, fragile).
+**Impact:** medium
+
+### C-08 (proposed, M-1): C-06 lives in the reader, not a migration
+**Decision:** The `strict` default for existing installs is implemented purely in `hooks/lib/discipline.ts` (absent section / `auto` with no `resolved` → `strict`). No SessionStart migration rewrites user config.
+**Rationale:** Zero config churn, zero rewrite risk, byte-identical behavior guaranteed by construction. `/loom-doctor --resolve-profile` remains the only writer.
+**Alternatives considered:** SessionStart migrator appending `[settings.discipline]` (rejected — writes to user config with no behavioral need).
+**Impact:** low
+
 ## Discipline Profile Specification
 
 ```toml
