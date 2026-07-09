@@ -95,6 +95,13 @@ kitHalts: 0
 
 ### Instructions
 
+> **FALLBACK NOTE (roadmap C-04/M-2).** Steps 0–10 below are the markdown
+> driver — frozen (bugfix-only). The authoritative `--auto` path is the
+> executable engine: `workflows/loom-execute.mjs` over
+> `scripts/lib/engine/execute-step.ts` (state, tags, wave summaries, auto
+> gate). Dispatch is Step 0.5; human-gated runs use the markdown driver on
+> every profile.
+
 #### Step 0.5: Driver Dispatch (discipline profile — single seam)
 
 Applies only to `--auto` runs (human-gated runs always use the markdown driver
