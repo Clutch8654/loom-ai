@@ -1,5 +1,12 @@
 /**
  * Hook: context-budget (PreToolUse — Agent)
+ *
+ * DEPRECATED — scaffold layer, active only under the `strict` discipline
+ * profile (roadmap M-3). Native replacement: the harness manages subagent
+ * context directly, and the engine's `agentBudget` breaker
+ * (scripts/lib/engine/breakers.ts BUDGET_EXHAUSTED) bounds spawn spend on
+ * the executable path. See protocols/discipline.schema.md.
+ *
  * Intercepts Agent tool calls (subagent spawns) and estimates prompt size.
  * Blocks spawns that would exceed the configured agentBudgetCap.
  * Fail-open: any estimation error allows the spawn.

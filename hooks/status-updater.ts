@@ -1,5 +1,12 @@
 /**
  * Hook: status-updater (SubagentStop)
+ *
+ * DEPRECATED — scaffold layer, active only under the `strict` discipline
+ * profile (roadmap M-3). Native replacement: the Workflow runtime's live
+ * progress display (/workflows) — heartbeat files exist because a markdown
+ * orchestrator could not observe its agents. See
+ * protocols/discipline.schema.md.
+ *
  * Updates status.toon timestamps after each agent completes.
  * Side effect only — never blocks.
  */

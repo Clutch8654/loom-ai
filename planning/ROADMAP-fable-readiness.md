@@ -144,7 +144,7 @@ Config plumbing (`[settings.discipline]`, shared `discipline.ts` reader, doctor 
 ### M-2: Engine port to Workflow + Track A guarantees ✅ (shipped 2026-07-09; map-freshness gate dormant until Track B maps exist)
 Convergence loop first (all three modes on the uniform harness contract, parameterized shape per C-07), then wave execution (Wave-0 contracts, parallel implementers via worktree isolation where available, serial wiring/verification). Track A guarantees land here: acceptance re-validation stop-gate replaces quality-gate, map-freshness gate wired as plan/converge precondition, adversarial-reviewer and coverage matrix join the default convergence participants, goal-backward verification added as a convergence criterion. Markdown drivers labeled `fallback`, frozen. Exit: metrics "engine determinism", "circuit-breaker parity", "protocol corpus reduction", "self-certification impossible", "shape is model-chosen", "goal-backward convergence" pass.
 
-### M-3: Scaffold deprecation
+### M-3: Scaffold deprecation ✅ (shipped 2026-07-09)
 Scaffold off under `standard`/`minimal`; TOON freeze applied (CLAUDE.md mandate removed, JSON accepted for new schemas); deprecation notes in each scaffold component pointing at the native replacement. Exit: metric "scaffold silence under minimal" and "TOON freeze" pass.
 
 ### M-4: Fable validation (blocked on model access)

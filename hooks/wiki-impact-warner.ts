@@ -1,5 +1,13 @@
 /**
  * Hook: wiki-impact-warner (PreToolUse — Write/Edit)
+ *
+ * DEPRECATED — scaffold layer (throttle/injection machinery), active only
+ * under the `strict` discipline profile (roadmap M-3). Native replacement:
+ * on-demand knowledge access — `/loom-wiki query` and (once Track B lands)
+ * scoped map excerpts in agent contracts — instead of unsolicited prompt
+ * injection. The wiki itself is core and unaffected. See
+ * protocols/discipline.schema.md.
+ *
  * Surfaces flow/contract impact before file edits via graph walk over
  * .loom/wiki/. Never blocks; only emits informational messages.
  *

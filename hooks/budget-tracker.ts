@@ -1,5 +1,12 @@
 /**
  * Hook: budget-tracker
+ *
+ * DEPRECATED — scaffold layer, active only under the `strict` discipline
+ * profile (roadmap M-3). Native replacement: the Workflow runtime's
+ * concurrency caps and per-run agent ledger, plus the engine's
+ * BUDGET_EXHAUSTED breaker (scripts/lib/engine/breakers.ts). See
+ * protocols/discipline.schema.md.
+ *
  * - SubagentStop: Increment agent count, warn if near/at budget.
  * - PreToolUse (Agent): Block new agent spawns if budget exhausted.
  * Fail-open: if state is unreadable, allows the operation.

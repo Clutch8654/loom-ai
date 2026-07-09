@@ -1,5 +1,11 @@
 /**
  * Hook: context-monitor (PostToolUse)
+ *
+ * DEPRECATED — scaffold layer, active only under the `strict` discipline
+ * profile (roadmap M-3). Native replacement: the harness's automatic context
+ * summarization — long conversations are summarized and continued without
+ * warnings or manual intervention. See protocols/discipline.schema.md.
+ *
  * Monitors remaining context percentage and injects warnings into tool output.
  * Writes contextRemaining to .plan-execution/ephemeral/status.toon for statusline display.
  * (The path is the canonical ephemeral location consumed by ambient-state.ts and statusline-renderer.cjs.)

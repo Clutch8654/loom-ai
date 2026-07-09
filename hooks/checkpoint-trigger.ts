@@ -1,5 +1,12 @@
 /**
  * Hook: checkpoint-trigger (PostToolUse + Stop)
+ *
+ * DEPRECATED — scaffold layer, active only under the `strict` discipline
+ * profile (roadmap M-3). Native replacement: the harness's automatic context
+ * summarization makes the checkpoint+clear ritual unnecessary; Workflow runs
+ * additionally carry their own resume journal. See
+ * protocols/discipline.schema.md.
+ *
  * Monitors accumulated context and suggests checkpoint+clear when estimated
  * context exceeds 80% of the context window. Fires on every tool use but
  * only injects a suggestion every 10 tool uses (unless critical).
