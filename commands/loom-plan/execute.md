@@ -109,8 +109,12 @@ below, since a Workflow run cannot pause for approval):
 
 1. Run `bunx tsx scripts/loom-doctor.ts --only discipline-profile` and read the
    `effective=` value from the check line.
-2. `standard` or `minimal` → launch the **Workflow engine driver**: call the
-   Workflow tool with `{scriptPath: "workflows/loom-execute.mjs", args:
+2. `standard` or `minimal` → launch the **Workflow engine driver**. Resolve
+   the driver path from the Loom install root:
+   `${CLAUDE_PLUGIN_ROOT}/workflows/loom-execute.mjs` when `CLAUDE_PLUGIN_ROOT`
+   is set (plugin channel), else `~/.claude/workflows/loom-execute.mjs` (curl
+   channel), else `workflows/loom-execute.mjs` (developing Loom itself). Call
+   the Workflow tool with `{scriptPath: <resolved path>, args:
    {planPath, runId: <uuid>, startedAt: <current ISO timestamp>,
    maxParallelAgents: <from orchestration.toml>}}`. The workflow returns
    `{status, wavesSucceeded, wavesTotal}`; on return, resume at § Execution

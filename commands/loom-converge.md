@@ -482,8 +482,12 @@ Wait for user response:
 2.5. **Driver dispatch (discipline profile — single seam):** run
    `bunx tsx scripts/loom-doctor.ts --only discipline-profile` and read the
    `effective=` value from the check line.
-   - `standard` or `minimal` → launch the **Workflow engine driver**: call the
-     Workflow tool with `{scriptPath: "workflows/loom-converge.mjs", args: {configPath,
+   - `standard` or `minimal` → launch the **Workflow engine driver**. Resolve
+     the driver path from the Loom install root: `${CLAUDE_PLUGIN_ROOT}/workflows/loom-converge.mjs`
+     when `CLAUDE_PLUGIN_ROOT` is set (plugin channel), else
+     `~/.claude/workflows/loom-converge.mjs` (curl channel), else
+     `workflows/loom-converge.mjs` (developing Loom itself). Call the Workflow
+     tool with `{scriptPath: <resolved path>, args: {configPath,
      startedAt: <current ISO timestamp>, maxParallelAgents: <from orchestration.toml>}}`.
      The workflow returns `{status, haltReason, finalBlockingCount, iterationsRun,
      summaryPath}`; on return, skip to Step 6 (the CLI already wrote

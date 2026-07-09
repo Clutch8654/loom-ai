@@ -60,6 +60,17 @@ declare -a INFRA_FILES=(
   "scripts/lib/update/resume.ts:${CLAUDE_DIR}/scripts/lib/update/resume.ts"
   "scripts/lib/update/rollback.ts:${CLAUDE_DIR}/scripts/lib/update/rollback.ts"
   "config/starship-loom.toml:${CLAUDE_DIR}/config/starship-loom.toml"
+  # Executable engine (Fable Readiness M-2): Workflow drivers + the step CLIs
+  # they shell out to. Without these, standard/minimal-profile dispatch in
+  # /loom-converge and /loom-plan execute cannot find its driver.
+  "workflows/loom-converge.mjs:${CLAUDE_DIR}/workflows/loom-converge.mjs"
+  "workflows/loom-execute.mjs:${CLAUDE_DIR}/workflows/loom-execute.mjs"
+  "scripts/lib/engine/breakers.ts:${CLAUDE_DIR}/scripts/lib/engine/breakers.ts"
+  "scripts/lib/engine/shape.ts:${CLAUDE_DIR}/scripts/lib/engine/shape.ts"
+  "scripts/lib/engine/model-resolution.ts:${CLAUDE_DIR}/scripts/lib/engine/model-resolution.ts"
+  "scripts/lib/engine/coverage.ts:${CLAUDE_DIR}/scripts/lib/engine/coverage.ts"
+  "scripts/lib/engine/iterate.ts:${CLAUDE_DIR}/scripts/lib/engine/iterate.ts"
+  "scripts/lib/engine/execute-step.ts:${CLAUDE_DIR}/scripts/lib/engine/execute-step.ts"
 )
 
 declare -a COMMAND_FILES=(
@@ -132,6 +143,9 @@ declare -a HOOK_TEMPLATE_FILES=(
   "hooks/status-updater.ts:${CLAUDE_DIR}/templates/hooks/status-updater.ts"
   "hooks/quality-gate.ts:${CLAUDE_DIR}/templates/hooks/quality-gate.ts"
   "hooks/wiki-session-status.ts:${CLAUDE_DIR}/templates/hooks/wiki-session-status.ts"
+  "hooks/map-freshness.ts:${CLAUDE_DIR}/templates/hooks/map-freshness.ts"
+  "hooks/lib/discipline.ts:${CLAUDE_DIR}/templates/hooks/lib/discipline.ts"
+  "hooks/lib/revalidation.ts:${CLAUDE_DIR}/templates/hooks/lib/revalidation.ts"
   "hooks/run-hook.sh:${CLAUDE_DIR}/templates/hooks/run-hook.sh"
   "scripts/register-loom-hooks.ts:${CLAUDE_DIR}/templates/scripts/register-loom-hooks.ts"
 )
