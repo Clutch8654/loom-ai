@@ -114,9 +114,15 @@ const FINAL_SCHEMA = {
   required: ['ok', 'status'],
 }
 
-const configPath = args.configPath
-const startedAt = args.startedAt
-const maxParallel = args.maxParallelAgents ?? 6
+// args may arrive JSON-stringified depending on the caller's encoding —
+// normalize before reading (live-fire finding, e2e run wf_06989ddc).
+const input = typeof args === 'string' ? JSON.parse(args) : (args ?? {})
+const configPath = input.configPath
+const startedAt = input.startedAt
+const maxParallel = input.maxParallelAgents ?? 6
+if (!configPath) {
+  return { status: 'preflight-failed', haltReason: 'FINDINGS_SCHEMA_INVALID', detail: 'args.configPath missing' }
+}
 
 phase('Preflight')
 const pre = await agent(

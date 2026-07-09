@@ -93,9 +93,15 @@ const FINAL_SCHEMA = {
   required: ['ok', 'status'],
 }
 
-const planPath = args.planPath
-const runId = args.runId
-const maxParallel = args.maxParallelAgents ?? 6
+// args may arrive JSON-stringified depending on the caller's encoding —
+// normalize before reading (live-fire finding, e2e run wf_06989ddc).
+const input = typeof args === 'string' ? JSON.parse(args) : (args ?? {})
+const planPath = input.planPath
+const runId = input.runId
+const maxParallel = input.maxParallelAgents ?? 6
+if (!planPath) {
+  return { status: 'failed', reason: 'args.planPath missing' }
+}
 const wavesFile = '.plan-execution/ephemeral/parsed-waves.json'
 
 phase('Plan')
