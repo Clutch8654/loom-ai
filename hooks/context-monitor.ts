@@ -13,6 +13,7 @@ import * as path from "node:path";
 import { runHook, allow } from "./lib/run-hook.js";
 import { estimateTokens, estimateFileTokens } from "./lib/token-estimator.js";
 import { findPlanExecutionDir } from "./lib/context.js";
+import { hookActive } from "./lib/discipline.js";
 
 interface MonitorConfig {
   contextWindow: number;
@@ -194,6 +195,9 @@ function writeContextRemainingToStatus(
 }
 
 runHook("context-monitor", async (input) => {
+  // Scaffold layer — inactive below the strict discipline profile
+  if (!hookActive("context-monitor")) return allow();
+
   const config = readMonitorConfig();
   const planExecDir = findPlanExecutionDir();
 

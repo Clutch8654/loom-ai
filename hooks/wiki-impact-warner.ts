@@ -16,6 +16,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { runHook, allow } from "./lib/run-hook.js";
 import { parseToon, parseToonArray } from "./lib/toon-reader.js";
+import { hookActive } from "./lib/discipline.js";
 import {
   findProjectRoot,
   writeAtomic,
@@ -283,6 +284,9 @@ runHook("wiki-impact-warner", async (input) => {
   const filePath: string | undefined = input.tool_input?.file_path;
   if (!filePath) return allow();
   if (process.env.LOOM_WIKI_HOOKS === "0") return allow();
+
+  // Scaffold layer (throttle/injection machinery) — inactive below strict
+  if (!hookActive("wiki-impact-warner")) return allow();
 
   const absPath = canonicalize(filePath);
   const root = findProjectRoot();

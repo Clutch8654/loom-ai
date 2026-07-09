@@ -11,6 +11,7 @@ import * as path from "node:path";
 import { runHook, allow } from "./lib/run-hook.js";
 import { estimateTokens, estimateFileTokens } from "./lib/token-estimator.js";
 import { findPlanExecutionDir } from "./lib/context.js";
+import { hookActive } from "./lib/discipline.js";
 
 interface CheckpointConfig {
   contextWindow: number;
@@ -159,6 +160,9 @@ function detectResumeCommand(planExecDir: string | null): string {
 }
 
 runHook("checkpoint-trigger", async (input) => {
+  // Scaffold layer — inactive below the strict discipline profile
+  if (!hookActive("checkpoint-trigger")) return allow();
+
   const config = readCheckpointConfig();
   const planExecDir = findPlanExecutionDir();
 

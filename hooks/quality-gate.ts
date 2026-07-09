@@ -15,6 +15,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { runHook, allow, block } from "./lib/run-hook.js";
 import { findPlanExecutionDir, readPipelineState } from "./lib/context.js";
+import { hookActive } from "./lib/discipline.js";
 
 const STALE_PIPELINE_DAYS = 7;
 const STALE_PIPELINE_MS = STALE_PIPELINE_DAYS * 24 * 60 * 60 * 1000;
@@ -44,6 +45,9 @@ const STAGE_NAMES: Record<string, string> = {
 };
 
 runHook("quality-gate", async (_input) => {
+  // Engine layer — non-blocking under the minimal discipline profile
+  if (!hookActive("quality-gate")) return allow();
+
   const planExecDir = findPlanExecutionDir();
   if (!planExecDir) return allow(); // Not in a Loom run
 

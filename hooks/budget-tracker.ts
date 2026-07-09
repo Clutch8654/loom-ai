@@ -10,8 +10,12 @@ import * as path from "node:path";
 import { runHook, allow, block } from "./lib/run-hook.js";
 import { findPlanExecutionDir, readPipelineState } from "./lib/context.js";
 import { parseToon } from "./lib/toon-reader.js";
+import { hookActive } from "./lib/discipline.js";
 
 runHook("budget-tracker", async (input) => {
+  // Scaffold layer — inactive below the strict discipline profile
+  if (!hookActive("budget-tracker")) return allow();
+
   const planExecDir = findPlanExecutionDir();
   if (!planExecDir) return allow();
 

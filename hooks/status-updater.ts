@@ -8,8 +8,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { runHook, allow } from "./lib/run-hook.js";
 import { findPlanExecutionDir } from "./lib/context.js";
+import { hookActive } from "./lib/discipline.js";
 
 runHook("status-updater", async (_input) => {
+  // Scaffold layer — inactive below the strict discipline profile
+  if (!hookActive("status-updater")) return allow();
+
   const planExecDir = findPlanExecutionDir();
   if (!planExecDir) return allow();
 
