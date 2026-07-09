@@ -137,3 +137,4 @@ runHook("map-freshness", async (input) => {
       `\nRun /loom-map to refresh the maps (or update lastMappedCommit after a manual re-map), then retry.`
   );
 });
+// e2e: distribution guard exercised 2026-07-09 (see scripts/check-install-manifest-drift.sh)
