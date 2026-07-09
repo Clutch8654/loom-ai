@@ -302,9 +302,8 @@ library:
       source: hooks/loom-migration.ts
       target: hooks/loom-migration.ts
 
-    # engine — on under strict/standard; non-blocking under minimal
     - name: quality-gate
-      description: "Engine hook (Stop): blocks premature stops mid-pipeline-stage; bails under the minimal profile"
+      description: "Core hook (Stop), all profiles (C-08): blocks premature stops mid-pipeline-stage today; evolves into the acceptance re-validation gate in M-2"
       source: hooks/quality-gate.ts
       target: hooks/quality-gate.ts
 
@@ -781,6 +780,8 @@ kits:
         name: wiki-session-status
       - type: infrastructure
         name: loom-migration
+      - type: infrastructure
+        name: quality-gate
       - type: protocol
         name: discipline-schema
       - type: protocol
@@ -809,8 +810,6 @@ kits:
     version: 1.0.0
     minLoomVersion: 4
     includes:
-      - type: infrastructure
-        name: quality-gate
       - type: agent
         name: contracts-agent
       - type: agent

@@ -69,8 +69,10 @@ export const HOOK_GATES: Record<string, HookGate> = {
   // core, tier-gated: off for the main session under minimal, but tier floors
   // keep it on for cheap-tier subagents.
   "file-ownership": { layer: "core", minProfile: "standard", tierSensitive: true },
-  // engine — non-blocking under minimal
-  "quality-gate": { layer: "engine", minProfile: "standard" },
+  // core (C-08/C-11): the Stop-time gate blocks under every profile. Today it
+  // is the stage-based check; M-2 replaces its internals with acceptance
+  // re-validation without changing its layer.
+  "quality-gate": ALWAYS,
   // scaffold — strict only
   "context-budget": { layer: "scaffold", minProfile: "strict" },
   "budget-tracker": { layer: "scaffold", minProfile: "strict" },

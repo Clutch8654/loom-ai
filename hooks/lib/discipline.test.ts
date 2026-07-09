@@ -209,9 +209,11 @@ describe("hookActive", () => {
     expect(hookActive("file-ownership", { cwd: tmpDir })).toBe(true);
   });
 
-  it("turns engine hooks off under minimal", () => {
-    writeOrchestration(`[settings.discipline]\nprofile = "minimal"\n`);
-    expect(hookActive("quality-gate", { cwd: tmpDir })).toBe(false);
+  it("keeps quality-gate on under every profile (C-08/C-11)", () => {
+    for (const profile of ["strict", "standard", "minimal"]) {
+      writeOrchestration(`[settings.discipline]\nprofile = "${profile}"\n`);
+      expect(hookActive("quality-gate", { cwd: tmpDir }), profile).toBe(true);
+    }
   });
 
   it("keeps file-ownership on under minimal for haiku-tier agents", () => {
@@ -222,8 +224,9 @@ describe("hookActive", () => {
 
   it("does not apply tier floors to non-tier-sensitive hooks", () => {
     writeOrchestration(`[settings.discipline]\nprofile = "minimal"\n`);
-    expect(hookActive("quality-gate", { tier: "haiku", cwd: tmpDir })).toBe(false);
+    // haiku floor is "standard" — scaffold requires strict, so no lift applies
     expect(hookActive("context-budget", { tier: "haiku", cwd: tmpDir })).toBe(false);
+    expect(hookActive("budget-tracker", { tier: "haiku", cwd: tmpDir })).toBe(false);
   });
 });
 

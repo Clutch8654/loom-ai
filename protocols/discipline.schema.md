@@ -76,7 +76,7 @@ gates are the `HOOK_GATES` table in `hooks/lib/discipline.ts`:
 | wiki-commit-ledger | core | minimal | always on |
 | loom-migration | core | minimal | always on |
 | file-ownership | core | standard | **tier-sensitive** — see below |
-| quality-gate | engine | standard | non-blocking under minimal (bails) |
+| quality-gate | core | minimal | always on (C-08/C-11): stage-gate today, becomes the acceptance re-validation gate in M-2 |
 | context-budget | scaffold | strict | |
 | budget-tracker | scaffold | strict | |
 | context-monitor | scaffold | strict | |

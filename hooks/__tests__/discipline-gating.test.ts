@@ -94,30 +94,19 @@ describe("budget-tracker gating (scaffold)", () => {
   });
 });
 
-describe("quality-gate gating (engine)", () => {
+describe("quality-gate gating (core per C-08 — blocks under every profile)", () => {
   const stopInput = {};
 
-  it("still blocks mid-stage stops under strict", async () => {
-    writeProfile("strict");
-    writePipelineState(1, 30, "execute");
-    const result = await runHook("quality-gate.ts", stopInput, { cwd: tmpDir });
-    expect(result.exitCode).toBe(2);
-  });
-
-  it("still blocks mid-stage stops under standard", async () => {
-    writeProfile("standard");
-    writePipelineState(1, 30, "execute");
-    const result = await runHook("quality-gate.ts", stopInput, { cwd: tmpDir });
-    expect(result.exitCode).toBe(2);
-  });
-
-  it("does not block under minimal (non-blocking engine)", async () => {
-    writeProfile("minimal");
-    writePipelineState(1, 30, "execute");
-    const result = await runHook("quality-gate.ts", stopInput, { cwd: tmpDir });
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe("");
-  });
+  it.each(["strict", "standard", "minimal"])(
+    "blocks mid-stage stops under %s",
+    async (profile) => {
+      writeProfile(profile);
+      writePipelineState(1, 30, "execute");
+      const result = await runHook("quality-gate.ts", stopInput, { cwd: tmpDir });
+      expect(result.exitCode).toBe(2);
+      expect(parseDecision(result.stdout)?.decision).toBe("block");
+    }
+  );
 });
 
 describe("file-ownership gating (core, tier-gated)", () => {

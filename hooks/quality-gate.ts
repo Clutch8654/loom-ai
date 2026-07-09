@@ -45,7 +45,8 @@ const STAGE_NAMES: Record<string, string> = {
 };
 
 runHook("quality-gate", async (_input) => {
-  // Engine layer — non-blocking under the minimal discipline profile
+  // Core layer (C-08): the Stop-time gate holds under every profile. The
+  // hookActive call is kept so the single seam stays the only decision point.
   if (!hookActive("quality-gate")) return allow();
 
   const planExecDir = findPlanExecutionDir();
