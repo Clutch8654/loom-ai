@@ -349,6 +349,16 @@ library:
       source: workflows/loom-converge.mjs
       target: workflows/loom-converge.mjs
 
+    - name: execute-step-cli
+      description: "Engine CLI owning wave-execution semantics — state.toon, rollback tags, wave summaries, auto quality-gate rules (proceed/retry/escalate)"
+      source: scripts/lib/engine/execute-step.ts
+      target: scripts/lib/engine/execute-step.ts
+
+    - name: loom-execute-workflow
+      description: "Workflow engine driver for /loom-plan execute --auto (standard/minimal profiles) — waves in parallel rounds, serial wiring/verification, gate via execute-step CLI"
+      source: workflows/loom-execute.mjs
+      target: workflows/loom-execute.mjs
+
   agents:
     # Planning agents
     - name: feature-coverage-agent
@@ -825,6 +835,10 @@ kits:
         name: engine-step-recorder
       - type: infrastructure
         name: loom-converge-workflow
+      - type: infrastructure
+        name: execute-step-cli
+      - type: infrastructure
+        name: loom-execute-workflow
       - type: agent
         name: contracts-agent
       - type: agent

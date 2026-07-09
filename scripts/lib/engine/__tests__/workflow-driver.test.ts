@@ -76,8 +76,8 @@ describe.each(DRIVERS)("workflow driver $name", ({ source }) => {
     expect(source).not.toMatch(/parallel\([^)]*\d+\s*\)/);
   });
 
-  it("delegates all policy to the step-recorder CLI", () => {
-    expect(source).toContain("scripts/lib/engine/iterate.ts");
+  it("delegates all policy to a step CLI", () => {
+    expect(source).toMatch(/scripts\/lib\/engine\/(iterate|execute-step)\.ts/);
     // The locked breaker strings must NOT be re-emitted here (single emission site).
     expect(source).not.toContain("[autoconverge]");
     expect(source).not.toContain("BUDGET_EXHAUSTED");

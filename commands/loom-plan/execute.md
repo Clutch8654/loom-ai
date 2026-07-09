@@ -95,6 +95,24 @@ kitHalts: 0
 
 ### Instructions
 
+#### Step 0.5: Driver Dispatch (discipline profile — single seam)
+
+Applies only to `--auto` runs (human-gated runs always use the markdown driver
+below, since a Workflow run cannot pause for approval):
+
+1. Run `bunx tsx scripts/loom-doctor.ts --only discipline-profile` and read the
+   `effective=` value from the check line.
+2. `standard` or `minimal` → launch the **Workflow engine driver**: call the
+   Workflow tool with `{scriptPath: "workflows/loom-execute.mjs", args:
+   {planPath, runId: <uuid>, startedAt: <current ISO timestamp>,
+   maxParallelAgents: <from orchestration.toml>}}`. The workflow returns
+   `{status, wavesSucceeded, wavesTotal}`; on return, resume at § Execution
+   Complete (state.toon, wave summaries, and tags were written by the
+   execute-step CLI). Do NOT also run Steps 1–10.
+3. `strict` (or the Workflow tool is unavailable) → run the markdown driver
+   below (Steps 0–10). The markdown driver is frozen (bugfix-only) per
+   roadmap C-04.
+
 #### Step 0: Handle Special Flags
 
 **If `--init`:**
