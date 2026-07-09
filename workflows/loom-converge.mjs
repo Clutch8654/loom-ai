@@ -79,6 +79,19 @@ const VERDICT_SCHEMA = {
     haltReason: { type: ['string', 'null'] },
     status: { type: ['string', 'null'] },
     blockingCount: { type: 'number' },
+    findingsBlockingCount: { type: ['number', 'null'] },
+    gaps: {
+      type: ['array', 'null'],
+      items: {
+        type: 'object',
+        properties: {
+          requirementId: { type: 'string' },
+          requirementText: { type: 'string' },
+          source: { type: 'string' },
+        },
+        required: ['requirementId'],
+      },
+    },
     priorBlockingCount: { type: ['number', 'null'] },
     fixed: { type: ['number', 'null'] },
     new: { type: ['number', 'null'] },
@@ -200,21 +213,48 @@ while (true) {
     break
   }
 
-  // 4. Integrator — applies findings to the subject. Model resolved at
-  // preflight per the mandatory chain.
-  await agent(
-    `Read your instructions from ${pre.integratorAgentFile} first — they are your system prompt.\n` +
-      `Convergence iteration ${iteration}: apply the findings in ${pre.outputPath} ` +
-      `to the subject (${pre.subject ?? 'per findings locations'}). Fix blocking findings only; ` +
-      `do not expand scope (no new top-level Phase/F-NN/M-NN sections). ` +
-      `Write file changes atomically.`,
-    {
-      label: `integrate:iter-${iteration}`,
-      phase: 'Iterate',
-      ...(pre.integratorModel && pre.integratorModel !== 'inherit' ? { model: pre.integratorModel } : {}),
+  // 4a. Goal-backward gaps (C-08): ONE bounded fix per uncovered requirement,
+  // never an unbounded loop. Round fitted to the remaining budget, cut logged.
+  const gaps = verdict.gaps ?? []
+  if (gaps.length > 0) {
+    let round = gaps
+    const remaining = Math.max(0, pre.agentBudget - agentsSpawned - 1) // reserve integrator headroom
+    if (round.length > remaining) {
+      log(`gap-fix round cut ${round.length} → ${remaining} (agentBudget ${pre.agentBudget}, spawned ${agentsSpawned})`)
+      round = round.slice(0, remaining)
     }
-  )
-  agentsSpawned += 1
+    await parallel(
+      round.map((gap) => () =>
+        agent(
+          `Read your instructions from agents/fixer-agent.md first — they are your system prompt.\n` +
+            `Bounded gap fix (convergence iteration ${iteration}): requirement ${gap.requirementId} ` +
+            `(${gap.source}) is UNCOVERED — "${gap.requirementText}".\n` +
+            `Deliver and wire exactly this one requirement (update .plan-execution/coverage-matrix.toon ` +
+            `to coverageStatus covered with a testRef when done). Touch nothing outside this gap's scope.`,
+          { label: `gap:${gap.requirementId}`, phase: 'Iterate' }
+        )
+      )
+    )
+    agentsSpawned += round.length
+  }
+
+  // 4b. Integrator — applies findings to the subject. Model resolved at
+  // preflight per the mandatory chain.
+  if (verdict.findingsBlockingCount === undefined || verdict.findingsBlockingCount > 0) {
+    await agent(
+      `Read your instructions from ${pre.integratorAgentFile} first — they are your system prompt.\n` +
+        `Convergence iteration ${iteration}: apply the findings in ${pre.outputPath} ` +
+        `to the subject (${pre.subject ?? 'per findings locations'}). Fix blocking findings only; ` +
+        `do not expand scope (no new top-level Phase/F-NN/M-NN sections). ` +
+        `Write file changes atomically.`,
+      {
+        label: `integrate:iter-${iteration}`,
+        phase: 'Iterate',
+        ...(pre.integratorModel && pre.integratorModel !== 'inherit' ? { model: pre.integratorModel } : {}),
+      }
+    )
+    agentsSpawned += 1
+  }
   iteration += 1
 }
 

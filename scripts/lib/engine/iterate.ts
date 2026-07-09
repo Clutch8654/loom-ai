@@ -31,6 +31,7 @@ import * as path from "node:path";
 import { parseToon, parseToonArray } from "../../../hooks/lib/toon-reader.js";
 import * as crypto from "node:crypto";
 import { resolveAgentModel } from "./model-resolution.js";
+import { readCoverageMatrix, uncoveredGaps } from "./coverage.js";
 import {
   evaluateBreakers,
   detectScopeExpansion,
@@ -348,8 +349,22 @@ export function record(opts: {
     return 1;
   }
 
+  // Goal-backward verification (C-08): uncovered coverage-matrix rows —
+  // including phase promises — are blocking conditions. "All tasks completed"
+  // cannot converge past an unwired promise; each gap gets one bounded fix.
+  const planExecRoot = path.dirname(statePath(config));
+  const gaps = uncoveredGaps(readCoverageMatrix(planExecRoot));
+  const effectiveBlocking = findings.blockingCount + gaps.length;
+  if (gaps.length > 0) {
+    process.stderr.write(
+      `[loom:engine] goal-backward: ${gaps.length} uncovered requirement(s) count as blocking: ` +
+        gaps.map((g) => g.requirementId).join(", ") +
+        "\n"
+    );
+  }
+
   const prior = state.history[state.history.length - 1];
-  state.history.push({ iteration: opts.iteration, blocking: findings.blockingCount });
+  state.history.push({ iteration: opts.iteration, blocking: effectiveBlocking });
   state.totalAgentsSpawned = opts.agentsSpawned;
 
   // Scope-expansion guard (locked C-06): compare the subject's top-level
@@ -416,9 +431,9 @@ export function record(opts: {
     }
   }
 
-  const prev = prior ? prior.blocking : findings.blockingCount;
-  const fixed = Math.max(0, prev - findings.blockingCount);
-  const fresh = Math.max(0, findings.blockingCount - prev);
+  const prev = prior ? prior.blocking : effectiveBlocking;
+  const fixed = Math.max(0, prev - effectiveBlocking);
+  const fresh = Math.max(0, effectiveBlocking - prev);
 
   // iter-{N}.toon — uniform shape across modes
   const iterPath = path.join(
@@ -436,21 +451,21 @@ export function record(opts: {
       `mode: ${config.convergenceMode}`,
       `completedAt: ${new Date().toISOString()}`,
       `findingsBefore: ${prev}`,
-      `findingsAfter: ${findings.blockingCount}`,
+      `findingsAfter: ${effectiveBlocking}`,
       `findingsFixed: ${fixed}`,
       `findingsNew: ${fresh}`,
       `advisoryCount: ${findings.advisoryCount}`,
       `stalled: ${verdict.consecutiveStalls > 0}`,
       `haltReason: ${verdict.haltReason ?? ""}`,
       `snapshotRef: ${snapshotRef ?? ""}`,
-      `summary: iteration ${opts.iteration} — blocking ${prev} -> ${findings.blockingCount}.${haltSuffix}`,
+      `summary: iteration ${opts.iteration} — blocking ${prev} -> ${effectiveBlocking}${gaps.length ? ` (${gaps.length} goal-backward gap(s))` : ""}.${haltSuffix}`,
       ``,
     ].join("\n")
   );
 
   // Locked C-09 stdout line, then C-10 halt block when a breaker fired.
   process.stdout.write(
-    renderIterationLine(opts.iteration, config.maxIterations, prev, findings.blockingCount, fixed, fresh) + "\n"
+    renderIterationLine(opts.iteration, config.maxIterations, prev, effectiveBlocking, fixed, fresh) + "\n"
   );
   if (verdict.halt && verdict.haltReason) {
     process.stdout.write(renderHaltMessage(verdict.haltReason) + "\n");
@@ -460,7 +475,9 @@ export function record(opts: {
     halt: verdict.halt,
     haltReason: verdict.haltReason ?? null,
     status: verdict.status ?? null,
-    blockingCount: findings.blockingCount,
+    blockingCount: effectiveBlocking,
+    findingsBlockingCount: findings.blockingCount,
+    gaps: gaps.map((g) => ({ requirementId: g.requirementId, requirementText: g.requirementText, source: g.source })),
     advisoryCount: findings.advisoryCount,
     priorBlockingCount: prev,
     fixed,

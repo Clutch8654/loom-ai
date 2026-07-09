@@ -43,6 +43,10 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/wiki-write-guard.ts\""
+          },
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/map-freshness.ts\""
           }
         ]
       }

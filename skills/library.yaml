@@ -206,6 +206,15 @@ library:
       description: StageContext schema — structured per-stage summaries written to .plan-execution/stage-context/ (scaffold layer)
       source: protocols/stage-context.schema.md
 
+    # Track A protocols (Fable Readiness M-2, C-08)
+    - name: coverage-matrix-schema
+      description: Spec→coverage matrix — requirements (criteria + phase promises) to coverage status; uncovered rows block convergence, one bounded fix per gap
+      source: protocols/coverage-matrix.schema.md
+
+    - name: phase-promise-schema
+      description: Phase promises — machine-readable deliverables captured at plan approval; goal-backward verification input for the coverage matrix
+      source: protocols/phase-promise.schema.md
+
   # In v4, skills = Claude Code native skills (new, initialized empty at v3→v4 migration)
   skills:
     - name: python-conventions
@@ -301,6 +310,11 @@ library:
       description: "Core hook (SessionStart): idempotent settings/anchor migrations"
       source: hooks/loom-migration.ts
       target: hooks/loom-migration.ts
+
+    - name: map-freshness
+      description: "Core hook (PreToolUse, C-08): fail-closed map-freshness precondition on planning artifacts; dormant until .loom/wiki/maps/ exists (Track B)"
+      source: hooks/map-freshness.ts
+      target: hooks/map-freshness.ts
 
     - name: quality-gate
       description: "Core hook (Stop), all profiles (C-08): blocks premature stops mid-pipeline-stage today; evolves into the acceptance re-validation gate in M-2"
@@ -555,6 +569,10 @@ library:
       source: agents/convergence-planner-agent.md
       requires: [protocol:convergence-plan-schema]
 
+    - name: adversary-agent
+      description: Adversarial reviewer (C-08 / CT6 A1) — builds the strongest case the work is wrong; default convergence participant, registered via orchestration.toml [[review.agents]]
+      source: agents/adversary-agent.md
+
     # Documentation agents
     - name: project-guidance-agent
       description: Creates CLAUDE.md and AI coding assistant guidance files from codebase analysis
@@ -802,6 +820,8 @@ kits:
       - type: infrastructure
         name: loom-migration
       - type: infrastructure
+        name: map-freshness
+      - type: infrastructure
         name: quality-gate
       - type: protocol
         name: discipline-schema
@@ -857,6 +877,12 @@ kits:
         name: harness-builder
       - type: agent
         name: delta-analyzer
+      - type: agent
+        name: adversary-agent
+      - type: protocol
+        name: coverage-matrix-schema
+      - type: protocol
+        name: phase-promise-schema
       - type: protocol
         name: execution-protocols
       - type: protocol

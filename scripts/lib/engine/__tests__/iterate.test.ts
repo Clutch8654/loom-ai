@@ -336,6 +336,51 @@ describe("finalize — convergence-summary.toon (locked C-11)", () => {
   });
 });
 
+describe("goal-backward convergence (M-2 metric: completed tasks + unwired promise must fail)", () => {
+  function writeMatrix(status: "covered" | "uncovered") {
+    fs.mkdirSync(path.join(tmpDir, ".plan-execution"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, ".plan-execution", "coverage-matrix.toon"),
+      [
+        `schemaVersion: 1`,
+        `generatedAt: 2026-07-09T12:00:00.000Z`,
+        ``,
+        `matrix[2]{requirementId,requirementText,source,coverageStatus,testRefs}:`,
+        `  C-01,Blocks unauthenticated requests,criteria,covered,S-01`,
+        `  P-01,Admin audit log records every mutation,phase-promise,${status},${status === "covered" ? "S-07" : ""}`,
+        ``,
+      ].join("\n"),
+      "utf-8"
+    );
+  }
+
+  it("does NOT converge on zero findings while a phase promise is uncovered", () => {
+    writeConfig();
+    writeMatrix("uncovered");
+    const v = runIteration(1, 0, 10); // harness: zero blocking findings
+    expect(v.halt).toBe(false); // not converged — the gap blocks
+    expect(v.blockingCount).toBe(1);
+    expect(v.findingsBlockingCount).toBe(0);
+    expect(v.gaps).toEqual([
+      {
+        requirementId: "P-01",
+        requirementText: "Admin audit log records every mutation",
+        source: "phase-promise",
+      },
+    ]);
+    expect(allStdout()).toContain("blockingCount: 1 → 1");
+  });
+
+  it("converges once the promise is wired (matrix row covered)", () => {
+    writeConfig();
+    writeMatrix("uncovered");
+    runIteration(1, 0, 10);
+    writeMatrix("covered"); // gap fixer closed the row
+    const v = runIteration(2, 0, 16);
+    expect(v).toMatchObject({ halt: true, status: "converged", blockingCount: 0 });
+  });
+});
+
 describe("validateFindings", () => {
   it("flags missing files, iteration mismatch, and duplicate ids", () => {
     writeConfig();

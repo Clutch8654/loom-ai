@@ -66,6 +66,9 @@ export const HOOK_GATES: Record<string, HookGate> = {
   "wiki-write-guard": ALWAYS,
   "wiki-commit-ledger": ALWAYS,
   "loom-migration": ALWAYS,
+  // core (C-08): fail-closed map-freshness precondition on planning artifacts;
+  // dormant until .loom/wiki/maps/ exists (Track B).
+  "map-freshness": ALWAYS,
   // core, tier-gated: off for the main session under minimal, but tier floors
   // keep it on for cheap-tier subagents.
   "file-ownership": { layer: "core", minProfile: "standard", tierSensitive: true },
