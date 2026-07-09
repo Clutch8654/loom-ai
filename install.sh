@@ -144,8 +144,27 @@ declare -a HOOK_TEMPLATE_FILES=(
   "hooks/quality-gate.ts:${CLAUDE_DIR}/templates/hooks/quality-gate.ts"
   "hooks/wiki-session-status.ts:${CLAUDE_DIR}/templates/hooks/wiki-session-status.ts"
   "hooks/map-freshness.ts:${CLAUDE_DIR}/templates/hooks/map-freshness.ts"
+  "hooks/shellcheck-on-write.ts:${CLAUDE_DIR}/templates/hooks/shellcheck-on-write.ts"
+  "hooks/bash-portability-on-write.ts:${CLAUDE_DIR}/templates/hooks/bash-portability-on-write.ts"
+  "hooks/pylint-on-write.ts:${CLAUDE_DIR}/templates/hooks/pylint-on-write.ts"
+  "hooks/loom-migration.ts:${CLAUDE_DIR}/templates/hooks/loom-migration.ts"
+  # Shared lib modules the hook templates import (./lib/*.js). The drift
+  # checker's import-closure axis keeps this list complete.
+  "hooks/lib/run-hook.ts:${CLAUDE_DIR}/templates/hooks/lib/run-hook.ts"
+  "hooks/lib/context.ts:${CLAUDE_DIR}/templates/hooks/lib/context.ts"
+  "hooks/lib/toon-reader.ts:${CLAUDE_DIR}/templates/hooks/lib/toon-reader.ts"
+  "hooks/lib/token-estimator.ts:${CLAUDE_DIR}/templates/hooks/lib/token-estimator.ts"
+  "hooks/lib/wiki-helpers.ts:${CLAUDE_DIR}/templates/hooks/lib/wiki-helpers.ts"
   "hooks/lib/discipline.ts:${CLAUDE_DIR}/templates/hooks/lib/discipline.ts"
   "hooks/lib/revalidation.ts:${CLAUDE_DIR}/templates/hooks/lib/revalidation.ts"
+  "hooks/lib/file-probe.ts:${CLAUDE_DIR}/templates/hooks/lib/file-probe.ts"
+  "hooks/lib/portability-rules.ts:${CLAUDE_DIR}/templates/hooks/lib/portability-rules.ts"
+  # Cross-package imports of loom-migration.ts (../scripts/lib/...): shipped
+  # under templates/scripts/lib/ so the relative path resolves from
+  # templates/hooks/.
+  "scripts/lib/migration-runner.ts:${CLAUDE_DIR}/templates/scripts/lib/migration-runner.ts"
+  "scripts/lib/doctor/migration-runner.interface.ts:${CLAUDE_DIR}/templates/scripts/lib/doctor/migration-runner.interface.ts"
+  "scripts/lib/ownership-evidence.ts:${CLAUDE_DIR}/templates/scripts/lib/ownership-evidence.ts"
   "hooks/run-hook.sh:${CLAUDE_DIR}/templates/hooks/run-hook.sh"
   "scripts/register-loom-hooks.ts:${CLAUDE_DIR}/templates/scripts/register-loom-hooks.ts"
 )
