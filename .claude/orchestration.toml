@@ -7,6 +7,14 @@ dataFormat = "toon"
 [settings.contextBudget]
 contextWindow = 200000
 
+[settings.discipline]
+# Capability-gated discipline profile — see protocols/discipline.schema.md.
+# Resolves to "strict" until /loom-doctor --resolve-profile writes `resolved`.
+profile = "auto"
+
+[settings.discipline.tierOverrides]
+haiku = "standard"   # cheap-tier subagents keep file-ownership enforcement
+
 [wiki]
 enabled = true
 path = ".loom/wiki"
